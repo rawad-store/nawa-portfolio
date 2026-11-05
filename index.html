@@ -736,7 +736,10 @@ if($('goPort'))$('goPort').onclick=async()=>{
         // transparently use that verified daily frame for 1h/4h selections rather
         // than failing the whole symbol or fabricating intraday candles.
         const effectiveTf=isValmore&&['1h','4h'].includes(tf)?'1d':tf;
-        const {bars,live,higher}=await loadAll(asset,effectiveTf,custom,manual&&manual.price>0?manual.price:null);
+        // Watchlist analysis must use the same current quote source as the
+        // technical view and actual holdings. An old backup manual quote
+        // (e.g. VLMRA=23.32) must never override a live TradingView quote.
+        const {bars,live,higher}=await loadAll(asset,effectiveTf,custom,null);
         const bad=sanity(bars,live);if(bad)throw Error(bad);
         const x=study(bars,live?.price,{tf:effectiveTf,assetType:asset.type});const htf={'1h':'4h','4h':'1d','1d':'1w'}[effectiveTf];let h=higher&&higher.length>=FULL_DECISION_BARS?study(higher,null,{tf:htf,assetType:asset.type}):null;if(h&&!h.coverage.decisionReady)h=null;const d=decideWithCoverage(x,h,cost),nr=generateNotes(x,h,d);
         const rec={sym,x,h,d,nr,live,label:asset.label,name:displayName,type:asset.type,requestedTf:tf,tf:effectiveTf,frameNote:isValmore&&effectiveTf!==tf?'تم استخدام الإطار اليومي الموثق لأن أرشيف Valmore المتاح يومي فقط.':null};

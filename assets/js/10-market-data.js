@@ -91,7 +91,16 @@ async function getLivePrice(asset,custom){
       if(r.ok){const p=parseFloat((await r.json()).price);if(p>0){const q={price:p,time:Date.now(),source:'Binance'};saveMarketQuote(symbol,q);return q}}}catch(e){}
     return getCachedMarketQuote(symbol);
   }
-  if(asset.type==='egx')return getEgxMarketQuote(symbol,custom);
+  if(asset.type==='egx'){
+    const canonical=String(symbol||'').replace(/\.CA$/i,'').toUpperCase();
+    if(canonical==='VLMRA'){
+      try{
+        const q=await tvQuote('VLMRA.CA','');
+        if(q&&q.price>0){const out={price:q.price,prev:q.prev>0?q.prev:null,chgPct:q.chgPct,vol:q.vol,high:q.high,low:q.low,time:q.time||Date.now(),source:'TradingView',status:'متأخر'};saveMarketQuote('VLMRA',out);return out}
+      }catch(e){}
+    }
+    return getEgxMarketQuote(canonical,custom);
+  }
   try{
     const j=await viaProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(asset.yahoo)}?range=1d&interval=1m`,custom,10000);
     const m=j?.chart?.result?.[0]?.meta;

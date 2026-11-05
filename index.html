@@ -347,9 +347,13 @@ async function tvQuote(sym,custom){
   };
   _tvCache[key]={ts:Date.now(),q};return q;
 }
+const _egxQuotePromises={};
 async function getEgxMarketQuote(rawSymbol,custom){
   const symbol=String(rawSymbol||'').trim().toUpperCase().replace(/\.CA$/,''),ticker=symbol+'.CA';
   if(!symbol)return null;
+  const promiseKey=symbol+'|'+((custom&&custom.trim())||(typeof DEFAULT_PROXY!=='undefined'?DEFAULT_PROXY:'')||'');
+  if(_egxQuotePromises[promiseKey])return _egxQuotePromises[promiseKey];
+  const run=async()=>{
   if(navigator.onLine===false)return getCachedMarketQuote(symbol);
   // مصدر السعر الحي الموحد: نفس TradingView عبر وسيط الإعدادات الذي تستخدمه محفظة الملكية.
   try{
@@ -367,9 +371,13 @@ async function getEgxMarketQuote(rawSymbol,custom){
     const out={price,prev:prev>0?prev:null,time:mt,status:age<=30?'متأخر':age<=7200?'آخر إغلاق':'تاريخي',source:'Yahoo (احتياطي)',open:same&&L.o>0?L.o:null,high:m.regularMarketDayHigh??(same&&L.h>0?L.h:null),low:m.regularMarketDayLow??(same&&L.l>0?L.l:null),vol:m.regularMarketVolume??(same?L.v:null)};
     saveMarketQuote(symbol,out);return out;
   }catch(e){return getCachedMarketQuote(symbol)}
+  };
+  _egxQuotePromises[promiseKey]=run();
+  try{return await _egxQuotePromises[promiseKey]}
+  finally{delete _egxQuotePromises[promiseKey]}
 }
 async function getLivePrice(asset,custom){
-  const symbol=asset.yahoo||asset.binance;
+  const symbol=asset.type==='egx'?String(asset.yahoo||'').replace(/\.CA$/i,'').toUpperCase():(asset.yahoo||asset.binance);
   if(navigator.onLine===false)return getCachedMarketQuote(symbol);
   if(asset.type==='crypto'){
     try{const r=await tfetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${asset.binance}`,8000);

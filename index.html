@@ -665,6 +665,30 @@ function shortRec(d,x){
   return x.lv.res[0]?`انتظر إغلاقاً فوق ${fmt(x.lv.res[0].p)}`:'انتظر تأكيد أفضل';
 }
 
+// قرار المحفظة يختلف عن إشارة السوق: لا نحول «تجنب الشراء» إلى بيع
+// تلقائي، ولا نقترح تعزيز مركز مملوك إلا مع بيانات كاملة واتجاه داعم.
+function ownedPosition(sym){
+  try{
+    const a=JSON.parse(localStorage.getItem('u_hold_list_v3')||'[]');
+    const r=Array.isArray(a)?a.find(x=>Array.isArray(x)&&String(x[0]).toUpperCase()===String(sym).toUpperCase()):null;
+    return r?Math.max(0,+r[2]||0):0;
+  }catch(e){return 0}
+}
+function portfolioSignal(sym,x,d){
+  const qty=ownedPosition(sym);
+  if(d.limited)return{v:qty>0?'احتفاظ':'انتظار',cls:'nt',qty,reason:'بيانات غير مكتملة؛ لا يصدر التطبيق أمر شراء أو بيع حاسم.'};
+  if(qty<=0){
+    if(d.v==='شراء')return{v:'شراء',cls:'up',qty,reason:'السهم غير مملوك وتوافرت شروط دخول فنية كاملة.'};
+    if(d.v==='تجنّب')return{v:'تجنّب',cls:'dn',qty,reason:'السهم غير مملوك والإشارات لا تدعم الدخول.'};
+    return{v:'انتظار',cls:'nt',qty,reason:'السهم غير مملوك ولا توجد أفضلية دخول حاسمة.'};
+  }
+  if(d.v==='تجنّب'&&x.dir==='هابط'&&x.e50&&x.px<x.e50){
+    return{v:'بيع / خفض',cls:'dn',qty,reason:`مركز مملوك مع اتجاه هابط والسعر أسفل EMA50 (${fmt(x.e50)}). راجع وقفك وسيولة المركز.`};
+  }
+  if(d.v==='شراء')return{v:'احتفاظ / تعزيز مشروط',cls:'up',qty,reason:'المركز مملوك؛ الإشارة الإيجابية لا تعني زيادة الكمية دون مراجعة المخاطرة والتركيز.'};
+  return{v:'احتفاظ',cls:'nt',qty,reason:d.v==='تجنّب'?'المركز مملوك لكن شروط البيع الحاسمة لم تكتمل؛ راقب الدعم ووقف الخسارة.':'لا توجد إشارة خروج حاسمة حاليًا.'};
+}
+
 // ===== Chart =====
 function draw(x,plan){
   const cv=$('cv');if(!cv)return;
@@ -723,14 +747,12 @@ if($('goPort'))$('goPort').onclick=async()=>{
     if(Array.isArray(refList))refList.forEach(r=>{if(Array.isArray(r)&&r[0]&&r[1])refNames[r[0]]=r[1]});
   }catch(e){}
   const results=[],queue=[...MY_PORTFOLIO];let done=0;
-  let manualQuotes={};try{manualQuotes=JSON.parse(localStorage.getItem('u_hold_man_v1')||'{}')}catch(e){}
   const worker=async()=>{
     while(queue.length){
       const sym=queue.shift();
       try{
         const asset=detectAsset(sym);
         const displayName=refNames[sym]||asset.name;
-        const manual=manualQuotes[sym];
         const isValmore=asset.type==='egx'&&String(asset.yahoo||'').toUpperCase().replace(/\.CA$/,'')==='VLMRA';
         // Valmore's verified embedded archive is daily only. In a full-portfolio run,
         // transparently use that verified daily frame for 1h/4h selections rather
@@ -742,7 +764,8 @@ if($('goPort'))$('goPort').onclick=async()=>{
         const {bars,live,higher}=await loadAll(asset,effectiveTf,custom,null);
         const bad=sanity(bars,live);if(bad)throw Error(bad);
         const x=study(bars,live?.price,{tf:effectiveTf,assetType:asset.type});const htf={'1h':'4h','4h':'1d','1d':'1w'}[effectiveTf];let h=higher&&higher.length>=FULL_DECISION_BARS?study(higher,null,{tf:htf,assetType:asset.type}):null;if(h&&!h.coverage.decisionReady)h=null;const d=decideWithCoverage(x,h,cost),nr=generateNotes(x,h,d);
-        const rec={sym,x,h,d,nr,live,label:asset.label,name:displayName,type:asset.type,requestedTf:tf,tf:effectiveTf,frameNote:isValmore&&effectiveTf!==tf?'تم استخدام الإطار اليومي الموثق لأن أرشيف Valmore المتاح يومي فقط.':null};
+        const action=portfolioSignal(sym,x,d);
+        const rec={sym,x,h,d,nr,live,action,label:asset.label,name:displayName,type:asset.type,requestedTf:tf,tf:effectiveTf,frameNote:isValmore&&effectiveTf!==tf?'تم استخدام الإطار اليومي الموثق لأن أرشيف Valmore المتاح يومي فقط.':null};
         results.push(rec);PORT_RES[sym]=rec;
       }catch(e){results.push({sym,error:true,msg:e.message})}
       done++;
@@ -751,7 +774,7 @@ if($('goPort'))$('goPort').onclick=async()=>{
     }};
   try{await Promise.all([worker(),worker(),worker()])}catch(e){}
 
-  const valid=results.filter(r=>!r.error),buys=valid.filter(r=>r.d.v==='شراء'&&!r.d.limited),avoids=valid.filter(r=>r.d.v==='تجنّب'&&!r.d.limited),waits=valid.filter(r=>r.d.v==='انتظار'),limited=valid.filter(r=>r.d.limited),adjusted=valid.filter(r=>r.frameNote);
+  const valid=results.filter(r=>!r.error),buys=valid.filter(r=>r.d.v==='شراء'&&!r.d.limited),avoids=valid.filter(r=>r.d.v==='تجنّب'&&!r.d.limited),waits=valid.filter(r=>r.d.v==='انتظار'),limited=valid.filter(r=>r.d.limited),adjusted=valid.filter(r=>r.frameNote),sellActions=valid.filter(r=>r.action?.v==='بيع / خفض'),holdActions=valid.filter(r=>r.action?.v==='احتفاظ'||r.action?.v==='احتفاظ / تعزيز مشروط');
   const failed=results.filter(r=>r.error);
   const pn=[];
   if(!valid.length)pn.push('لم تتوفر شموع تاريخية كافية لتحليل هذه الرموز. راجع رسائل كل سهم؛ قد يكون السعر الحالي متاحًا بينما مصدر الشموع لا يدعم رمزه.');
@@ -765,25 +788,25 @@ if($('goPort'))$('goPort').onclick=async()=>{
     pn.push('راجع كل سهم على حدة قبل اتخاذ أي قرار.');
   }
   if(failed.length&&valid.length)pn.push(`تعذّر تحليل ${failed.length} من ${total} رموز بسبب عدم توفر بيانات تاريخية كافية. راجع سبب كل رمز أدناه؛ السعر الحي وحده لا يكفي لحساب المؤشرات الفنية.`);
-  let html=`<div class="sg"><div class="sc"><div class="num up">${buys.length}</div><div class="mu">شراء</div></div><div class="sc"><div class="num nt">${waits.length}</div><div class="mu">انتظار</div></div><div class="sc"><div class="num dn">${avoids.length}</div><div class="mu">تجنّب</div></div></div>
+  let html=`<div class="sg"><div class="sc"><div class="num up">${buys.length}</div><div class="mu">شراء فني</div></div><div class="sc"><div class="num nt">${waits.length}</div><div class="mu">انتظار</div></div><div class="sc"><div class="num dn">${avoids.length}</div><div class="mu">تجنّب دخول</div></div><div class="sc"><div class="num dn">${sellActions.length}</div><div class="mu">بيع / خفض</div></div><div class="sc"><div class="num nt">${holdActions.length}</div><div class="mu">احتفاظ</div></div></div>
   <div class="nb"><h3>ملاحظات وتوصيات عامة على المحفظة</h3><ul>${pn.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>
-  <div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>القرار</th><th>توافق الإشارات</th><th>السعر</th><th>RSI</th><th>التوصية المختصرة</th></tr></thead><tbody>`;
+  <div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>إشارة السوق</th><th>إجراء المحفظة</th><th>توافق</th><th>السعر</th><th>RSI</th><th>التوصية المختصرة</th></tr></thead><tbody>`;
   const ord={'شراء':0,'انتظار':1,'تجنّب':2};
   results.sort((a,b)=>a.error?1:b.error?-1:(ord[a.d.v]??3)-(ord[b.d.v]??3)||b.d.conf-a.d.conf);
   for(const r of results){
     if(r.error){
-      html+=`<tr><td><b class="ltr">${esc(r.sym)}</b></td><td colspan="4" class="dn">${esc(r.msg||'تعذّر الجلب')}</td><td><button class="sec sm wn" data-manual="${esc(r.sym)}" style="padding:3px 8px;font-size:.75rem">سعر يدوي</button></td></tr>`;
+      html+=`<tr><td><b class="ltr">${esc(r.sym)}</b></td><td colspan="5" class="dn">${esc(r.msg||'تعذّر الجلب')}</td><td><button class="sec sm wn" data-manual="${esc(r.sym)}" style="padding:3px 8px;font-size:.75rem">سعر يدوي</button></td></tr>`;
       continue;
     }
     const cls=r.d.v==='شراء'?'up':r.d.v==='تجنّب'?'dn':'nt';
-    html+=`<tr data-sym="${esc(r.sym)}"><td><b class="ltr">${esc(r.sym)}</b><div class="mu" style="font-size:.7rem">${esc(r.name||'')}</div></td><td class="${cls}" style="font-weight:700">${r.d.v}${r.d.limited?' • محدود':''}</td><td>${r.d.conf}%</td><td class="ltr">${fmt(r.x.px)}${r.x.live?(r.live&&r.live.source==='ذاكرة محلية'?' <span class="nt">◷</span>':' <span style="color:var(--up)">●</span>'):''}</td><td>${r.x.rsi.toFixed(1)}</td><td class="rec">${esc(shortRec(r.d,r.x))}</td></tr>`;
+    html+=`<tr data-sym="${esc(r.sym)}"><td><b class="ltr">${esc(r.sym)}</b><div class="mu" style="font-size:.7rem">${esc(r.name||'')}${r.action?.qty?` • ${r.action.qty.toLocaleString('en-US')} سهم`:''}</div></td><td class="${cls}" style="font-weight:700">${r.d.v}${r.d.limited?' • محدود':''}</td><td class="${r.action?.cls||'nt'}" title="${esc(r.action?.reason||'')}"><b>${esc(r.action?.v||'—')}</b></td><td>${r.d.conf}%</td><td class="ltr">${fmt(r.x.px)}${r.x.live?(r.live&&r.live.source==='ذاكرة محلية'?' <span class="nt">◷</span>':' <span style="color:var(--up)">●</span>'):''}</td><td>${r.x.rsi.toFixed(1)}</td><td class="rec">${esc(r.action?.reason||shortRec(r.d,r.x))}</td></tr>`;
   }
   html+=`</tbody></table></div><p class="mu" style="margin-top:10px">● = سعر مباشر • ◷ = آخر سعر مخزن • اضغط على أي صف لعرض التحليل التفصيلي.</p>`;
   if(failed.length)html+=`<button id="retryFailed" class="sec sm wn" style="margin-top:8px">🔄 إعادة المحاولة</button>`;
   $('portfolioOut').innerHTML=html;
   $('portfolioOut').querySelectorAll('tr[data-sym]').forEach(tr=>{tr.onclick=()=>{
     const r=PORT_RES[tr.dataset.sym];if(!r)return;
-    last={label:r.label,name:r.name,tf:r.tf||tf,x:r.x,h:r.h,d:r.d,nr:r.nr,assetType:r.type,live:r.live,frameNote:r.frameNote};
+    last={label:r.label,name:r.name,tf:r.tf||tf,x:r.x,h:r.h,d:r.d,nr:r.nr,assetType:r.type,live:r.live,action:r.action,frameNote:r.frameNote};
     document.querySelector('.tab[data-tab="analyze"]').click();render(last);
     $('out').scrollIntoView({behavior:'smooth',block:'start'});
   }});
@@ -828,7 +851,7 @@ function analyze(label,name,tf,bars,higherBars,assetType,live){
 }
 
 function render(data){
-  const{label,name,tf,x,d,nr,assetType,live,frameNote}=data;
+  const{label,name,tf,x,d,nr,assetType,live,action,frameNote}=data;
   const cls=d.v==='شراء'?'up':d.v==='تجنّب'?'dn':'nt',plan=d.plan;
   const cap=parseFloat($('ac').value),riskPct=parseFloat($('rk').value),cost=Math.max(0,parseFloat($('cs').value)||0);
   const badge={egx:'🇪🇬 EGX',crypto:'🪙 كريبتو',stock:'📊 سهم',fx:'💱 فوركس'}[assetType]||'';
@@ -841,7 +864,8 @@ function render(data){
   const age=x.live&&live&&live.source!=='يدوي'&&live.source!=='ذاكرة محلية'?(Date.now()-live.time)/60000:0;
   const lastClose=x.b[x.b.length-1]?.c;
   const diverge=x.live&&lastClose>0&&Math.abs(x.px/lastClose-1)>.12;
-  const stale=(frameNote?`<div class="al">ℹ️ ${esc(frameNote)}</div>`:'')
+  const stale=(action?`<div class="al" style="border-right-color:${action.cls==='dn'?'var(--dn)':action.cls==='up'?'var(--up)':'var(--wn)'}"><b>إجراء المحفظة: ${esc(action.v)}</b><br><span class="mu">${esc(action.reason)}</span></div>`:'')
+    +(frameNote?`<div class="al">ℹ️ ${esc(frameNote)}</div>`:'')
     +(live&&live.source==='ذاكرة محلية'?`<div class="al">◷ هذا آخر سعر محفوظ محليًا، وليس سعرًا حيًا. مصدره ${esc(live.originalSource||'مصدر سابق')} وآخر تحديث ${esc(new Date(live.time).toLocaleString('ar'))}. التحليل والإشارات المبنية عليه غير محدثة وليست توصية لحظية. تحقّق منه عند عودة الاتصال.</div>`:'')
     +(x.coverage&&!x.coverage.decisionReady?`<div class="al">⚠️ بيانات محدودة: ${x.coverage.bars} شمعة متاحة من ${FULL_DECISION_BARS} لازمة للإشارة الكاملة. تُعرض قراءة أولية فقط بلا توصية حاسمة.</div>`:'')
     +(x.coverage?.source&&x.coverage.source.includes('Valmore')?`<div class="al">المصدر التاريخي: ${esc(x.coverage.source)} (<a href="https://ir.valmore.com/en/share-and-corporate-information" target="_blank" rel="noopener noreferrer">الصفحة الرسمية</a>) • آخر شمعة ${esc(x.coverage.asOf||'—')}. هذا أرشيف مضمّن في نسخة التطبيق وقد يتقادم؛ عند تجاوز ${MAX_HISTORY_AGE_DAYS} أيام تُوقف الإشارة الحاسمة.</div>`:'')

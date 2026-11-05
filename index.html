@@ -92,6 +92,7 @@ canvas{border:1px solid rgba(130,158,190,.13);background:#0a1424}.progress{heigh
 </style>
 
 
+<style id="pwa-actions-style">.pwa-actions{position:relative;z-index:2;display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:13px}.pwa-actions button{box-shadow:0 5px 16px rgba(78,151,232,.16)}</style>
 <style id="pwa-status-style">
 .hero-status.offline{border-color:rgba(255,113,128,.45);color:#ff9aa4;background:rgba(255,113,128,.07)}.hero-status.offline i{background:var(--dn);box-shadow:0 0 10px rgba(255,113,128,.45)}.offline-notice{margin-top:10px;padding:8px 11px;border:1px solid rgba(255,113,128,.28);border-right:3px solid var(--dn);border-radius:10px;background:rgba(255,113,128,.06);color:#ffc1c6;font-size:.8rem}.offline-notice[hidden]{display:none}
 </style>
@@ -99,7 +100,7 @@ canvas{border:1px solid rgba(130,158,190,.13);background:#0a1424}.progress{heigh
 </head>
 <body>
 <div class="w">
-<header class="c hero"><div class="hero-top"><span class="brand-mark" aria-hidden="true">N</span><span class="eyebrow">منصة متابعة وتحليل شخصية</span><span class="hero-status" id="netStatus"><i></i><span id="netText">جارٍ التحقق من الاتصال</span></span></div><h1>نواة <span class="mu">الأسواق والمحفظة</span></h1><p class="mu">رؤية أوضح للسوق، وقرارات مبنية على بياناتك ومؤشرات قابلة للمراجعة.</p><div class="hero-note">الأسعار والتحليلات آلية وقد تتأخر؛ تحقق دائمًا من وسيطك. درجة التوافق مقياس استدلالي للإشارات وليست احتمالًا إحصائيًا للربح أو توصية استثمارية.</div><div id="offlineNotice" class="offline-notice" hidden>أنت دون اتصال. سيُستخدم آخر سعر وبيانات مخزنة إن توفرت، مع إظهار وقتها؛ لن تُعرض على أنها أسعار حية.</div></header>
+<header class="c hero"><div class="hero-top"><span class="brand-mark" aria-hidden="true">N</span><span class="eyebrow">منصة متابعة وتحليل شخصية</span><span class="hero-status" id="netStatus"><i></i><span id="netText">جارٍ التحقق من الاتصال</span></span></div><h1>نواة <span class="mu">الأسواق والمحفظة</span></h1><p class="mu">رؤية أوضح للسوق، وقرارات مبنية على بياناتك ومؤشرات قابلة للمراجعة.</p><div class="hero-note">الأسعار والتحليلات آلية وقد تتأخر؛ تحقق دائمًا من وسيطك. درجة التوافق مقياس استدلالي للإشارات وليست احتمالًا إحصائيًا للربح أو توصية استثمارية.</div><div id="offlineNotice" class="offline-notice" hidden>أنت دون اتصال. سيُستخدم آخر سعر وبيانات مخزنة إن توفرت، مع إظهار وقتها؛ لن تُعرض على أنها أسعار حية.</div><div class="pwa-actions"><button id="installApp" class="sec sm" type="button" hidden>تثبيت نواة كتطبيق</button><span id="installHint" class="mu" hidden></span></div></header>
 
 <section class="c">
 <div class="tabs">
@@ -163,6 +164,34 @@ canvas{border:1px solid rgba(130,158,190,.13);background:#0a1424}.progress{heigh
 
 <script>
 const $=id=>document.getElementById(id);
+let deferredInstallPrompt=null;
+const installButton=$('installApp'),installHint=$('installHint');
+function showInstallAction(){
+  if(!installButton)return;
+  installButton.hidden=false;
+  if(installHint){installHint.hidden=false;installHint.textContent='يظهر هذا الزر عندما يسمح المتصفح بالتثبيت على هذا الجهاز.'}
+}
+addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();
+  deferredInstallPrompt=event;
+  showInstallAction();
+});
+addEventListener('appinstalled',()=>{
+  deferredInstallPrompt=null;
+  if(installButton)installButton.hidden=true;
+  if(installHint){installHint.hidden=false;installHint.textContent='تم تثبيت التطبيق على الجهاز.'}
+});
+if(installButton)installButton.addEventListener('click',async()=>{
+  if(!deferredInstallPrompt){
+    if(installHint){installHint.hidden=false;installHint.textContent='افتح الموقع في Chrome أو Edge عبر HTTPS ثم أعد المحاولة.'}
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt=null;
+  installButton.hidden=true;
+});
+
 function updateNetworkState(){
   const offline=!navigator.onLine,status=$('netStatus'),text=$('netText'),notice=$('offlineNotice');
   if(status){status.classList.toggle('offline',offline);status.setAttribute('aria-label',offline?'دون اتصال بالإنترنت':'متصل بالإنترنت')}
@@ -901,16 +930,7 @@ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.s
 (function(){
 'use strict';
 
-const REF0=[
-  ['AMOC','الإسكندرية للزيوت المعدنية – أموك',23962,'بتروكيماويات / طاقة',0],
-  ['SWDY','السويدي إليكتريك',1296,'صناعات كهربائية',0],
-  ['MICH','مصر لصناعة الكيماويات',2155,'كيماويات',0],
-  ['POUL','القاهرة للدواجن',3457,'أغذية',0],
-  ['OLFI','عبور لاند',1426,'أغذية',0],
-  ['ETEL','المصرية للاتصالات',355,'اتصالات',0],
-  ['ORWE','النساجون الشرقيون',2778,'غزل ونسيج',0],
-  ['VLMRA','فالمر القابضة',851,'غير مؤكد — يحتاج مراجعة',0]
-];
+const REF0=[];
 
 const K={
   list:'u_hold_list_v3',

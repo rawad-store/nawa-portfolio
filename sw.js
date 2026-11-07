@@ -1,5 +1,5 @@
 'use strict';
-const CACHE_NAME = 'nawa-shell-v2.2.0';
+const CACHE_NAME = 'nawa-shell-v3';
 const APP_SHELL = [
   './',
   './index.html',

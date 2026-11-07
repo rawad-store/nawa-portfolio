@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#08111f">\n<meta name="application-name" content="نواة">
+<meta name="theme-color" content="#071713">\n<meta name="application-name" content="نواة">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="نواة">
@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <meta name="description" content="نواة: منصة عربية للتحليل الفني ومتابعة الأسواق وإدارة المحفظة الفعلية ومخاطر الاستثمار.">\n<meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
-<title>نواة | لوحة الأسواق والمحفظة</title>
+<title>نواة | منصة الأسواق والمحفظة</title>
 <style>
 :root{--bg:#0b1220;--cd:#131c2e;--bd:#25324a;--tx:#e8eef8;--mu:#94a3b8;--ac:#60a5fa;--up:#34d399;--dn:#f87171;--wn:#fbbf24;--in:#0e1626;--glow:rgba(96,165,250,.15);color-scheme:dark}
 *{box-sizing:border-box;margin:0}
@@ -103,7 +103,7 @@ canvas{border:1px solid rgba(130,158,190,.13);background:#0a1424}.progress{heigh
 <body>
 <noscript><div class="c" style="margin:12px">يتطلب هذا التطبيق تفعيل JavaScript.</div></noscript>
 <div class="w">
-<header class="c hero"><div class="hero-top"><span class="brand-mark" aria-hidden="true">N</span><span class="eyebrow">منصة متابعة وتحليل شخصية</span><span class="hero-status" id="netStatus"><i></i><span id="netText">جارٍ التحقق من الاتصال</span></span></div><h1>نواة <span class="mu">الأسواق والمحفظة</span></h1><p class="mu">رؤية أوضح للسوق، وقرارات مبنية على بياناتك ومؤشرات قابلة للمراجعة.</p><div class="hero-note">الأسعار والتحليلات آلية وقد تتأخر؛ تحقق دائمًا من وسيطك. درجة التوافق مقياس استدلالي للإشارات وليست احتمالًا إحصائيًا للربح أو توصية استثمارية.</div><div id="offlineNotice" class="offline-notice" hidden>أنت دون اتصال. سيُستخدم آخر سعر وبيانات مخزنة إن توفرت، مع إظهار وقتها؛ لن تُعرض على أنها أسعار حية.</div><div class="pwa-actions"><button id="installApp" class="sec sm" type="button" hidden>تثبيت نواة كتطبيق</button><span id="installHint" class="mu" hidden></span></div></header>
+<header class="c hero"><div class="hero-top"><span class="brand-mark" aria-hidden="true">ن</span><span class="eyebrow">منصة متابعة وتحليل شخصية</span><span class="hero-status" id="netStatus"><i></i><span id="netText">جارٍ التحقق من الاتصال</span></span></div><h1>نواة <span class="mu">الأسواق والمحفظة</span></h1><p class="mu">رؤية أوضح للسوق، وقرارات مبنية على بياناتك ومؤشرات قابلة للمراجعة.</p><div class="hero-note">الأسعار والتحليلات آلية وقد تتأخر؛ تحقق دائمًا من وسيطك. درجة التوافق مقياس استدلالي للإشارات وليست احتمالًا إحصائيًا للربح أو توصية استثمارية.</div><div id="offlineNotice" class="offline-notice" hidden>أنت دون اتصال. سيُستخدم آخر سعر وبيانات مخزنة إن توفرت، مع إظهار وقتها؛ لن تُعرض على أنها أسعار حية.</div><div class="pwa-actions"><button id="installApp" class="sec sm" type="button" hidden>تثبيت نواة كتطبيق</button><span id="installHint" class="mu" hidden></span></div></header>
 
 <section class="c">
 <div class="tabs">
@@ -1230,6 +1230,70 @@ html,body{overflow-x:hidden;max-width:100vw}canvas{max-width:100%}
 .ptable{font-size:.78rem}
 }
 @media(max-width:380px){body{padding-left:8px;padding-right:8px}.tab{padding:6px 10px}}
+
+/* NAWA VISUAL SYSTEM 2.1 — presentation layer only */
+:root{
+ --bg:#071713;--cd:#0d211b;--bd:#25483b;--tx:#eff8f2;--mu:#9bb5a8;
+ --ac:#69d4ad;--up:#55d6a2;--dn:#ff7885;--wn:#e8bd70;--in:#091b16;
+ --glow:rgba(105,212,173,.19);color-scheme:dark;
+}
+html{background:var(--bg);scroll-padding-top:90px}
+body{
+ background:radial-gradient(ellipse at 8% 0%,rgba(45,126,91,.18),transparent 34%),
+ radial-gradient(ellipse at 96% 8%,rgba(184,145,76,.09),transparent 28%),
+ linear-gradient(180deg,#071713 0%,#081a15 48%,#071510 100%);
+ color:var(--tx);font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.16;
+ background-image:linear-gradient(rgba(157,196,174,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(157,196,174,.045) 1px,transparent 1px);background-size:44px 44px}
+.w{max-width:1280px;gap:20px}
+.c{background:linear-gradient(145deg,rgba(14,36,29,.97),rgba(10,28,22,.98));border:1px solid rgba(128,178,150,.19);border-radius:22px;box-shadow:0 18px 48px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.035)}
+.hero{padding:30px 34px;border-color:rgba(105,212,173,.27);background:radial-gradient(ellipse at 88% 10%,rgba(105,212,173,.13),transparent 36%),linear-gradient(135deg,#102b21,#0b211a 65%,#10251d)}
+.hero:before{content:"NAWA  /  MARKET INTELLIGENCE";display:block;position:absolute;left:28px;bottom:20px;color:rgba(172,210,190,.18);font-size:.68rem;letter-spacing:.17em;direction:ltr;font-weight:700;pointer-events:none}
+.hero:after{border-color:rgba(105,212,173,.13);box-shadow:0 0 0 35px rgba(105,212,173,.025),0 0 0 70px rgba(105,212,173,.018)}
+.brand-mark{width:43px;height:43px;border-radius:14px;background:linear-gradient(145deg,#b9e7c9,#62cda4 62%,#b89a60);color:#092016;font-size:1.45rem;box-shadow:0 9px 26px rgba(79,190,143,.2)}
+.eyebrow{letter-spacing:.015em;color:#b8d4c4;font-size:.82rem}
+.hero h1{font-size:2.05rem;line-height:1.35;color:#f5fff8}
+.hero h1 .mu{display:inline-block;color:#b7d1c2;font-size:1rem;margin-inline-start:7px}
+.hero>p{max-width:760px;color:#b1cabb;font-size:1rem}
+.hero-note{border-color:rgba(232,189,112,.25);background:rgba(232,189,112,.075);color:#e4d1a8;max-width:900px;line-height:1.8}
+.hero-status{background:rgba(5,20,15,.45);border-color:rgba(129,180,151,.25);color:#c3d9cc}
+.tabs{position:sticky;top:8px;z-index:30;padding:8px;margin:-3px -3px 18px;border:1px solid rgba(129,180,151,.18);border-radius:15px;background:rgba(7,24,18,.91);backdrop-filter:blur(16px);box-shadow:0 10px 28px rgba(0,0,0,.22);scrollbar-width:thin}
+.tab{flex:0 0 auto;min-height:42px;padding:9px 17px;border-radius:11px;background:rgba(17,43,32,.75);border-color:rgba(129,180,151,.17);color:#aec5b7;font-weight:600}
+.tab.active{background:linear-gradient(135deg,#8ce0b9,#56c69b);color:#082016;border-color:transparent;box-shadow:0 6px 18px rgba(73,192,142,.2)}
+h1,h2,h3{color:#f0faf3}h2{font-size:1.14rem;margin-top:20px;margin-bottom:12px}
+label{color:#bfd3c6;font-weight:650}
+input,select{background:#081a14;border-color:#2b4b3d;color:#f0faf3;border-radius:12px;min-height:44px}
+input::placeholder{color:#789486}
+input:focus,select:focus{border-color:#69d4ad;box-shadow:0 0 0 3px rgba(105,212,173,.14)}
+button{background:linear-gradient(135deg,#8ce0b9,#62cda4);border-color:#69d4ad;color:#082016;border-radius:12px;min-height:40px;font-weight:750;box-shadow:0 5px 16px rgba(57,163,118,.14)}
+button.sec{background:#10271e;border-color:#315443;color:#d9eee1;box-shadow:none}
+button.wn{background:rgba(232,189,112,.1);border-color:rgba(232,189,112,.38);color:#f0ce8d;box-shadow:none}
+button.dn{background:rgba(255,120,133,.07);border-color:rgba(255,120,133,.35);color:#ff9aa3;box-shadow:none}
+button:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 8px 22px rgba(0,0,0,.2)}
+.kv div,.sc,.nb,.al,.section-card,.hi{background:rgba(7,25,18,.72);border-color:rgba(129,180,151,.15)}
+.kv div{border-radius:13px;padding:12px 14px}.kv b{color:#f2fff6}
+.sc{border-radius:15px;padding:16px}.sc .num{font-size:1.7rem;color:#f2fff6}
+.nb{border-radius:14px;padding:14px 16px}.nb h3{color:#dff3e6}
+.al{border-radius:12px}
+.tag{border-color:rgba(129,180,151,.26);background:rgba(105,212,173,.07);color:#c4e4d1}
+.lb{background:rgba(85,214,162,.1);border-color:rgba(85,214,162,.28)}
+.ptable{border:1px solid rgba(129,180,151,.17);border-radius:14px;overflow:hidden;background:rgba(5,19,14,.35)}
+.ptable th{background:#10271e;color:#c1d8c9}.ptable td,.ptable th{border-color:rgba(129,180,151,.14);padding:10px 9px}.ptable tbody tr:nth-child(even){background:rgba(105,212,173,.025)}
+canvas{border:1px solid rgba(129,180,151,.19);border-radius:14px;background:#081a14}
+.progress{background:#183529}.progress>div{background:linear-gradient(90deg,#58c99e,#d7b16d)}
+#tab-holdings .kpi{background:linear-gradient(145deg,#102a20,#0a1e16);border-color:rgba(129,180,151,.18);border-radius:16px}
+#tab-holdings .kpi::before{background:linear-gradient(180deg,#69d4ad,#d7b16d);opacity:.8}
+#tab-holdings .section-card{background:rgba(7,25,18,.58);border-color:rgba(129,180,151,.18);border-radius:16px}
+#tab-holdings .history-disclosure{background:rgba(7,25,18,.48);border-color:rgba(129,180,151,.2)}
+.toast{background:#10271e;border-color:#426451;color:#eff8f2}
+.dlg{background:#0d211b;border-color:#315443;color:#eff8f2}
+.field-help,.hd{color:#9bb5a8}
+:focus-visible{outline-color:#8ce0b9!important}
+@media(min-width:900px){.hero{padding:34px 38px}.hero h1{font-size:2.25rem}.tabs{gap:10px}.tab{padding-inline:20px}}
+@media(max-width:680px){.w{gap:13px}.c{padding:17px;border-radius:17px}.hero{padding:21px 19px}.hero h1{font-size:1.65rem}.hero h1 .mu{display:block;margin:2px 0 0}.hero:before{display:none}.hero-note{font-size:.75rem}.tabs{top:4px;margin-inline:-4px;padding:6px}.tab{min-height:40px;padding:8px 12px;font-size:.8rem}.ptable th,.ptable td{padding:8px 6px}}
+@media(max-width:390px){.hero-top{gap:7px;flex-wrap:wrap}.hero-status{margin-right:0}.brand-mark{width:38px;height:38px}.hero h1{font-size:1.48rem}.sc .num{font-size:1.4rem}}
+@media(prefers-reduced-motion:reduce){body:before{display:none}}
 `;
 document.head.appendChild(st);
 

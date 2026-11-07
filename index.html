@@ -1650,11 +1650,11 @@ function paint(){
 
     h+=`<div class="kpi-grid">
       <div class="kpi"><div class="label">القيمة السوقية${c.complete?'':' (جزئية)'}</div><div class="val ltr">${fmt(c.tot)}</div><div class="sub">ج.م</div></div>
-      <div class="kpi"><div class="label">التغير اليومي</div><div class="val ltr ${cl(c.chg)}">${sg(c.chg)}</div><div class="sub ${cl(c.pct)}">${c.pct==null?'—':sg(+c.pct.toFixed(2))+'%'}${c.chgComplete?'':' (جزئي)'}</div></div>
+      <div class="kpi"><div class="label">التغير اليومي</div><div class="val ltr ${cl(c.chg)}">${sg(c.chg)}</div><div class="sub ltr ${cl(c.pct)}">${c.pct==null?'—':sg(+c.pct.toFixed(2))+'%'}${c.chgComplete?'':' (جزئي)'}</div></div>
       <div class="kpi"><div class="label">رأس المال المستثمر</div><div class="val ltr">${c.invested>0?fmt(c.invested):'—'}</div><div class="sub">متوسط التكلفة × الكمية</div></div>
-      <div class="kpi"><div class="label">الربح/الخسارة غير المحققة</div><div class="val ltr ${cl(c.unrealized)}">${c.invested>0?sg(c.unrealized):'—'}</div><div class="sub ${cl(c.unrealizedPct)}">${c.unrealizedPct!=null?sg(+c.unrealizedPct.toFixed(2))+'%':'أدخل متوسط التكلفة'}</div></div>
+      <div class="kpi"><div class="label">الربح/الخسارة غير المحققة</div><div class="val ltr ${cl(c.unrealized)}">${c.invested>0?sg(c.unrealized):'—'}</div><div class="sub ltr ${cl(c.unrealizedPct)}">${c.unrealizedPct!=null?sg(+c.unrealizedPct.toFixed(2))+'%':'أدخل متوسط التكلفة'}</div></div>
       <div class="kpi"><div class="label">عدد المراكز</div><div class="val">${rows.length}</div><div class="sub">سهم</div></div>
-      <div class="kpi"><div class="label">الأفضل / الأسوأ اليوم</div><div class="val" style="font-size:1.05rem">${c.best?esc(c.best.sym):'—'} / ${c.worst?esc(c.worst.sym):'—'}</div><div class="sub">${c.best?sg(+c.best.pct.toFixed(2))+'%':''} ${c.worst?sg(+c.worst.pct.toFixed(2))+'%':''}</div></div>
+      <div class="kpi"><div class="label">الأفضل / الأسوأ اليوم</div><div class="val" style="font-size:1.05rem">${c.best?esc(c.best.sym):'—'} / ${c.worst?esc(c.worst.sym):'—'}</div><div class="sub ltr">${c.best?sg(+c.best.pct.toFixed(2))+'%':''} ${c.worst?sg(+c.worst.pct.toFixed(2))+'%':''}</div></div>
     </div>`;
   }
 
@@ -1866,6 +1866,8 @@ canvas{contain:layout paint}
 .pwa-actions{margin-top:6px}
 }
 @media(max-width:760px){.hero-note{padding:0 10px!important;line-height:2!important}.hero-note.open{padding:7px 10px!important;line-height:1.6!important}}
+/* إصلاح اتجاه علامة +/- في البطاقات */
+#tab-holdings .kpi .sub.ltr{text-align:right}
 </style>
 <script id="nawa-pro-fx">
 (()=>{

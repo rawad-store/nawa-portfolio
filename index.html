@@ -1570,6 +1570,18 @@ async function refresh(opts={}){
   }
 }
 
+/* ===== فرز المراكز ===== */
+const SORTS={orig:'ترتيبي الأصلي',w:'الوزن',val:'القيمة السوقية',upl:'الربح/الخسارة (مبلغ)',uplPct:'نسبة الربح/الخسارة',pct:'التغير اليومي',sym:'الرمز (أ-ي)'};
+const SORT_KEY={w:r=>r.w,val:r=>r.val,upl:r=>r.upl,uplPct:r=>r.uplPct,pct:r=>r.pct,sym:r=>r.sym};
+let SORT=ld('u_hold_sort_v1',{k:'orig',d:'desc'});
+if(!SORT||!SORTS[SORT.k]||(SORT.d!=='asc'&&SORT.d!=='desc'))SORT={k:'orig',d:'desc'};
+function sortRows(a){
+  const f=SORT_KEY[SORT.k];if(!f)return a;
+  const dir=SORT.d==='asc'?1:-1,bad=v=>v==null||(typeof v==='number'&&!isFinite(v));
+  return [...a].sort((x,y)=>{const p=f(x),q=f(y);
+    if(bad(p)&&bad(q))return 0;if(bad(p))return 1;if(bad(q))return -1;
+    return (typeof p==='string'?p.localeCompare(q):p-q)*dir});
+}
 const rowsNow=()=>REF.map(r=>({sym:r[0],name:r[1],sector:r[3],qty:qtyOf(r[0]),avgCost:avgOf(r[0]),q:Q[r[0]]}));
 
 function snapshot(){
@@ -1660,18 +1672,19 @@ function paint(){
 
   const zeroRows=allRows.filter(r=>!(r.qty>0));
 
-  h+=`<table class="ptable hT"><thead><tr><th>السهم</th><th>الكمية</th><th>السعر</th><th>متوسط التكلفة</th><th>تغير %</th><th>القيمة</th><th>ربح/خسارة</th><th>الوزن</th><th>الحالة</th></tr></thead><tbody>`;
+  if(rows.length>1)h+=`<div class="sortbar"><span class="mu">ترتيب حسب</span><select id="hSortK" aria-label="ترتيب الأسهم">${Object.entries(SORTS).map(([k,l])=>`<option value="${k}"${SORT.k===k?' selected':''}>${l}</option>`).join('')}</select><button id="hSortD" class="sec sm" type="button"${SORT.k==='orig'?' disabled':''} aria-label="اتجاه الترتيب">${SORT.d==='asc'?'⬆ تصاعدي':'⬇ تنازلي'}</button></div>`;
+  h+=`<table class="ptable hT"><thead><tr><th>السهم</th><th>الكمية</th><th>متوسط التكلفة</th><th>السعر</th><th>التغير اليومي</th><th>القيمة</th><th>ربح/خسارة</th><th>نسبة الربح/الخسارة</th><th>الوزن</th></tr></thead><tbody>`;
   const cell=(label,cls,val)=>`<td data-l="${label}"${cls?` class="${cls}"`:''}><span class="v">${val}</span></td>`;
 
   if(!rows.length&&!zeroRows.length){
     h+=`<tr><td colspan="9" class="mu">لا توجد أسهم</td></tr>`;
   }
 
-  rows.forEach(r=>{
+  sortRows(rows).forEach(r=>{
     const q=r.q;
     const head=`<td class="nm"><b class="ltr">${esc(r.sym)}</b><div class="mu">${esc(r.name)}</div></td>`;
     if(!q){h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('السعر','mu','لم تُجلب')}</tr>`;return}
-    if(q.err){h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('السعر','dn',esc(q.err))}${cell('الحالة','dn','غير متاح')}</tr>`;return}
+    if(q.err){h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('السعر','dn',esc(q.err))}</tr>`;return}
     const hasP=r.pct!=null;
     const wBar=r.w?`<div class="weight-bar"><div style="width:${Math.min(100,r.w)}%"></div></div>`:'';
     const avgStr=r.avgCost>0?fmt(r.avgCost):'—';
@@ -1681,7 +1694,7 @@ function paint(){
     else if(q.source&&String(q.source).includes('TradingView'))statusLabel='TV • '+q.status;
     else if(q.source&&String(q.source).includes('Yahoo'))statusLabel='Yahoo • '+q.status;
     else if(q.status==='يدوي')statusLabel='يدوي';
-    h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('السعر','ltr',fmt(q.price))}${cell('متوسط التكلفة','ltr',avgStr)}${cell('تغير %','ltr '+(hasP?cl(r.pct):''),hasP?sg(+r.pct.toFixed(2))+'%':'—')}${cell('القيمة','ltr',fmt(r.val))}${cell('ربح/خسارة','',uplStr)}${cell('الوزن','',r.w.toFixed(1)+'%'+wBar)}${cell('الحالة',tagCls(q.status),esc(statusLabel))}</tr>`;
+    h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('متوسط التكلفة','ltr',avgStr)}${cell('السعر','ltr',fmt(q.price))}${cell('التغير اليومي','ltr '+(hasP?cl(r.pct):''),hasP?sg(+r.pct.toFixed(2))+'%':'—')}${cell('القيمة','ltr',fmt(r.val))}${cell('ربح/خسارة','',uplStr)}${cell('نسبة الربح/الخسارة','ltr '+(r.uplPct!=null?cl(r.upl):''),r.uplPct!=null?sg(+r.uplPct.toFixed(2))+'%':'—')}${cell('الوزن','',r.w.toFixed(1)+'%'+wBar)}</tr>`;
   });
   h+=`</tbody></table>`;
 
@@ -1703,6 +1716,9 @@ function paint(){
   }
   h+=`<p class="mu">اضغط أي سهم لتحليله فنياً. الربح/الخسارة غير المحققة تقديرية وتعتمد على متوسط التكلفة المدخل؛ لا تشمل الرسوم أو الضرائب أو التوزيعات أو الأرباح المحققة من البيع.</p>`;
   $('hOut').innerHTML=h;
+  const sk=$('hSortK'),sd=$('hSortD');
+  if(sk)sk.onchange=()=>{SORT={k:sk.value,d:sk.value==='sym'?'asc':'desc'};sv('u_hold_sort_v1',SORT);paint()};
+  if(sd)sd.onclick=()=>{SORT={k:SORT.k,d:SORT.d==='asc'?'desc':'asc'};sv('u_hold_sort_v1',SORT);paint()};
   $('hOut').querySelectorAll('tr[data-hs]').forEach(tr=>tr.onclick=()=>{
     $('sy').value=tr.dataset.hs;
     document.querySelector('.tab[data-tab="analyze"]').click();
@@ -1868,6 +1884,38 @@ canvas{contain:layout paint}
 @media(max-width:760px){.hero-note{padding:0 10px!important;line-height:2!important}.hero-note.open{padding:7px 10px!important;line-height:1.6!important}}
 /* إصلاح اتجاه علامة +/- في البطاقات */
 #tab-holdings .kpi .sub.ltr{text-align:right}
+/* عمود نسبة الربح/الخسارة */
+/* تنظيم بطاقة السهم على الجوال: السعر ← النتيجة ← المركز ← الوزن */
+@media(max-width:640px){
+#tab-holdings .hT tr{grid-template-columns:1fr 1fr;grid-template-areas:"nm nm" "px chg" "pl plp" "qty avg" "val w";gap:12px 14px;padding:16px 18px 16px 16px;position:relative}
+#tab-holdings .hT td{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:3px;padding:0;min-width:0;direction:rtl}
+#tab-holdings .hT td.nm{grid-area:nm;display:block;padding-bottom:10px;margin-bottom:0}
+#tab-holdings .hT td[data-l="السعر"]{grid-area:px}
+#tab-holdings .hT td[data-l="التغير اليومي"]{grid-area:chg}
+#tab-holdings .hT td[data-l="ربح/خسارة"]{grid-area:pl}
+#tab-holdings .hT td[data-l="نسبة الربح/الخسارة"]{grid-area:plp}
+#tab-holdings .hT td[data-l="الكمية"]{grid-area:qty}
+#tab-holdings .hT td[data-l="متوسط التكلفة"]{grid-area:avg}
+#tab-holdings .hT td[data-l="القيمة"]{grid-area:val}
+#tab-holdings .hT td[data-l="الوزن"]{grid-area:w;align-items:stretch}
+#tab-holdings .hT td[data-l]::before{font-size:.72rem;color:var(--mu);font-weight:500}
+#tab-holdings .hT td[data-l]>.v{font-size:1rem;font-weight:700;text-align:right}
+#tab-holdings .hT td[data-l="السعر"]>.v{font-size:1.25rem}
+#tab-holdings .hT td[data-l="ربح/خسارة"],#tab-holdings .hT td[data-l="نسبة الربح/الخسارة"]{background:rgba(255,255,255,.045);border-radius:11px;padding:9px 12px}
+#tab-holdings .hT td[data-l="ربح/خسارة"]>.v,#tab-holdings .hT td[data-l="نسبة الربح/الخسارة"]>.v{font-size:1.2rem}
+#tab-holdings .hT td[data-l="الوزن"]>.v{display:block}
+#tab-holdings .hT .weight-bar{display:block;height:5px;margin-top:7px}
+#tab-holdings .hT tr::before{content:"";position:absolute;right:0;top:16px;bottom:16px;width:4px;border-radius:4px 0 0 4px;background:var(--bd)}
+#tab-holdings .hT tr:has(td[data-l="نسبة الربح/الخسارة"].up)::before{background:var(--up)}
+#tab-holdings .hT tr:has(td[data-l="نسبة الربح/الخسارة"].dn)::before{background:var(--dn)}
+}
+/* شريط الفرز */
+.sortbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:16px 0 4px}
+.sortbar select{flex:1 1 170px;width:auto;max-width:280px}
+.sortbar button{white-space:nowrap}
+/* شريط الفرز في سطر واحد على الجوال + زر أعلى أخف */
+@media(max-width:640px){.sortbar{flex-wrap:nowrap}.sortbar>.mu{display:none}.sortbar select{flex:1 1 0;min-width:0;max-width:none}.sortbar button{flex:0 0 auto}}
+.np-top{width:42px;height:42px;font-size:1.1rem}.np-top.show{opacity:.92}
 </style>
 <script id="nawa-pro-fx">
 (()=>{

@@ -99,6 +99,39 @@ canvas{border:1px solid rgba(130,158,190,.13);background:#0a1424}.progress{heigh
 .dlg{background:var(--cd);color:var(--tx);border:1px solid var(--bd);border-radius:16px;padding:20px;width:min(92vw,420px);box-shadow:0 20px 60px rgba(0,0,0,.5)}.dlg::backdrop{background:rgba(3,8,16,.72);backdrop-filter:blur(3px)}.dlg h3{margin-bottom:8px}.dlg p{color:var(--mu);margin-bottom:14px;font-size:.92rem}.dlg input{margin-bottom:14px}.dlg-b{display:flex;gap:8px}canvas{direction:ltr}canvas#cv{touch-action:pan-y;cursor:crosshair}tr[tabindex]:focus-visible{outline:2px solid var(--ac);outline-offset:-2px}
 </style>
 
+<style id="premium-ui-redesign">
+/* Premium dashboard layer: keeps the existing analysis logic, upgrades hierarchy and touch use. */
+:root{--premium-line:rgba(133,158,190,.14);--premium-surface:rgba(8,19,34,.72)}
+body{background:radial-gradient(circle at 92% -8%,rgba(101,183,255,.18),transparent 34%),radial-gradient(circle at 4% 40%,rgba(53,214,160,.06),transparent 28%),var(--bg)}
+.w{max-width:1280px;gap:20px}
+.hero{padding:28px 30px;border-color:rgba(101,183,255,.22);background:linear-gradient(135deg,rgba(17,34,57,.98),rgba(12,24,42,.96));box-shadow:0 18px 45px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.04)}
+.hero h1{font-size:clamp(1.55rem,3vw,2.2rem);letter-spacing:-.045em}.hero>p{max-width:680px;margin-top:6px}.hero-note{max-width:760px}
+.w>section.c:nth-of-type(1){display:grid;grid-template-columns:218px minmax(0,1fr);padding:0;overflow:hidden;align-items:start;border-color:var(--premium-line);box-shadow:0 18px 48px rgba(0,0,0,.16)}
+.w>section.c:nth-of-type(1)>.tabs{grid-column:1;grid-row:1;position:sticky;top:14px;display:flex;flex-direction:column;gap:6px;margin:0;padding:20px 14px 24px;border-left:1px solid var(--premium-line);background:linear-gradient(180deg,rgba(8,18,32,.94),rgba(12,25,43,.58));z-index:3}
+.w>section.c:nth-of-type(1)>[id^="tab-"]{grid-column:2;grid-row:1;padding:26px 28px;min-width:0}
+.tab{position:relative;justify-content:flex-start;min-height:48px;padding:10px 13px;border-color:transparent;background:transparent;text-align:right;font-size:.86rem}
+.tab::before{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border:1px solid currentColor;border-radius:8px;font-size:.72rem;opacity:.75}
+.tab[data-tab="analyze"]::before{content:'⌁'}.tab[data-tab="portfolio"]::before{content:'◫'}.tab[data-tab="history"]::before{content:'↺'}.tab[data-tab="settings"]::before{content:'⚙'}
+.tab.active{background:linear-gradient(100deg,rgba(101,183,255,.19),rgba(101,183,255,.05));border-color:rgba(101,183,255,.28);box-shadow:inset -3px 0 0 var(--ac),0 7px 18px rgba(0,0,0,.12)}
+.tab.active::before{background:rgba(101,183,255,.16);color:var(--ac)}
+#tab-analyze>.g{padding:17px;border:1px solid var(--premium-line);border-radius:16px;background:linear-gradient(145deg,rgba(8,19,34,.7),rgba(14,28,47,.45))}
+#tab-analyze>[style*="margin-top:14px"]{padding-top:2px}
+#go,#goPort{min-height:44px;padding-inline:20px;box-shadow:0 8px 22px rgba(78,151,232,.18)}
+#portfolioOut:empty::before{content:'أضف أسهمًا إلى قائمة المتابعة ثم شغّل التحليل الكامل لرؤية لوحة القرارات.';display:block;padding:28px 16px;text-align:center;color:var(--mu);border:1px dashed var(--bd);border-radius:14px;background:rgba(8,19,34,.38)}
+#out{border-color:rgba(101,183,255,.24);box-shadow:0 18px 48px rgba(0,0,0,.2)}
+.ptable th{white-space:nowrap}.ptable td{vertical-align:middle}
+.sg{grid-template-columns:repeat(4,minmax(0,1fr))}.sc{min-height:88px;display:flex;flex-direction:column;justify-content:center}
+@media(max-width:760px){
+  .w>section.c:nth-of-type(1){display:block;padding:0}
+  .w>section.c:nth-of-type(1)>.tabs{position:sticky;top:0;z-index:10;display:flex;flex-direction:row;overflow-x:auto;padding:10px 11px 11px;border-left:0;border-bottom:1px solid var(--premium-line);background:rgba(12,25,43,.96);backdrop-filter:blur(14px)}
+  .w>section.c:nth-of-type(1)>[id^="tab-"]{padding:18px 15px}
+  .tab{min-width:max-content;min-height:42px;padding:7px 11px;font-size:.78rem}.tab::before{width:20px;height:20px;flex-basis:20px;border-radius:6px}
+  #tab-analyze>.g{padding:12px}.hero{padding:20px 17px}.hero-top{align-items:flex-start}.hero-status{margin-top:2px}
+  .sg{grid-template-columns:1fr 1fr}
+}
+@media(max-width:390px){.w>section.c:nth-of-type(1)>[id^="tab-"]{padding-inline:12px}.hero h1{font-size:1.38rem}.hero-status{font-size:.64rem}.sg{gap:7px}.sc{padding:10px 7px}}
+</style>
+
 </head>
 <body>
 <noscript><div class="c" style="margin:12px">يتطلب هذا التطبيق تفعيل JavaScript.</div></noscript>

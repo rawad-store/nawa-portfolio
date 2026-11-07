@@ -101,10 +101,10 @@ canvas{border:1px solid rgba(130,158,190,.13);background:#0a1424}.progress{heigh
 
 <style id="premium-ui-redesign">
 /* Premium dashboard layer: keeps the existing analysis logic, upgrades hierarchy and touch use. */
-:root{--premium-line:rgba(133,158,190,.14);--premium-surface:rgba(8,19,34,.72)}
-body{background:radial-gradient(circle at 92% -8%,rgba(101,183,255,.18),transparent 34%),radial-gradient(circle at 4% 40%,rgba(53,214,160,.06),transparent 28%),var(--bg)}
+:root{--bg:#07111f;--cd:#0f1d33;--bd:#29415f;--tx:#f3f8ff;--mu:#9cafc5;--ac:#69d3ff;--up:#38ddb0;--dn:#ff788d;--wn:#f3c86f;--in:#091729;--glow:rgba(105,211,255,.23);--premium-line:rgba(154,193,226,.18);--premium-surface:rgba(8,22,39,.78);color-scheme:dark}
+body{background:radial-gradient(circle at 92% -8%,rgba(105,211,255,.19),transparent 34%),radial-gradient(circle at 4% 40%,rgba(56,221,176,.08),transparent 28%),radial-gradient(circle at 50% 110%,rgba(167,139,250,.07),transparent 34%),var(--bg)}
 .w{max-width:1280px;gap:20px}
-.hero{padding:28px 30px;border-color:rgba(101,183,255,.22);background:linear-gradient(135deg,rgba(17,34,57,.98),rgba(12,24,42,.96));box-shadow:0 18px 45px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.04)}
+.hero{padding:28px 30px;border-color:rgba(105,211,255,.25);background:linear-gradient(135deg,rgba(17,39,64,.98),rgba(10,26,46,.97));box-shadow:0 18px 45px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.05)}
 .hero h1{font-size:clamp(1.55rem,3vw,2.2rem);letter-spacing:-.045em}.hero>p{max-width:680px;margin-top:6px}.hero-note{max-width:760px}
 .w>section.c:nth-of-type(1){display:grid;grid-template-columns:218px minmax(0,1fr);padding:0;overflow:hidden;align-items:start;border-color:var(--premium-line);box-shadow:0 18px 48px rgba(0,0,0,.16)}
 .w>section.c:nth-of-type(1)>.tabs{grid-column:1;grid-row:1;position:sticky;top:14px;display:flex;flex-direction:column;gap:6px;margin:0;padding:20px 14px 24px;border-left:1px solid var(--premium-line);background:linear-gradient(180deg,rgba(8,18,32,.94),rgba(12,25,43,.58));z-index:3}
@@ -112,8 +112,8 @@ body{background:radial-gradient(circle at 92% -8%,rgba(101,183,255,.18),transpar
 .tab{position:relative;justify-content:flex-start;min-height:48px;padding:10px 13px;border-color:transparent;background:transparent;text-align:right;font-size:.86rem}
 .tab::before{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border:1px solid currentColor;border-radius:8px;font-size:.72rem;opacity:.75}
 .tab[data-tab="analyze"]::before{content:'⌁'}.tab[data-tab="portfolio"]::before{content:'◫'}.tab[data-tab="history"]::before{content:'↺'}.tab[data-tab="settings"]::before{content:'⚙'}
-.tab.active{background:linear-gradient(100deg,rgba(101,183,255,.19),rgba(101,183,255,.05));border-color:rgba(101,183,255,.28);box-shadow:inset -3px 0 0 var(--ac),0 7px 18px rgba(0,0,0,.12)}
-.tab.active::before{background:rgba(101,183,255,.16);color:var(--ac)}
+.tab.active{background:linear-gradient(100deg,rgba(105,211,255,.21),rgba(105,211,255,.06));border-color:rgba(105,211,255,.34);box-shadow:inset -3px 0 0 var(--ac),0 7px 18px rgba(0,0,0,.14)}
+.tab.active::before{background:rgba(105,211,255,.17);color:var(--ac)}
 #tab-analyze>.g{padding:17px;border:1px solid var(--premium-line);border-radius:16px;background:linear-gradient(145deg,rgba(8,19,34,.7),rgba(14,28,47,.45))}
 #tab-analyze>[style*="margin-top:14px"]{padding-top:2px}
 #go,#goPort{min-height:44px;padding-inline:20px;box-shadow:0 8px 22px rgba(78,151,232,.18)}
@@ -121,6 +121,18 @@ body{background:radial-gradient(circle at 92% -8%,rgba(101,183,255,.18),transpar
 #out{border-color:rgba(101,183,255,.24);box-shadow:0 18px 48px rgba(0,0,0,.2)}
 .ptable th{white-space:nowrap}.ptable td{vertical-align:middle}
 .sg{grid-template-columns:repeat(4,minmax(0,1fr))}.sc{min-height:88px;display:flex;flex-direction:column;justify-content:center}
+button:not(.sec):not(.wn):not(.dn){background:linear-gradient(135deg,#72dcff,#55a8ff);border-color:#72dcff;color:#061321;box-shadow:0 8px 22px rgba(83,171,255,.2)}
+button.wn{background:linear-gradient(135deg,rgba(243,200,111,.18),rgba(243,200,111,.07));border-color:rgba(243,200,111,.58);color:#f7d98d}
+.lb{box-shadow:0 0 0 3px rgba(56,221,176,.06)}
+.hero-note{border-color:rgba(243,200,111,.28);background:rgba(243,200,111,.075);color:#e7d4a9}
+.portfolio-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0}.portfolio-tools input{flex:1 1 190px}.portfolio-tools select{flex:0 1 180px}.portfolio-tools button{white-space:nowrap}.portfolio-tools+div .ptable td:nth-child(7){white-space:nowrap}
+@media print{body{background:#fff!important;color:#111!important}.w>header,.w>section.c:nth-of-type(1),.app-footer,.toast{display:none!important}#out{display:block!important;border:0!important;box-shadow:none!important;color:#111!important;background:#fff!important}#out *{color:#111!important;background:#fff!important}.printing-portfolio #out{display:none!important}.printing-portfolio .w>section.c:nth-of-type(1){display:block!important}.printing-portfolio #tab-portfolio{display:block!important}.printing-portfolio #tab-portfolio>*:not(#portfolioOut){display:none!important}.printing-portfolio #portfolioOut{display:block!important}.printing-portfolio #portfolioOut *{color:#111!important;background:#fff!important;box-shadow:none!important}.printing-portfolio .portfolio-tools{display:none!important}}
+body.theme-light{--bg:#eef4fa;--cd:#ffffff;--bd:#c9d7e5;--tx:#102033;--mu:#53677d;--ac:#087fbd;--up:#087f67;--dn:#c53955;--wn:#9a6900;--in:#f4f8fc;--glow:rgba(8,127,189,.18);color-scheme:light;background:radial-gradient(circle at 92% -8%,rgba(8,127,189,.14),transparent 34%),linear-gradient(180deg,#f7fbff,#eaf2f9)}
+body.theme-light .c{background:linear-gradient(145deg,#fff,#f7fbff);box-shadow:0 14px 38px rgba(41,73,105,.1),inset 0 1px rgba(255,255,255,.9)}
+body.theme-light .hero{background:linear-gradient(135deg,#fafdff,#eaf4fc);border-color:#b6d2e7}body.theme-light .hero:after{border-color:rgba(8,127,189,.12)}
+body.theme-light .hero-note{background:rgba(154,105,0,.08);color:#72500a;border-color:rgba(154,105,0,.28)}
+body.theme-light .w>section.c:nth-of-type(1)>.tabs{background:linear-gradient(180deg,#f5faff,#edf5fb)}body.theme-light .tab{color:#53677d;background:transparent}body.theme-light .tab.active{color:#102033;background:linear-gradient(100deg,rgba(8,127,189,.16),rgba(8,127,189,.05))}
+body.theme-light input,body.theme-light select,body.theme-light .kv div,body.theme-light .sc,body.theme-light .nb,body.theme-light .al,body.theme-light .hi,body.theme-light .ptable,body.theme-light .ptable th{background:#f4f8fc;color:#102033;border-color:#c9d7e5}body.theme-light .ptable th{color:#53677d}body.theme-light button.sec{background:#f4f8fc;color:#102033;border-color:#c0d0df}
 @media(max-width:760px){
   .w>section.c:nth-of-type(1){display:block;padding:0}
   .w>section.c:nth-of-type(1)>.tabs{position:sticky;top:0;z-index:10;display:flex;flex-direction:row;overflow-x:auto;padding:10px 11px 11px;border-left:0;border-bottom:1px solid var(--premium-line);background:rgba(12,25,43,.96);backdrop-filter:blur(14px)}
@@ -136,7 +148,7 @@ body{background:radial-gradient(circle at 92% -8%,rgba(101,183,255,.18),transpar
 <body>
 <noscript><div class="c" style="margin:12px">يتطلب هذا التطبيق تفعيل JavaScript.</div></noscript>
 <div class="w">
-<header class="c hero"><div class="hero-top"><span class="brand-mark" aria-hidden="true">N</span><span class="eyebrow">منصة متابعة وتحليل شخصية</span><span class="hero-status" id="netStatus"><i></i><span id="netText">جارٍ التحقق من الاتصال</span></span></div><h1>نواة <span class="mu">الأسواق والمحفظة</span></h1><p class="mu">رؤية أوضح للسوق، وقرارات مبنية على بياناتك ومؤشرات قابلة للمراجعة.</p><div class="hero-note">الأسعار والتحليلات آلية وقد تتأخر؛ تحقق دائمًا من وسيطك. درجة التوافق مقياس استدلالي للإشارات وليست احتمالًا إحصائيًا للربح أو توصية استثمارية.</div><div id="offlineNotice" class="offline-notice" hidden>أنت دون اتصال. سيُستخدم آخر سعر وبيانات مخزنة إن توفرت، مع إظهار وقتها؛ لن تُعرض على أنها أسعار حية.</div><div class="pwa-actions"><button id="installApp" class="sec sm" type="button" hidden>تثبيت نواة كتطبيق</button><span id="installHint" class="mu" hidden></span></div></header>
+<header class="c hero"><div class="hero-top"><span class="brand-mark" aria-hidden="true">N</span><span class="eyebrow">منصة متابعة وتحليل شخصية</span><span class="hero-status" id="netStatus"><i></i><span id="netText">جارٍ التحقق من الاتصال</span></span></div><h1>نواة <span class="mu">الأسواق والمحفظة</span></h1><p class="mu">رؤية أوضح للسوق، وقرارات مبنية على بياناتك ومؤشرات قابلة للمراجعة.</p><div class="hero-note">الأسعار والتحليلات آلية وقد تتأخر؛ تحقق دائمًا من وسيطك. درجة التوافق مقياس استدلالي للإشارات وليست احتمالًا إحصائيًا للربح أو توصية استثمارية.</div><div id="offlineNotice" class="offline-notice" hidden>أنت دون اتصال. سيُستخدم آخر سعر وبيانات مخزنة إن توفرت، مع إظهار وقتها؛ لن تُعرض على أنها أسعار حية.</div><div class="pwa-actions"><button id="themeToggle" class="sec sm" type="button" aria-pressed="false">☼ مظهر نهاري</button><button id="installApp" class="sec sm" type="button" hidden>تثبيت نواة كتطبيق</button><span id="installHint" class="mu" hidden></span></div></header>
 
 <section class="c">
 <div class="tabs">
@@ -200,6 +212,10 @@ body{background:radial-gradient(circle at 92% -8%,rgba(101,183,255,.18),transpar
 
 <script>
 const $=id=>document.getElementById(id);
+const THEME_KEY='u_theme_v1';
+function applyTheme(mode){const light=mode==='light';document.body.classList.toggle('theme-light',light);const b=$('themeToggle');if(b){b.setAttribute('aria-pressed',String(light));b.textContent=light?'☾ مظهر ليلي':'☼ مظهر نهاري'}try{localStorage.setItem(THEME_KEY,light?'light':'dark')}catch(e){}}
+applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}})());
+if($('themeToggle'))$('themeToggle').onclick=()=>applyTheme(document.body.classList.contains('theme-light')?'dark':'light');
 const LOC='ar-EG-u-nu-latn';
 const dayEG=t=>Math.floor((t+7200000)/86400000);
 const watchMan=()=>{try{return JSON.parse(localStorage.getItem('u_watch_man_v1')||'{}')||{}}catch(e){return{}}};
@@ -742,6 +758,20 @@ function portfolioSignal(sym,x,d){
   if(d.v==='شراء')return{v:'احتفاظ / تعزيز مشروط',cls:'up',qty,reason:'المركز مملوك؛ الإشارة الإيجابية لا تعني زيادة الكمية دون مراجعة المخاطرة والتركيز.'};
   return{v:'احتفاظ',cls:'nt',qty,reason:d.v==='تجنّب'?'المركز مملوك لكن شروط البيع الحاسمة لم تكتمل؛ راقب الدعم ووقف الخسارة.':'لا توجد إشارة خروج حاسمة حاليًا.'};
 }
+function sourceQuality(r){
+  const bars=r.x?.coverage?.bars||r.x?.b?.length||0, fresh=r.live&&r.live.source!=='ذاكرة محلية', complete=r.x?.coverage?.decisionReady!==false;
+  if(!complete)return{v:'محدودة',cls:'nt',reason:`${bars} شمعة فقط؛ لا توجد إشارة حاسمة.`};
+  if(!fresh)return{v:'محفوظة',cls:'nt',reason:'السعر من الذاكرة المحلية وليس سعرًا حيًا.'};
+  if(r.x?.coverage?.stale)return{v:'قديمة',cls:'dn',reason:'الشموع التاريخية قديمة؛ راجع التاريخ قبل القرار.'};
+  return{v:'جيدة',cls:'up',reason:`${bars} شمعة مع سعر ${r.live?.source||'مباشر'}.`};
+}
+function positionAlert(r){
+  const p=r.d?.plan,price=r.x?.px;
+  if(!p||!(price>0))return null;
+  if(p.s>0&&price<=p.s)return{v:'أسفل الوقف',cls:'dn',reason:`السعر ${fmt(price)} عند/أسفل وقف الخطة ${fmt(p.s)}؛ راجع المخاطرة يدويًا.`};
+  if(Array.isArray(p.t)&&p.t.some(t=>price>=t))return{v:'بلغ هدفًا',cls:'up',reason:`السعر ${fmt(price)} بلغ هدفًا في الخطة؛ راجع جني الربح وإدارة المركز.`};
+  return null;
+}
 
 // ===== Chart =====
 function draw(x,plan,hv){
@@ -837,7 +867,7 @@ async function runPort(){
     }};
   try{await Promise.all([worker(),worker(),worker()])}catch(e){}
 
-  const valid=results.filter(r=>!r.error),buys=valid.filter(r=>r.d.v==='شراء'&&!r.d.limited),avoids=valid.filter(r=>r.d.v==='تجنّب'&&!r.d.limited),waits=valid.filter(r=>r.d.v==='انتظار'),limited=valid.filter(r=>r.d.limited),adjusted=valid.filter(r=>r.frameNote),sellActions=valid.filter(r=>r.action?.v==='بيع / خفض'),holdActions=valid.filter(r=>r.action?.v==='احتفاظ'||r.action?.v==='احتفاظ / تعزيز مشروط');
+  const valid=results.filter(r=>!r.error),alerts=valid.map(positionAlert).filter(Boolean),buys=valid.filter(r=>r.d.v==='شراء'&&!r.d.limited),avoids=valid.filter(r=>r.d.v==='تجنّب'&&!r.d.limited),waits=valid.filter(r=>r.d.v==='انتظار'),limited=valid.filter(r=>r.d.limited),adjusted=valid.filter(r=>r.frameNote),sellActions=valid.filter(r=>r.action?.v==='بيع / خفض'),holdActions=valid.filter(r=>r.action?.v==='احتفاظ'||r.action?.v==='احتفاظ / تعزيز مشروط');
   const failed=results.filter(r=>r.error);
   const pn=[];
   if(!valid.length)pn.push('لم تتوفر شموع تاريخية كافية لتحليل هذه الرموز. راجع رسائل كل سهم؛ قد يكون السعر الحالي متاحًا بينما مصدر الشموع لا يدعم رمزه.');
@@ -848,12 +878,14 @@ async function runPort(){
     if(avoids.length>valid.length*.45)pn.push('نسبة كبيرة من المحفظة في وضع تجنّب. يُفضل تقليل الانكشاف العام.');
     if(!buys.length)pn.push('لا توجد إشارات شراء قوية حالياً. الصبر أفضل من الدخول الضعيف.');
     if(waits.length>valid.length*.5)pn.push('معظم الأسهم في حالة انتظار. راقب الكسور والحجم.');
+    if(alerts.length)pn.push(`تنبيهات إدارة مركز: ${alerts.length} سهمًا وصل إلى وقف أو هدف في الخطة؛ راجع التفاصيل قبل أي إجراء.`);
     pn.push('راجع كل سهم على حدة قبل اتخاذ أي قرار.');
   }
   if(failed.length&&valid.length)pn.push(`تعذّر تحليل ${failed.length} من ${total} رموز بسبب عدم توفر بيانات تاريخية كافية. راجع سبب كل رمز أدناه؛ السعر الحي وحده لا يكفي لحساب المؤشرات الفنية.`);
   let html=`<div class="sg"><div class="sc"><div class="num up">${buys.length}</div><div class="mu">شراء فني</div></div><div class="sc"><div class="num nt">${waits.length}</div><div class="mu">انتظار</div></div><div class="sc"><div class="num dn">${avoids.length}</div><div class="mu">تجنّب دخول</div></div><div class="sc"><div class="num dn">${sellActions.length}</div><div class="mu">بيع / خفض</div></div><div class="sc"><div class="num nt">${holdActions.length}</div><div class="mu">احتفاظ</div></div></div>
   <div class="nb"><h3>ملاحظات وتوصيات عامة على المحفظة</h3><ul>${pn.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>
-  <div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>إشارة السوق</th><th>إجراء المحفظة</th><th>توافق</th><th>السعر</th><th>RSI</th><th>التوصية المختصرة</th></tr></thead><tbody>`;
+  <div class="portfolio-tools"><input id="portSearch" placeholder="بحث بالرمز أو الاسم" aria-label="بحث في نتائج المحفظة"><select id="portFilter" aria-label="تصفية نتائج المحفظة"><option value="all">كل النتائج</option><option value="شراء">شراء فني</option><option value="انتظار">انتظار</option><option value="تجنّب">تجنّب الدخول</option><option value="بيع / خفض">بيع / خفض</option><option value="احتفاظ">احتفاظ</option><option value="جودة">بيانات تحتاج مراجعة</option></select><button id="printPortfolio" class="sec sm" type="button">طباعة التقرير</button></div>
+  <div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>إشارة السوق</th><th>إجراء المحفظة</th><th>توافق</th><th>السعر</th><th>RSI</th><th>جودة البيانات</th><th>التوصية المختصرة</th></tr></thead><tbody>`;
   const ord={'شراء':0,'انتظار':1,'تجنّب':2};
   results.sort((a,b)=>a.error?1:b.error?-1:(ord[a.d.v]??3)-(ord[b.d.v]??3)||b.d.conf-a.d.conf);
   for(const r of results){
@@ -862,11 +894,14 @@ async function runPort(){
       continue;
     }
     const cls=r.d.v==='شراء'?'up':r.d.v==='تجنّب'?'dn':'nt';
-    html+=`<tr tabindex="0" data-sym="${esc(r.sym)}"><td><b class="ltr">${esc(r.sym)}</b><div class="mu" style="font-size:.7rem">${esc(r.name||'')}${r.action?.qty?` • ${r.action.qty.toLocaleString('en-US')} سهم`:''}</div></td><td class="${cls}" style="font-weight:700">${r.d.v}${r.d.limited?' • محدود':''}</td><td class="${r.action?.cls||'nt'}" title="${esc(r.action?.reason||'')}"><b>${esc(r.action?.v||'—')}</b></td><td>${r.d.conf}%</td><td class="ltr">${fmt(r.x.px)}${r.x.live?(r.live&&r.live.source==='ذاكرة محلية'?' <span class="nt">◷</span>':' <span style="color:var(--up)">●</span>'):''}</td><td>${r.x.rsi.toFixed(1)}</td><td class="rec">${esc(r.action?.reason||shortRec(r.d,r.x))}</td></tr>`;
+    const q=sourceQuality(r),actionKey=r.action?.v==='بيع / خفض'?'بيع / خفض':r.action?.v?.startsWith('احتفاظ')?'احتفاظ':r.d.v;
+    html+=`<tr tabindex="0" data-sym="${esc(r.sym)}" data-filter="${esc(actionKey)}" data-quality="${esc(q.v)}"><td><b class="ltr">${esc(r.sym)}</b><div class="mu" style="font-size:.7rem">${esc(r.name||'')}${r.action?.qty?` • ${r.action.qty.toLocaleString('en-US')} سهم`:''}</div></td><td class="${cls}" style="font-weight:700">${r.d.v}${r.d.limited?' • محدود':''}</td><td class="${r.action?.cls||'nt'}" title="${esc(r.action?.reason||'')}"><b>${esc(r.action?.v||'—')}</b></td><td>${r.d.conf}%</td><td class="ltr">${fmt(r.x.px)}${r.x.live?(r.live&&r.live.source==='ذاكرة محلية'?' <span class="nt">◷</span>':' <span style="color:var(--up)">●</span>'):''}</td><td>${r.x.rsi.toFixed(1)}</td><td class="${q.cls}" title="${esc(q.reason)}"><b>${q.v}</b></td><td class="rec">${esc(r.action?.reason||shortRec(r.d,r.x))}</td></tr>`;
   }
-  html+=`</tbody></table></div><p class="mu" style="margin-top:10px">● = سعر مباشر • ◷ = آخر سعر مخزن • اضغط على أي صف لعرض التحليل التفصيلي.</p>`;
+  html+=`</tbody></table></div><p class="mu" style="margin-top:10px">● = سعر مباشر • ◷ = آخر سعر مخزن • جودة البيانات لا تعني جودة الإشارة الاستثمارية • اضغط على أي صف لعرض التحليل التفصيلي.</p>`;
   if(failed.length)html+=`<button id="retryFailed" class="sec sm wn" style="margin-top:8px">🔄 إعادة المحاولة</button>`;
   $('portfolioOut').innerHTML=html;
+  const applyPortFilter=()=>{const q=($('portSearch')?.value||'').trim().toUpperCase(),f=$('portFilter')?.value||'all';$('portfolioOut').querySelectorAll('tr[data-sym]').forEach(tr=>{const matchText=!q||tr.textContent.toUpperCase().includes(q),matchFilter=f==='all'||(f==='جودة'&&tr.dataset.quality!=='جيدة')||tr.dataset.filter===f;tr.hidden=!(matchText&&matchFilter)})};
+  $('portSearch')?.addEventListener('input',applyPortFilter);$('portFilter')?.addEventListener('change',applyPortFilter);$('printPortfolio')?.addEventListener('click',()=>{document.body.classList.add('printing-portfolio');window.print();setTimeout(()=>document.body.classList.remove('printing-portfolio'),500)});
   $('portfolioOut').querySelectorAll('tr[data-sym]').forEach(tr=>{tr.onclick=()=>{
     const r=PORT_RES[tr.dataset.sym];if(!r)return;
     last={label:r.label,name:r.name,tf:r.tf||tf,x:r.x,h:r.h,d:r.d,nr:r.nr,assetType:r.type,live:r.live,action:r.action,frameNote:r.frameNote};

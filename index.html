@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#09111f">
+<meta name="theme-color" content="#08111f">\n<meta name="application-name" content="نواة">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="نواة">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-<meta name="description" content="لوحة عربية لتحليل الأسهم وإدارة المحفظة ومتابعة الملكية والتكلفة.">
+<meta name="description" content="نواة: منصة عربية للتحليل الفني ومتابعة الأسواق وإدارة المحفظة الفعلية ومخاطر الاستثمار.">\n<meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <title>نواة | لوحة الأسواق والمحفظة</title>
 <style>
@@ -161,14 +161,14 @@ canvas{border:1px solid rgba(130,158,190,.13);background:#0a1424}.progress{heigh
 </section>
 
 <section class="c" id="out" style="display:none"></section>
-<p class="mu" style="text-align:center;font-size:.8rem">تحليل فني تقديري لأغراض تعليمية فقط • البيانات المخزنة دون اتصال ليست أسعارًا حية • لا يمثل نصيحة استثمارية أو ضمانًا للنتائج.</p>
+<p class="mu" style="text-align:center;font-size:.8rem">نواة • الإصدار المطوّر 2.0 • تحليل تقديري لأغراض تعليمية فقط • البيانات المخزنة ليست أسعارًا حية • لا يمثل نصيحة استثمارية أو ضمانًا للنتائج.</p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 const $=id=>document.getElementById(id);
 const LOC='ar-EG-u-nu-latn';
-const dayEG=t=>Math.floor((t+7200000)/86400000);
+const dayEG=t=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(t));const v=Object.fromEntries(p.map(x=>[x.type,x.value]));return Number(v.year+v.month+v.day)};
 const watchMan=()=>{try{return JSON.parse(localStorage.getItem('u_watch_man_v1')||'{}')||{}}catch(e){return{}}};
 const validProxy=v=>{try{const u=new URL(v);return u.protocol==='https:'||u.hostname==='localhost'||u.hostname==='127.0.0.1'}catch(e){return false}};
 function dlg({title='تأكيد',msg='',input=null,ok='تأكيد',danger=false}={}){
@@ -333,10 +333,15 @@ function parseYahoo(j){
   const r=j?.chart?.result?.[0];if(!r)throw Error('استجابة غير متوقعة من المصدر');
   const q=r.indicators?.quote?.[0],ts=r.timestamp||[];
   if(!q||!ts.length)throw Error('لا توجد بيانات');
-  const out=[];
-  ts.forEach((t,i)=>{const o=q.open[i],h=q.high[i],l=q.low[i],c=q.close[i];
-    if([o,h,l,c].some(v=>v==null||!isFinite(v)||v<=0)||h<l)return;
-    out.push({t:t*1000,o:+o,h:+h,l:+l,c:+c,v:+(q.volume[i]||0)})});
+  const byTime=new Map();let rejected=0,duplicates=0;
+  ts.forEach((t,i)=>{
+    const o=Number(q.open?.[i]),h=Number(q.high?.[i]),l=Number(q.low?.[i]),c=Number(q.close?.[i]),v=Number(q.volume?.[i]||0),time=Number(t)*1000;
+    if(!Number.isFinite(time)||time<=0||![o,h,l,c].every(Number.isFinite)||![o,h,l,c].every(x=>x>0)||!Number.isFinite(v)||v<0||h<Math.max(o,c,l)||l>Math.min(o,c,h)){rejected++;return}
+    if(byTime.has(time))duplicates++;
+    byTime.set(time,{t:time,o,h,l,c,v});
+  });
+  const out=[...byTime.values()].sort((a,b)=>a.t-b.t);
+  out._historyMeta={rawRecordCount:ts.length,rejectedInvalidOhlc:rejected,duplicateRowsRemoved:duplicates};
   return out;
 }
 const yahoo=async(tk,iv,rg,custom)=>parseYahoo(await viaProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(tk)}?range=${rg}&interval=${iv}&includePrePost=false`,custom));
@@ -419,7 +424,7 @@ async function getLivePrice(asset,custom){
   try{
     const j=await viaProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(asset.yahoo)}?range=1d&interval=1m`,custom,10000);
     const m=j?.chart?.result?.[0]?.meta;
-    if(m?.regularMarketPrice>0){const q={price:+m.regularMarketPrice,time:(m.regularMarketTime||Date.now()/1000)*1000,source:'Yahoo'};saveMarketQuote(symbol,q);return q}
+    if(m?.regularMarketPrice>0){const time=(m.regularMarketTime||Date.now()/1000)*1000,age=(Date.now()-time)/60000;const q={price:+m.regularMarketPrice,time,source:'Yahoo',status:age<=30?'متأخر':age<=7200?'آخر إغلاق':'تاريخي'};saveMarketQuote(symbol,q);return q}
   }catch(e){}
   return getCachedMarketQuote(symbol);
 }
@@ -459,45 +464,69 @@ function agg4h(b){
   if(c)out.push(c);
   return out.map(({t,o,h,l,c,v})=>({t,o,h,l,c,v}));
 }
+function onlyCompletedBars(data,tf,now=Date.now()){
+  if(!Array.isArray(data))return [];
+  let out=data;
+  if(tf==='1h')out=data.filter(b=>b.t+3600000<=now);
+  else if(tf==='4h')out=data.filter(b=>Math.floor(b.t/14400000)*14400000+14400000<=now);
+  else if(tf==='1d')out=data.filter(b=>dayEG(b.t)<dayEG(now));
+  else if(tf==='1w')out=data.filter(b=>now-b.t>=7*86400000);
+  out._historyMeta=data._historyMeta||{};
+  return out;
+}
 async function yCandles(tk,tf,custom){
-  const cached=getCache(tk,tf);if(cached&&cached.length>=MIN_EXPLORATORY_BARS)return cached;
+  if(tf==='4h')throw Error('الإطار 4 ساعات غير متاح للأسهم عبر مصدر Yahoo في هذه النسخة؛ تجميع ساعات السوق في كتل ثابتة قد يصنع شموعاً غير مطابقة لجلسة البورصة. استخدم اليومي أو الأسبوعي، أو اختر 4 ساعات للأصول المدعومة مباشرة من Binance.');
+  const cached=getCache(tk,tf);if(cached){const closed=onlyCompletedBars(cached,tf);if(closed.length>=MIN_EXPLORATORY_BARS)return annotateBars(closed,{...(closed._historyMeta||cached._historyMeta||{}),source:(closed._historyMeta||cached._historyMeta||{}).source||'ذاكرة تاريخية',cached:true});}
   const interval={'1h':'1h','4h':'1h','1d':'1d','1w':'1wk'}[tf]||'1d';
   const range={'1h':'1y','4h':'1y','1d':'3y','1w':'10y'}[tf]||'3y';
   let data,lastErr;
   try{
     data=await yahoo(tk,interval,range,custom);
-    if(tf==='4h')data=agg4h(data);
-    if(data.length>=MIN_EXPLORATORY_BARS){annotateBars(data,{source:'Yahoo Finance',asOf:dayStamp(data[data.length-1].t),retrievedAt:Date.now()});setCache(tk,tf,data,data._historyMeta);return data}
+    data=onlyCompletedBars(data,tf);
+    if(data.length>=MIN_EXPLORATORY_BARS){annotateBars(data,{...(data._historyMeta||{}),source:'Yahoo Finance — شموع مكتملة فقط',asOf:dayStamp(data[data.length-1].t),retrievedAt:Date.now()});setCache(tk,tf,data,data._historyMeta);return data}
     lastErr=Error(`المصدر أعاد ${data.length} شموع فقط؛ يلزم ${MIN_EXPLORATORY_BARS} للقراءة الأولية`);
   }catch(e){lastErr=e}
-  const old=getCache(tk,tf,true);if(old&&old.length>=MIN_EXPLORATORY_BARS)return old;
+  const old=getCache(tk,tf,true);if(old){const closedOld=onlyCompletedBars(old,tf);if(closedOld.length>=MIN_EXPLORATORY_BARS)return annotateBars(closedOld,{...(closedOld._historyMeta||old._historyMeta||{}),cached:true});}
   try{const archive=await valmoreEgpHistory(tk,tf);if(archive&&archive.length){setCache(tk,tf,archive,archive._historyMeta);return archive}}catch(e){if(!lastErr)lastErr=e}
   throw lastErr||Error('لم تتوفر شموع تاريخية لهذا الرمز');
 }
 async function bCandles(sym,tf){
-  const cached=getCache(sym,tf);if(cached&&cached.length>=MIN_EXPLORATORY_BARS)return cached;
+  const cached=getCache(sym,tf);if(cached){const duration=({'1h':3600000,'4h':14400000,'1d':86400000,'1w':604800000})[tf]||0;const closed=duration?cached.filter(b=>b.t+duration<=Date.now()):cached;if(closed.length>=MIN_EXPLORATORY_BARS)return annotateBars(closed,{...(closed._historyMeta||cached._historyMeta||{}),source:(closed._historyMeta||cached._historyMeta||{}).source||'ذاكرة تاريخية',cached:true});}
   try{
     const r=await tfetch(`https://data-api.binance.vision/api/v3/klines?symbol=${sym}&interval=${tf}&limit=500`);
     if(!r.ok)throw Error('رمز غير موجود في Binance');
-    const j=await r.json();if(!Array.isArray(j)||j.length<MIN_EXPLORATORY_BARS)throw Error(`المتاح ${j?.length||0} شموع؛ يلزم ${MIN_EXPLORATORY_BARS} للقراءة الأولية`);
-    const data=j.map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}));annotateBars(data,{source:'Binance',asOf:dayStamp(data[data.length-1].t),retrievedAt:Date.now()});setCache(sym,tf,data,data._historyMeta);return data;
-  }catch(e){const old=getCache(sym,tf,true);if(old&&old.length>=MIN_EXPLORATORY_BARS)return old;throw e}
+    const j=await r.json();if(!Array.isArray(j))throw Error('استجابة Binance غير صالحة');
+    const now=Date.now(),byTime=new Map();
+    j.forEach(k=>{
+      const t=Number(k?.[0]),closeTime=Number(k?.[6]),o=Number(k?.[1]),h=Number(k?.[2]),l=Number(k?.[3]),c=Number(k?.[4]),v=Number(k?.[5]);
+      if(!Number.isFinite(t)||!Number.isFinite(closeTime)||closeTime>=now||![o,h,l,c,v].every(Number.isFinite)||![o,h,l,c].every(x=>x>0)||v<0||h<Math.max(o,c,l)||l>Math.min(o,c,h))return;
+      byTime.set(t,{t,o,h,l,c,v});
+    });
+    const data=[...byTime.values()].sort((a,b)=>a.t-b.t);
+    if(data.length<MIN_EXPLORATORY_BARS)throw Error(`المتاح ${data.length} شموع مكتملة؛ يلزم ${MIN_EXPLORATORY_BARS} للقراءة الأولية`);
+    annotateBars(data,{source:'Binance — شموع مكتملة فقط',asOf:dayStamp(data[data.length-1].t),retrievedAt:Date.now(),rawRecordCount:j.length,rejectedInvalidOhlc:rejected,duplicateRowsRemoved:duplicates});setCache(sym,tf,data,data._historyMeta);return data;
+  }catch(e){const old=getCache(sym,tf,true);if(old){const duration=({'1h':3600000,'4h':14400000,'1d':86400000,'1w':604800000})[tf]||0;const closedOld=duration?old.filter(b=>b.t+duration<=Date.now()):old;if(closedOld.length>=MIN_EXPLORATORY_BARS)return annotateBars(closedOld,{...(old._historyMeta||{}),cached:true});}throw e}
 }
-function alignBarsToLive(bars,live){
-  if(!bars||!bars.length||!live||!(live.price>0))return{bars,aligned:false,factor:1};
-  const lc=bars[bars.length-1].c;if(!(lc>0))return{bars,aligned:false,factor:1};
-  const ratio=live.price/lc;
-  if(Math.abs(ratio-1)<0.02)return{bars,aligned:false,factor:1};
-  if(ratio>4||ratio<0.25)return{bars,aligned:false,factor:1,suspect:true};
-  const scale=o=>({t:o.t,o:o.o*ratio,h:o.h*ratio,l:o.l*ratio,c:o.c*ratio,v:o.v});
-  return{bars:bars.map(scale),aligned:true,factor:ratio};
+function normalizeOhlcBars(input){
+  if(!Array.isArray(input))throw Error('مصدر الشموع أعاد بيانات غير صالحة');
+  const meta=input._historyMeta||{},byTime=new Map();let rejected=0,duplicates=0;
+  for(const b of input){
+    const t=Number(b?.t),o=Number(b?.o),h=Number(b?.h),l=Number(b?.l),c=Number(b?.c),v=Number(b?.v||0);
+    if(!Number.isFinite(t)||t<=0||![o,h,l,c,v].every(Number.isFinite)||![o,h,l,c].every(n=>n>0)||v<0||h<Math.max(o,c,l)||l>Math.min(o,c,h)){rejected++;continue}
+    if(byTime.has(t))duplicates++;
+    byTime.set(t,{t,o,h,l,c,v});
+  }
+  const out=[...byTime.values()].sort((a,b)=>a.t-b.t);
+  annotateBars(out,{...meta,rejectedInvalidOhlc:(meta.rejectedInvalidOhlc||0)+rejected,duplicateRowsRemoved:(meta.duplicateRowsRemoved||0)+duplicates,rawRecordCount:meta.rawRecordCount||input.length});
+  if(out.length<MIN_EXPLORATORY_BARS)throw Error(`بعد فحص جودة الشموع لم يتبق سوى ${out.length}؛ يلزم ${MIN_EXPLORATORY_BARS} على الأقل.`);
+  return out;
 }
 async function loadAll(asset,tf,custom,manualPrice=null){
   const htf={'1h':'4h','4h':'1d','1d':'1w'}[tf],isC=asset.type==='crypto';
   const get=t=>isC?bCandles(asset.binance,t):yCandles(asset.yahoo,t,custom);
   const livePromise=manualPrice>0?Promise.resolve(null):getLivePrice(asset,custom).catch(()=>null);
   let bars;
-  try{bars=await get(tf)}catch(e){
+  try{bars=normalizeOhlcBars(await get(tf))}catch(e){
     const live=await livePromise;
     if(asset.type==='egx'&&String(asset.yahoo||'').toUpperCase().startsWith('VLMRA')&&!['1d','1w'].includes(tf))throw Error('الأرشيف الرسمي المتاح لـ VLMRA يومي فقط؛ لا تتوفر شموع تاريخية ساعية أو 4 ساعات، ولن تُصطنع من البيانات اليومية. اختر يوميًا أو أسبوعيًا.');
     if(!isC&&asset.type==='egx'&&live&&live.source==='TradingView'){
@@ -505,16 +534,11 @@ async function loadAll(asset,tf,custom,manualPrice=null){
     }
     throw e;
   }
-  const higherPromise=htf?get(htf).catch(()=>null):Promise.resolve(null);
+  const higherPromise=htf?get(htf).then(normalizeOhlcBars).catch(()=>null):Promise.resolve(null);
   let [live,higher]=await Promise.all([livePromise,higherPromise]);
   if(manualPrice>0)live={price:+manualPrice,time:Date.now(),source:'يدوي'};
-  if(!isC&&live&&live.source&&String(live.source).includes('TradingView')){
-    const a=alignBarsToLive(bars,live);
-    if(a.suspect)throw Error('البيانات التاريخية لهذا الرمز غير متوافقة مع السعر الحالي (قد يكون هناك تقسيم أو تعديل). جرّب مصدرًا آخر أو أدخل سعرًا يدويًا.');
-    bars=a.bars;
-    if(higher&&higher.length){const h=alignBarsToLive(higher,live);if(h.suspect)throw Error('بيانات الإطار الأكبر غير متوافقة مع السعر الحالي.');higher=h.bars}
-    if(a.aligned)live={...live,aligned:true,alignFactor:+a.factor.toFixed(4)};
-  }
+  // لا نعيد قياس الشموع التاريخية لمجرد اختلاف السعر الحي؛ ذلك قد يصطنع تاريخاً سعرياً.
+  // تُعرض الفجوة بوضوح، وتُرفض الفجوات الكبيرة عبر sanity() بدلاً من تعديل OHLC.
   return{bars,live,higher};
 }
 
@@ -571,7 +595,7 @@ function study(bars,livePrice=null){
   if(lH.length===2&&lL.length===2){const hh=lH[1].p>lH[0].p,hl=lL[1].p>lL[0].p;
     if(hh&&hl){s+=2.2;st='قمم وقيعان أعلى'}else if(!hh&&!hl){s-=2.2;st='قمم وقيعان أدنى'}else st='هيكل متذبذب'}
   const dir=s>=2.2?'صاعد':s<=-2.2?'هابط':'عرضي';
-  const vb=livePrice>0?bars.slice(0,-1):bars;
+  const vb=bars; // جميع الشموع الواردة مكتملة؛ لا نحذف آخر شمعة مكتملة لمجرد وجود سعر حي.
   const recentLen=Math.min(3,Math.max(1,Math.floor(vb.length*.2))),baseLen=Math.min(20,Math.max(2,vb.length-recentLen));
   const seg=vb.slice(-(recentLen+baseLen),-recentLen),recentVol=vb.slice(-recentLen);
   const volBase=seg.length?seg.reduce((t,b)=>t+(+b.v||0),0)/seg.length:0,volRecent=recentVol.length?recentVol.reduce((t,b)=>t+(+b.v||0),0)/recentVol.length:0;
@@ -631,6 +655,13 @@ function decideWithCoverage(x,h,cost){
   let reason=`بيانات محدودة: المتاح ${x.coverage?.bars||0} من ${FULL_DECISION_BARS} شمعة لازمة للإشارة الكاملة.`;
   if(x.coverage?.stale)reason=`الشموع التاريخية قديمة (آخر شمعة ${x.coverage.asOf||'غير معروف'}). المؤشرات للقراءة فقط حتى يتجدد التاريخ.`;
   return{...d,v:'انتظار',reason,plan:null,exitLvl:null,conf:Math.min(35,d.conf),limited:true};
+}
+function gateQuoteFreshness(d,live){
+  if(live&&live.source!=='ذاكرة محلية'&&live.status!=='تاريخي')return d;
+  const reason=!live?'لم يتوفر سعر حالي؛ القراءة من آخر شمعة تاريخية فقط، لذلك أوقفنا الإشارة وخطة الدخول.':
+    live.source==='ذاكرة محلية'?'السعر المستخدم من الذاكرة المحلية وليس سعراً حديثاً؛ أوقفنا الإشارة وخطة الدخول حتى يتجدد السعر من المصدر.':
+    'السعر أقدم من حد الحداثة المعتمد؛ أوقفنا الإشارة وخطة الدخول حتى تتجدد بيانات السعر.';
+  return{...d,v:'انتظار',reason,plan:null,exitLvl:null,conf:Math.min(20,d.conf),limited:true,staleQuote:true};
 }
 
 function generateNotes(x,h,d){
@@ -697,7 +728,7 @@ function ownedPosition(sym){
 }
 function portfolioSignal(sym,x,d){
   const qty=ownedPosition(sym);
-  if(d.limited)return{v:qty>0?'احتفاظ':'انتظار',cls:'nt',qty,reason:'بيانات غير مكتملة؛ لا يصدر التطبيق أمر شراء أو بيع حاسم.'};
+  if(d.limited)return{v:qty>0?'احتفاظ':'انتظار',cls:'nt',qty,reason:d.staleQuote?'السعر الحالي غير متاح أو قديم/مخزن؛ لا يصدر التطبيق إجراءً حاسماً حتى يتجدد.':'بيانات غير مكتملة؛ لا يصدر التطبيق أمر شراء أو بيع حاسم.'};
   if(qty<=0){
     if(d.v==='شراء')return{v:'شراء',cls:'up',qty,reason:'السهم غير مملوك وتوافرت شروط دخول فنية كاملة.'};
     if(d.v==='تجنّب')return{v:'تجنّب',cls:'dn',qty,reason:'السهم غير مملوك والإشارات لا تدعم الدخول.'};
@@ -793,7 +824,7 @@ async function runPort(){
         const attempt=async mp=>{const r=await loadAll(asset,effectiveTf,custom,mp);const bad=sanity(r.bars,r.live);if(bad)throw Error(bad);return r};
         let R;try{R=await attempt(null)}catch(err){const wm=watchMan()[sym];if(wm&&wm.price>0)R=await attempt(wm.price);else throw err}
         const {bars,live,higher}=R;
-        const x=study(bars,live?.price,{tf:effectiveTf,assetType:asset.type});const htf={'1h':'4h','4h':'1d','1d':'1w'}[effectiveTf];let h=higher&&higher.length>=FULL_DECISION_BARS?study(higher,null,{tf:htf,assetType:asset.type}):null;if(h&&!h.coverage.decisionReady)h=null;const d=decideWithCoverage(x,h,cost),nr=generateNotes(x,h,d);
+        const x=study(bars,live?.price,{tf:effectiveTf,assetType:asset.type});const htf={'1h':'4h','4h':'1d','1d':'1w'}[effectiveTf];let h=higher&&higher.length>=FULL_DECISION_BARS?study(higher,null,{tf:htf,assetType:asset.type}):null;if(h&&!h.coverage.decisionReady)h=null;const d=gateQuoteFreshness(decideWithCoverage(x,h,cost),live),nr=generateNotes(x,h,d);
         const action=portfolioSignal(sym,x,d);
         const rec={sym,x,h,d,nr,live,action,label:asset.label,name:displayName,type:asset.type,requestedTf:tf,tf:effectiveTf,frameNote:isValmore&&effectiveTf!==tf?'تم استخدام الإطار اليومي الموثق لأن أرشيف Valmore المتاح يومي فقط.':null};
         results.push(rec);PORT_RES[sym]=rec;
@@ -829,9 +860,9 @@ async function runPort(){
       continue;
     }
     const cls=r.d.v==='شراء'?'up':r.d.v==='تجنّب'?'dn':'nt';
-    html+=`<tr tabindex="0" data-sym="${esc(r.sym)}"><td><b class="ltr">${esc(r.sym)}</b><div class="mu" style="font-size:.7rem">${esc(r.name||'')}${r.action?.qty?` • ${r.action.qty.toLocaleString('en-US')} سهم`:''}</div></td><td class="${cls}" style="font-weight:700">${r.d.v}${r.d.limited?' • محدود':''}</td><td class="${r.action?.cls||'nt'}" title="${esc(r.action?.reason||'')}"><b>${esc(r.action?.v||'—')}</b></td><td>${r.d.conf}%</td><td class="ltr">${fmt(r.x.px)}${r.x.live?(r.live&&r.live.source==='ذاكرة محلية'?' <span class="nt">◷</span>':' <span style="color:var(--up)">●</span>'):''}</td><td>${r.x.rsi.toFixed(1)}</td><td class="rec">${esc(r.action?.reason||shortRec(r.d,r.x))}</td></tr>`;
+    html+=`<tr tabindex="0" data-sym="${esc(r.sym)}"><td><b class="ltr">${esc(r.sym)}</b><div class="mu" style="font-size:.7rem">${esc(r.name||'')}${r.action?.qty?` • ${r.action.qty.toLocaleString('en-US')} سهم`:''}</div></td><td class="${cls}" style="font-weight:700">${r.d.v}${r.d.limited?' • محدود':''}</td><td class="${r.action?.cls||'nt'}" title="${esc(r.action?.reason||'')}"><b>${esc(r.action?.v||'—')}</b></td><td>${r.d.conf}%</td><td class="ltr">${fmt(r.x.px)}${r.x.live?(r.live&&r.live.source==='ذاكرة محلية'?' <span class="nt" title="سعر مخزن">◷</span>':r.live&&r.live.source==='يدوي'?' <span class="nt" title="سعر يدوي">✎</span>':r.live&&(r.live.status==='آخر إغلاق'||r.live.status==='تاريخي')?' <span class="nt" title="آخر إغلاق/سعر تاريخي">◷</span>':' <span style="color:var(--up)" title="سعر محدث من المصدر">●</span>'):''}</td><td>${r.x.rsi.toFixed(1)}</td><td class="rec">${esc(r.action?.reason||shortRec(r.d,r.x))}</td></tr>`;
   }
-  html+=`</tbody></table></div><p class="mu" style="margin-top:10px">● = سعر مباشر • ◷ = آخر سعر مخزن • اضغط على أي صف لعرض التحليل التفصيلي.</p>`;
+  html+=`</tbody></table></div><p class="mu" style="margin-top:10px">● = سعر محدث من المصدر • ◷ = سعر مخزن/آخر إغلاق • ✎ = سعر يدوي • اضغط على أي صف لعرض التحليل التفصيلي.</p>`;
   if(failed.length)html+=`<button id="retryFailed" class="sec sm wn" style="margin-top:8px">🔄 إعادة المحاولة</button>`;
   $('portfolioOut').innerHTML=html;
   $('portfolioOut').querySelectorAll('tr[data-sym]').forEach(tr=>{tr.onclick=()=>{
@@ -862,9 +893,8 @@ async function runPort(){
 
 function sanity(bars,live){
   const lc=bars[bars.length-1].c;
-  if(live&&live.price>0&&Math.abs(live.price/lc-1)>.25){
-    if(live.source==='يدوي'||(live.source&&String(live.source).includes('TradingView')))return null;
-    return`بيانات Yahoo التاريخية لهذا الرمز غير مطابقة للسعر الحالي (آخر إغلاق عندها ${fmt(lc)} مقابل ${fmt(live.price)} من ${live.source}). التحليل الفني على بيانات قديمة أو خاطئة يعطي مستويات مضللة، لذلك تم إيقافه.`;
+  if(live&&live.price>0&&live.source!=='يدوي'&&Math.abs(live.price/lc-1)>.25){
+    return`الفرق بين السعر الحالي (${fmt(live.price)} من ${live.source||'مصدر خارجي'}) وآخر إغلاق تاريخي (${fmt(lc)}) يتجاوز 25%. قد يكون السبب تجزئة/تعديل سهم أو اختلاف مصدر؛ أوقفنا التحليل ولم نعدّل الشموع اصطناعياً. تحقّق من الرمز والبيانات قبل إعادة المحاولة.`;
   }
   return null;
 }
@@ -872,10 +902,10 @@ function analyze(label,name,tf,bars,higherBars,assetType,live){
   const bad=sanity(bars,live);if(bad)throw Error(bad);
   const cost=Math.max(0,parseFloat($('cs').value)||0);
   const x=study(bars,live?.price);let h=higherBars&&higherBars.length>=FULL_DECISION_BARS?study(higherBars):null;if(h&&!h.coverage.decisionReady)h=null;
-  const d=decideWithCoverage(x,h,cost),nr=generateNotes(x,h,d);
+  const d=gateQuoteFreshness(decideWithCoverage(x,h,cost),live),nr=generateNotes(x,h,d);
   last={label,name,tf,x,h,d,nr,assetType,live};
   render(last);save(label,name,tf,x,d,live);
-  ms('✔ '+(live&&live.source==='ذاكرة محلية'?'آخر سعر مخزن ':live&&live.source==='يدوي'?'سعر يدوي ':x.live?'سعر مباشر ':'آخر إغلاق ')+fmt(x.px));
+  ms('✔ '+(live&&live.source==='ذاكرة محلية'?'آخر سعر مخزن ':live&&live.source==='يدوي'?'سعر يدوي ':live?.status==='تاريخي'?'سعر تاريخي ':live?.status==='آخر إغلاق'?'آخر إغلاق ':live?.source==='TradingView'?'سعر TradingView متأخر ':x.live?'سعر محدث ':'آخر إغلاق ')+fmt(x.px));
 }
 
 function render(data){
@@ -900,17 +930,17 @@ function render(data){
     +(x.coverage?.stale?`<div class="al">⚠️ بيانات الشموع أقدم من ${MAX_HISTORY_AGE_DAYS} أيام، لذلك أُوقفت الإشارة الحاسمة. يمكن مراجعة المؤشرات بوصفها تاريخية فقط.</div>`:'')
     +(x.coverage?.rejectedInvalidOhlc?`<div class="al">تنبيه جودة المصدر: استُبعدت ${x.coverage.rejectedInvalidOhlc} سجلات غير متسقة في OHLC، وحُذفت ${x.coverage.duplicateRowsRemoved||0} صفوف مكررة. لم تُعدّل القيم ولم تُستبدل.</div>`:'')
     +(diverge&&!(live&&live.aligned)?`<div class="al">ℹ️ السعر المستخدم (${fmt(x.px)} من ${esc(live?.source||'')}) يختلف عن آخر إغلاق في بيانات الشموع (${fmt(lastClose)}). المستويات تقريبية — اعتمد سعر وسيطك.</div>`:'')
-    +(live&&live.aligned?`<div class="al" style="border-right-color:var(--up)">✔ تم محاذاة الشموع التاريخية مع سعر السوق الفعلي (${fmt(x.px)}) لتحسين دقة المستويات.</div>`:'');
+    
   const box=(t,arr,c)=>arr.length?`<div class="nb ${c}"><h3>${t}</h3><ul>${arr.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`:'';
   $('out').style.display='block';$('ex').style.display='inline-block';$('clr').style.display='inline-block';
   $('out').innerHTML=`<h2 style="margin-top:0">${esc(name)} <span class="mu ltr">${esc(label)}</span> <span class="tag">${badge}</span> • ${esc(tf)}</h2>
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0"><div class="vd ${cls}">${d.v}${d.limited?' • محدودة':''} <span class="mu" style="font-size:1rem">${d.limited?'قراءة أولية':'توافق الإشارات'} ${d.conf}%</span></div>${x.live?`<span class="${live&&live.source==='ذاكرة محلية'?'tag':'lb'}">${live&&live.source==='ذاكرة محلية'?'◷ آخر سعر مخزن':live&&live.source==='يدوي'?'سعر يدوي':live&&String(live.source||'').includes('TradingView')?'TradingView':'سعر مباشر'}</span>`:''}</div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0"><div class="vd ${cls}">${d.v}${d.limited?' • محدودة':''} <span class="mu" style="font-size:1rem">${d.limited?'قراءة أولية':'توافق الإشارات'} ${d.conf}%</span></div>${x.live?`<span class="${live&&live.source==='ذاكرة محلية'?'tag':'lb'}">${live&&live.source==='ذاكرة محلية'?'◷ آخر سعر مخزن':live&&live.source==='يدوي'?'✎ سعر يدوي':live?.status==='تاريخي'?'سعر تاريخي':live?.status==='آخر إغلاق'?'آخر إغلاق':live&&String(live.source||'').includes('TradingView')?'TradingView • متأخر':live?.status==='متأخر'?'سعر متأخر':'سعر محدث'}</span>`:''}</div>
   <div class="kv"><div>السعر المستخدم<b class="ltr" style="color:var(--ac)">${fmt(x.px)}</b></div><div>RSI(${x.coverage.periods.rsi})<b>${x.rsi.toFixed(1)}</b></div><div>ATR(${x.coverage.periods.atr}) %<b>${x.atrPct.toFixed(2)}%</b></div><div>الاتجاه<b>${x.dir}</b></div><div>الهيكل<b>${x.st}</b></div></div>
   ${stale}${d.reason?`<div class="al">${esc(d.reason)}</div>`:''}
   <canvas id="cv" role="img" aria-label="رسم شموع مع المتوسطات والدعم والمقاومة"></canvas><p class="mu">الأزرق EMA${x.e20Period} • الأصفر EMA${x.e50Period} • الخطوط المتقطعة: دعم / مقاومة</p>
   ${plan?`<h2>خطة التداول</h2><div class="kv"><div>الدخول<b class="ltr">${fmt(plan.e)}</b></div><div>الوقف<b class="dn ltr">${fmt(plan.s)}</b></div><div>هدف 1<b class="up ltr">${fmt(plan.t[0])}</b></div><div>هدف 2<b class="up ltr">${fmt(plan.t[1])}</b></div><div>المخاطرة %<b>${plan.rkp.toFixed(2)}%</b></div><div>R:R<b>${plan.rr||'—'}</b></div></div>${size}`:''}
   ${box('الملاحظات الفنية',nr.notes,'')}${box('المخاطر التي يجب مراعاتها',nr.risks,'warning')}${box('التوصيات',nr.recs,'success')}
-  <p class="mu" style="margin-top:14px">البيانات التاريخية: ${x.b.length} شمعة • ${x.coverage?.source?`المصدر ${esc(x.coverage.source)} • آخر شمعة ${esc(x.coverage.asOf||'—')} • `:''}${x.live?'السعر من '+esc(live?.source||'المصدر')+' • آخر تحديث '+esc(new Date(live.time).toLocaleString(LOC)):'آخر إغلاق: '+esc(new Date(x.b[x.b.length-1].t).toLocaleDateString(LOC))}</p>`;
+  <p class="mu" style="margin-top:14px">البيانات التاريخية: ${x.b.length} شمعة • ${x.coverage?.source?`المصدر ${esc(x.coverage.source)} • آخر شمعة ${esc(x.coverage.asOf||'—')} • `:''}${x.live?'السعر من '+esc(live?.source||'المصدر')+' • الحالة '+esc(live?.status||'غير محددة')+' • آخر تحديث '+esc(new Date(live.time).toLocaleString(LOC)):'آخر إغلاق: '+esc(new Date(x.b[x.b.length-1].t).toLocaleDateString(LOC))}</p>`;
   draw(x,plan);
   const cvEl=$('cv');if(cvEl){const N=Math.min(110,x.b.length),cw=(900-70)/N;cvEl.onpointermove=e=>{const r=cvEl.getBoundingClientRect();draw(x,plan,Math.floor((e.clientX-r.left)/r.width*900/cw))};cvEl.onpointerleave=()=>draw(x,plan)}
 }
@@ -931,7 +961,7 @@ const setHist=a=>{try{localStorage.setItem(HK,JSON.stringify(a.slice(0,40)))}cat
 function save(label,name,tf,x,d,live){
   try{
     const a=getHist();
-    a.unshift({id:Date.now()+'_'+Math.random().toString(36).slice(2,6),ts:Date.now(),label,name,tf,v:d.v,limited:!!d.limited,bars:x.coverage?.bars||x.b.length,historyAsOf:x.coverage?.asOf||null,historySource:x.coverage?.source||null,conf:d.conf,px:x.px,rsi:+x.rsi.toFixed(1),dir:x.dir,live:x.live,stale:live&&live.source==='ذاكرة محلية',source:live?.source||'آخر إغلاق'});
+    a.unshift({id:Date.now()+'_'+Math.random().toString(36).slice(2,6),ts:Date.now(),label,name,tf,v:d.v,limited:!!d.limited,bars:x.coverage?.bars||x.b.length,historyAsOf:x.coverage?.asOf||null,historySource:x.coverage?.source||null,conf:d.conf,px:x.px,rsi:+x.rsi.toFixed(1),dir:x.dir,live:x.live,stale:live&&live.source==='ذاكرة محلية',manual:live&&live.source==='يدوي',source:live?.source||'آخر إغلاق'});
     setHist(a);rh();
   }catch(e){}
 }
@@ -940,7 +970,7 @@ function rh(){
   if(!$('hl'))return;
   if(!a.length){$('hl').innerHTML='<p class="mu">لا يوجد سجل بعد.</p>';return}
   $('hl').innerHTML=a.map(e=>{const cls=e.v==='شراء'?'up':e.v==='تجنّب'?'dn':'nt';
-    return`<div class="hi"><div class="hm"><div><b>${esc(e.name)}</b> <b class="${cls}">${esc(e.v)}${e.limited?' • محدود':''}</b> <span class="mu">${e.limited?'قراءة أولية':'توافق الإشارات'} ${esc(e.conf)}% • ${esc(e.bars||'—')} شمعة • <span class="ltr">${fmt(e.px)}</span>${e.stale?' • آخر سعر مخزن':e.live?' ●':''}</span></div><div class="hd">${esc(new Date(e.ts).toLocaleString(LOC))}</div></div><button class="sec sm dn" data-id="${esc(e.id)}">×</button></div>`}).join('');
+    return`<div class="hi"><div class="hm"><div><b>${esc(e.name)}</b> <b class="${cls}">${esc(e.v)}${e.limited?' • محدود':''}</b> <span class="mu">${e.limited?'قراءة أولية':'توافق الإشارات'} ${esc(e.conf)}% • ${esc(e.bars||'—')} شمعة • <span class="ltr">${fmt(e.px)}</span>${e.stale?' • آخر سعر مخزن':e.manual?' • سعر يدوي':e.live?' ●':''}</span></div><div class="hd">${esc(new Date(e.ts).toLocaleString(LOC))}</div></div><button class="sec sm dn" data-id="${esc(e.id)}">×</button></div>`}).join('');
   $('hl').querySelectorAll('[data-id]').forEach(b=>{b.onclick=()=>{setHist(getHist().filter(x=>x.id!==b.dataset.id));rh()}});
 }
 if($('xh'))$('xh').onclick=()=>{
@@ -984,12 +1014,18 @@ if($('importFile'))$('importFile').onchange=async e=>{
   const file=e.target.files?.[0];if(!file)return;
   try{
     const data=JSON.parse(await file.text());
-    if(!data||typeof data!=='object'||!Array.isArray(data.portfolio)||!data.portfolio.every(x=>typeof x==='string')||!Array.isArray(data.history))throw Error('صيغة النسخة الاحتياطية غير معروفة');
+    if(!data||typeof data!=='object'||Array.isArray(data)||!Array.isArray(data.portfolio)||!Array.isArray(data.history))throw Error('صيغة النسخة الاحتياطية غير معروفة');
+    const validSym=x=>typeof x==='string'&&/^[A-Z0-9.=-]{1,40}$/i.test(x.trim());
+    const finiteNonNegative=x=>Number.isFinite(Number(x))&&Number(x)>=0;
+    if(data.portfolio.length>500||!data.portfolio.every(validSym))throw Error('قائمة المتابعة تحتوي رموزاً غير صالحة أو تتجاوز 500 رمزاً');
+    if(data.history.length>1000||!data.history.every(x=>x&&typeof x==='object'&&!Array.isArray(x)))throw Error('سجل التحليلات غير صالح أو كبير جداً');
     if(['holdings','flows','snaps','log'].some(k=>data[k]!=null&&!Array.isArray(data[k])))throw Error('بعض بيانات النسخة غير صالحة');
-    if(data.holdings&&!data.holdings.every(r=>Array.isArray(r)&&typeof r[0]==='string'))throw Error('بيانات المحفظة الفعلية غير صالحة');
-    if(data.manual!=null&&(typeof data.manual!=='object'||Array.isArray(data.manual)))throw Error('بيانات الأسعار اليدوية غير صالحة');
-    if(data.quotes!=null&&(typeof data.quotes!=='object'||Array.isArray(data.quotes)))throw Error('بيانات الأسعار المخزنة غير صالحة');
+    if(data.holdings&&(data.holdings.length>500||!data.holdings.every(r=>Array.isArray(r)&&validSym(r[0])&&finiteNonNegative(r[2])&&(r[4]==null||finiteNonNegative(r[4]))&&(r[1]==null||typeof r[1]==='string')&&(r[3]==null||typeof r[3]==='string'))))throw Error('بيانات المحفظة الفعلية غير صالحة');
+    if(data.manual!=null&&(typeof data.manual!=='object'||Array.isArray(data.manual)||Object.entries(data.manual).some(([k,v])=>!validSym(k)||!v||!(Number(v.price)>0)||!Number.isFinite(Number(v.price)))))throw Error('بيانات الأسعار اليدوية غير صالحة');
+    if(data.quotes!=null&&(typeof data.quotes!=='object'||Array.isArray(data.quotes)||Object.entries(data.quotes).some(([k,v])=>!validSym(k)||!v||!(Number(v.price)>0)||!Number.isFinite(Number(v.price)))))throw Error('بيانات الأسعار المخزنة غير صالحة');
     if(data.settings!=null&&(typeof data.settings!=='object'||Array.isArray(data.settings)))throw Error('الإعدادات في النسخة غير صالحة');
+    if(data.lim!=null&&(!Number.isFinite(Number(data.lim))||Number(data.lim)<5||Number(data.lim)>100))throw Error('حد التركّز في النسخة يجب أن يكون بين 5% و100%');
+    if(data.flows&&data.flows.length>5000||data.snaps&&data.snaps.length>5000||data.log&&data.log.length>10000)throw Error('تحتوي النسخة على سجلات تتجاوز الحد المسموح');
     if(!await dlg({msg:'سيتم تحديث البيانات الموجودة في ملف النسخة فقط؛ وأي بيانات غير واردة فيه ستبقى كما هي. نزّل نسخة حالية قبل المتابعة إذا لزم.',ok:'استعادة'}))return;
     const keys={portfolio:'u_portfolio_v4',history:'u_hist_v4',holdings:'u_hold_list_v3',flows:'u_hold_flow_v1',snaps:'u_hold_snap_v1',log:'u_hold_log_v1',manual:'u_hold_man_v1',lim:'u_hold_lim_v1',quotes:'u_market_quotes_v1'};
     const writes={};for(const [field,key] of Object.entries(keys))if(data[field]!=null)writes[key]=JSON.stringify(data[field]);
@@ -1065,7 +1101,7 @@ syncPortfolioFromRef();
 
 let Q={},QR={},fetching=false,autoTried=false,lastFetchTs=ld(K.lastFetch,0);
 
-const dayEG=t=>Math.floor((t+7200000)/86400000);
+const dayEG=t=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(t));const v=Object.fromEntries(p.map(x=>[x.type,x.value]));return Number(v.year+v.month+v.day)};
 function getProxy(){
   const v=($('px')&&$('px').value||'').trim();
   return v||(typeof DEFAULT_PROXY!=='undefined'?DEFAULT_PROXY:'https://yahoo-proxy.tarek500500.workers.dev/');
@@ -1128,7 +1164,7 @@ function merge(){
   const man=ld(K.man,{});Q={};
   REF.forEach(r=>{
     const s=r[0],raw=QR[s],m=man[s];
-    if(m&&(!raw||raw.err||m.time>=(raw.time||0)))Q[s]={price:m.price,prev:m.prev,time:m.time,status:'يدوي',source:'إدخال يدوي منك'};
+    if(m&&Number.isFinite(+m.price)&&+m.price>0&&(!raw||raw.err||m.time>=(raw.time||0)))Q[s]={price:+m.price,prev:+m.prev>0?+m.prev:null,time:+m.time||Date.now(),status:'يدوي',source:'إدخال يدوي منك'};
     else if(raw)Q[s]=raw;
   });
 }
@@ -1323,7 +1359,7 @@ function shell(){
 
 `;
 
-  const limEl=$('hLim');if(limEl){limEl.value=ld(K.lim,30);limEl.onchange=()=>{sv(K.lim,+limEl.value||30);paint()}}
+  const limEl=$('hLim');if(limEl){limEl.value=Math.min(100,Math.max(5,+ld(K.lim,30)||30));limEl.onchange=()=>{const v=+limEl.value;if(!Number.isFinite(v)||v<5||v>100){limEl.value=ld(K.lim,30);return toast('حد التركّز يجب أن يكون بين 5% و100%',true)}sv(K.lim,v);paint()}}
   if($('hRef'))$('hRef').onclick=()=>refresh({silent:false});
   if($('loadDemo'))$('loadDemo').onclick=()=>{
     if(!confirm('سيتم استبدال المحفظة الحالية بقائمة تجريبية. متابعة؟'))return;
@@ -1385,7 +1421,7 @@ function shell(){
     toast('تم مسح متوسط تكلفة '+sy);
   };
 
-  const fdEl=$('fD');if(fdEl)fdEl.value=new Date().toISOString().slice(0,10);
+  const fdEl=$('fD');if(fdEl)fdEl.value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Qatar',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   if($('fAdd'))$('fAdd').onclick=()=>{
     const a=+$('fA').value;if(!(a>0))return toast('أدخل مبلغاً صحيحاً',true);
     const f=ld(K.flow,[]);
@@ -1505,10 +1541,10 @@ function snapshot(){
   const rows=rowsNow();
   if(!rows.length)return;
   const c=calc(rows);
-  if(!c.complete||rows.some(r=>r.q&&(r.q.status==='تاريخي'||r.q.status==='غير متصل'||r.q.source==='ذاكرة محلية')))return;
+  if(!c.complete||rows.some(r=>r.q&&(r.q.status==='تاريخي'||r.q.status==='غير متصل'||r.q.status==='يدوي'||r.q.source==='ذاكرة محلية'||r.q.source==='إدخال يدوي منك')))return;
   const times=rows.map(r=>r.q&&r.q.time).filter(t=>Number.isFinite(t));
   if(!times.length)return;
-  const d=new Date(Math.max(...times)+7200000).toISOString().slice(0,10);
+  const d=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(Math.max(...times)));
   const s=ld(K.snap,[]).filter(x=>x.d!==d);
   s.push({
     d,saved:Date.now(),

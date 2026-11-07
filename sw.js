@@ -1,5 +1,5 @@
 /* نواة PWA — كاش محلي للغلاف فقط، مع تحديث شبكي للنسخة المنشورة. */
-const CACHE_NAME = 'nawa-pwa-shell-v10';
+const CACHE_NAME = 'nawa-pwa-shell-v12';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_URLS = ['./','./index.html','./manifest.webmanifest','./data/vlmra-egp-history.json','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png'].map(path => new URL(path, BASE_URL).href);
 const isShell = url => /\/(index\.html|manifest\.webmanifest|sw\.js)$/.test(url.pathname) || url.href === BASE_URL.href;

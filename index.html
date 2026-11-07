@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a1519">
 <meta name="application-name" content="نواة">
@@ -12,7 +12,6 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%230b1220'/%3E%3Cpath d='M 140 380 L 140 130 L 340 380 L 340 130' stroke='%2360a5fa' stroke-width='60' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='390' cy='130' r='40' fill='%2334d399'/%3E%3C/svg%3E">
 <meta name="description" content="نواة: منصة عربية للتحليل الفني ومتابعة الأسواق وإدارة المحفظة الفعلية ومخاطر الاستثمار.">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
@@ -99,27 +98,13 @@ tr[tabindex]:focus-visible{outline-offset:-2px}
 @media(max-width:680px){body{padding-inline:10px}.w{gap:12px}.c{padding:16px;border-radius:16px}.hero{padding:20px 18px}.hero h1{font-size:1.65rem}.hero h1 .mu{display:block;margin:2px 0 0}.hero-note{font-size:.74rem}.g{grid-template-columns:1fr 1fr}.g>div:first-child{grid-column:1/-1}.tab{padding:7px 13px;min-height:40px}.ptable{font-size:.76rem}.ptable th,.ptable td{padding:8px 5px}}
 @media(max-width:390px){.g{grid-template-columns:1fr}.g>div:first-child{grid-column:auto}.hero-status{margin-right:0}.c{padding:13px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-@media(max-width: 768px) {
-  .w { padding-inline: 10px; }
-  .c { padding: 16px !important; }
-  .hero h1 { font-size: 1.5rem !important; }
-  .g { grid-template-columns: 1fr !important; }
-  .kv { grid-template-columns: 1fr 1fr !important; }
-  .ptable { font-size: 0.75rem !important; }
-  .ptable th, .ptable td { padding: 8px 4px !important; }
-  .tab { font-size: 0.8rem !important; padding: 8px 12px !important; }
-}
-@media(max-width: 480px) {
-  .kv { grid-template-columns: 1fr !important; }
-  .hero-note { font-size: 0.75rem !important; line-height: 1.6 !important; }
-}
-<style>
+</style>
 
 </head>
 <body>
 <noscript><div class="c" style="margin:12px">يتطلب هذا التطبيق تفعيل JavaScript.</div></noscript>
 <div class="w">
-<header class="c hero"><div class="hero-top"><img src="https://rawad-store.github.io/nawa-portfolio/icons/icon-192.png" alt="شعار نواة" class="brand-mark" style="object-fit:cover;padding:0;border:none;"><span class="eyebrow">منصة متابعة وتحليل شخصية</span><span class="hero-status" id="netStatus"><i></i><span id="netText">جارٍ التحقق من الاتصال</span></span></div><h1>نواة <span class="mu">الأسواق والمحفظة</span></h1><p class="mu">رؤية أوضح للسوق، وقرارات مبنية على بياناتك ومؤشرات قابلة للمراجعة.</p><div class="hero-note">الأسعار والتحليلات آلية وقد تتأخر؛ تحقق دائمًا من وسيطك. درجة التوافق مقياس استدلالي للإشارات وليست احتمالًا إحصائيًا للربح أو توصية استثمارية.</div><div id="offlineNotice" class="offline-notice" hidden>أنت دون اتصال. سيُستخدم آخر سعر وبيانات مخزنة إن توفرت، مع إظهار وقتها؛ لن تُعرض على أنها أسعار حية.</div><div class="pwa-actions"><button id="installApp" class="sec sm" type="button" hidden>تثبيت نواة كتطبيق</button><span id="installHint" class="mu" hidden></span></div></header>
+<header class="c hero"><div class="hero-top"><span class="brand-mark" aria-hidden="true">ن</span><span class="eyebrow">منصة متابعة وتحليل شخصية</span><span class="hero-status" id="netStatus"><i></i><span id="netText">جارٍ التحقق من الاتصال</span></span></div><h1>نواة <span class="mu">الأسواق والمحفظة</span></h1><p class="mu">رؤية أوضح للسوق، وقرارات مبنية على بياناتك ومؤشرات قابلة للمراجعة.</p><div class="hero-note">الأسعار والتحليلات آلية وقد تتأخر؛ تحقق دائمًا من وسيطك. درجة التوافق مقياس استدلالي للإشارات وليست احتمالًا إحصائيًا للربح أو توصية استثمارية.</div><div id="offlineNotice" class="offline-notice" hidden>أنت دون اتصال. سيُستخدم آخر سعر وبيانات مخزنة إن توفرت، مع إظهار وقتها؛ لن تُعرض على أنها أسعار حية.</div><div class="pwa-actions"><button id="installApp" class="sec sm" type="button" hidden>تثبيت نواة كتطبيق</button><span id="installHint" class="mu" hidden></span></div></header>
 
 <section class="c">
 <div class="tabs" role="tablist" aria-label="أقسام التطبيق">
@@ -764,10 +749,8 @@ function portfolioSignal(sym,x,d){
 // ===== Chart =====
 function draw(x,plan,hv){
   const cv=$('cv');if(!cv)return;
-  const dpr=window.devicePixelRatio||1;
-  const containerWidth = cv.parentElement ? cv.parentElement.clientWidth : 900;
-  const W = containerWidth || 900, H=380;
-  if(cv.width!==Math.floor(W*dpr)){cv.width=Math.floor(W*dpr);cv.height=H*dpr}
+  const dpr=window.devicePixelRatio||1,W=900,H=380;
+  if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr}
   cv.style.width='100%';cv.style.height='auto';
   const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.direction='ltr';g.textAlign='left';g.setLineDash([]);g.lineWidth=1;g.fillStyle='#09181d';g.fillRect(0,0,W,H);
   const N=Math.min(110,x.b.length),bars=x.b.slice(-N),off=x.b.length-N;

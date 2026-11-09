@@ -1289,6 +1289,8 @@ const K={
   man:'u_hold_man_v1',
   flow:'u_hold_flow_v1',
   snap:'u_hold_snap_v1',
+  snapMax:'u_hold_snapmax_v1',
+  snapDel:'u_hold_snapdel_v1',
   lim:'u_hold_lim_v1',
   log:'u_hold_log_v1',
   lastFetch:'u_hold_last_fetch_v1'
@@ -1780,6 +1782,56 @@ function sortRows(a){
 }
 const rowsNow=()=>REF.map(r=>({sym:r[0],name:r[1],sector:r[3],qty:qtyOf(r[0]),avgCost:avgOf(r[0]),q:Q[r[0]]}));
 
+const getSnaps=()=>{const a=ld(K.snap,[]);return Array.isArray(a)?a:[]};
+const getLog=()=>{const a=ld(K.log,[]);return Array.isArray(a)?a:[]};
+// حذف جلسات من السجل؛ تُحفظ التواريخ المحذوفة كي لا تعيد عملية التحديث تسجيلها تلقائياً
+function delSnaps(dates){
+  const set=new Set(dates);
+  sv(K.snap,getSnaps().filter(x=>!set.has(x.d)));
+  const del=ld(K.snapDel,[]);
+  sv(K.snapDel,[...new Set([...(Array.isArray(del)?del:[]),...dates])].sort().slice(-120));
+}
+function renderLogs(){
+  const s=getSnaps(),lg=getLog(),mx=+ld(K.snapMax,0)||0;
+  const sessionCount=$('sessionCount'),quantityCount=$('quantityCount');
+  if(sessionCount)sessionCount.textContent=`${s.length} ${s.length===1?'جلسة':'جلسات'}`;
+  if(quantityCount)quantityCount.textContent=`${lg.length} ${lg.length===1?'تعديل':'تعديلات'}`;
+  const opts=[[0,'بلا حد'],[10,'10'],[20,'20'],[30,'30'],[60,'60'],[90,'90']];
+  const sTools=`<div class="sortbar" style="margin-bottom:8px"><span class="mu">الحد الأقصى للجلسات المحفوظة</span><select id="snapMax" aria-label="الحد الأقصى للجلسات المحفوظة">${opts.map(([v,l])=>`<option value="${v}"${mx===v?' selected':''}>${l}</option>`).join('')}</select>${s.length?'<button id="snapClear" class="sec sm dn" type="button">مسح كل الجلسات</button>':''}</div>`;
+  $('sL').innerHTML=sTools+(s.length?s.slice().reverse().map(x=>`<div class="hi"><div class="hm"><b class="ltr">${esc(x.d)}</b> • <span class="ltr">${fmt(x.total)}</span> • تغير <span class="ltr">${x.chg==null?'—':sg(x.chg)}</span>${x.unrealized!=null?` • غير محقق <span class="${cl(x.unrealized)}">${sg(x.unrealized)}</span>`:''}</div><button class="sec sm dn" type="button" data-sd="${esc(x.d)}" aria-label="حذف جلسة ${esc(x.d)}">×</button></div>`).join(''):'<p class="mu">لا توجد جلسات محفوظة. تُسجَّل عند كل تحديث مكتمل.</p>');
+  $('qL').innerHTML=(lg.length?'<div class="sortbar" style="margin-bottom:8px"><button id="logClear" class="sec sm dn" type="button">مسح كل التعديلات</button></div>':'')+(lg.length?lg.map((x,i)=>`<div class="hi"><div class="hm">${esc(({buy:'شراء',sell:'بيع',set:'تعيين كمية',avg:'تعيين متوسط'})[x.act]||'تعديل')} ${esc(x.s)}: ${esc(x.from)} ← ${esc(x.to)}${x.price?` @ ${fmt(x.price)}`:''} <span class="hd">${esc(new Date(x.ts).toLocaleString(LOC))}</span></div><button class="sec sm dn" type="button" data-ql="${i}" data-ts="${esc(x.ts)}" aria-label="حذف هذا التعديل من السجل">×</button></div>`).join(''):'<p class="mu">لا توجد تعديلات محفوظة.</p>');
+  $('sL').querySelectorAll('[data-sd]').forEach(b=>b.onclick=async()=>{
+    const d=b.dataset.sd;
+    if(!await dlg({title:'حذف جلسة',msg:`حذف جلسة ${d} من السجل؟ لا يؤثر هذا على أسهمك أو كمياتك، ولن يُعاد تسجيل هذا التاريخ تلقائياً.`,ok:'حذف',danger:true}))return;
+    delSnaps([d]);paint();toast('تم حذف الجلسة');
+  });
+  const sc=$('snapClear');
+  if(sc)sc.onclick=async()=>{
+    const all=getSnaps().map(x=>x.d);if(!all.length)return;
+    if(!await dlg({title:'مسح كل الجلسات',msg:`سيتم حذف ${all.length} جلسة من السجل. لا يؤثر هذا على أسهمك أو كمياتك.`,ok:'مسح الكل',danger:true}))return;
+    delSnaps(all);paint();toast('تم مسح سجل الجلسات');
+  };
+  const sm=$('snapMax');
+  if(sm)sm.onchange=async()=>{
+    const m=+sm.value||0,cur=getSnaps(),extra=m>0?Math.max(0,cur.length-m):0;
+    if(extra>0&&!await dlg({title:'تقليص السجل',msg:`سيتم حذف أقدم ${extra} جلسة للإبقاء على آخر ${m}. متابعة؟`,ok:'حذف الأقدم',danger:true})){paint();return}
+    sv(K.snapMax,m);
+    if(extra>0)sv(K.snap,cur.slice(extra));
+    paint();toast(m?`سيحتفظ التطبيق بآخر ${m} جلسة فقط`:'أُلغي الحد الأقصى للجلسات');
+  };
+  $('qL').querySelectorAll('[data-ql]').forEach(b=>b.onclick=async()=>{
+    if(!await dlg({title:'حذف تعديل',msg:'حذف هذا السطر من سجل التعديلات فقط؛ لا يغيّر كمية السهم ولا متوسط تكلفته.',ok:'حذف',danger:true}))return;
+    const l=getLog(),i=+b.dataset.ql;
+    if(l[i]&&String(l[i].ts)===b.dataset.ts)l.splice(i,1);else{const j=l.findIndex(x=>String(x.ts)===b.dataset.ts);if(j>=0)l.splice(j,1)}
+    sv(K.log,l);paint();toast('تم حذف التعديل من السجل');
+  });
+  const lc=$('logClear');
+  if(lc)lc.onclick=async()=>{
+    if(!await dlg({title:'مسح سجل التعديلات',msg:'سيتم حذف كل سطور سجل التعديلات فقط؛ كمياتك ومتوسطات تكلفتك تبقى كما هي.',ok:'مسح الكل',danger:true}))return;
+    sv(K.log,[]);paint();toast('تم مسح سجل التعديلات');
+  };
+}
+
 function snapshot(){
   const rows=rowsNow();
   if(!rows.length)return;
@@ -1788,7 +1840,8 @@ function snapshot(){
   const times=rows.map(r=>r.q&&r.q.time).filter(t=>Number.isFinite(t));
   if(!times.length)return;
   const d=new Date(Math.max(...times)+7200000).toISOString().slice(0,10);
-  const s=ld(K.snap,[]).filter(x=>x.d!==d);
+  if((ld(K.snapDel,[])||[]).includes(d))return;
+  const s=getSnaps().filter(x=>x.d!==d);
   s.push({
     d,saved:Date.now(),
     status:rows.map(r=>r.q.status).join(','),
@@ -1799,6 +1852,7 @@ function snapshot(){
     invested:c.invested,unrealized:c.unrealized
   });
   s.sort((a,b)=>a.d<b.d?-1:1);
+  const mx=+ld(K.snapMax,0)||0;if(mx>0&&s.length>mx)s.splice(0,s.length-mx);
   sv(K.snap,s);
 }
 
@@ -1934,12 +1988,8 @@ function paint(){
   $('fL').innerHTML=f.length?f.map(x=>`<div class="hi"><div class="hm"><b>${esc(x.t)}</b> <span class="ltr">${fmt(x.a)}</span> <span class="hd">${esc(x.d)}</span></div><button class="sec sm dn" data-f="${esc(x.id)}">×</button></div>`).join(''):'<p class="mu">لا توجد تدفقات.</p>';
   $('fL').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{sv(K.flow,ld(K.flow,[]).filter(x=>String(x.id)!==b.dataset.f));paint()});
 
-  const s=ld(K.snap,[]),lg=ld(K.log,[]);
-  const sessionCount=$('sessionCount'),quantityCount=$('quantityCount');
-  if(sessionCount)sessionCount.textContent=`${s.length} ${s.length===1?'جلسة':'جلسات'}`;
-  if(quantityCount)quantityCount.textContent=`${lg.length} ${lg.length===1?'تعديل':'تعديلات'}`;
-  $('sL').innerHTML=s.length?s.slice().reverse().map(x=>`<div class="hi"><div class="hm"><b class="ltr">${esc(x.d)}</b> • <span class="ltr">${fmt(x.total)}</span> • تغير <span class="ltr">${x.chg==null?'—':sg(x.chg)}</span>${x.unrealized!=null?` • غير محقق <span class="${cl(x.unrealized)}">${sg(x.unrealized)}</span>`:''}</div></div>`).join(''):'<p class="mu">لا توجد جلسات محفوظة. تُسجَّل عند كل تحديث مكتمل.</p>';
-  $('qL').innerHTML=lg.length?lg.map(x=>`<div class="hi"><div class="hm">${esc(({buy:'شراء',sell:'بيع',set:'تعيين كمية',avg:'تعيين متوسط'})[x.act]||'تعديل')} ${esc(x.s)}: ${esc(x.from)} ← ${esc(x.to)}${x.price?` @ ${fmt(x.price)}`:''} <span class="hd">${esc(new Date(x.ts).toLocaleString(LOC))}</span></div></div>`).join(''):'<p class="mu">لا توجد تعديلات محفوظة.</p>';
+  renderLogs();
+  const s=getSnaps();
 
   const cv=$('hCv');
   if(s.length>=2){

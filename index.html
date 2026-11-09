@@ -125,7 +125,7 @@ button:not(.sec):not(.wn):not(.dn){background:linear-gradient(135deg,#72dcff,#55
 button.wn{background:linear-gradient(135deg,rgba(243,200,111,.18),rgba(243,200,111,.07));border-color:rgba(243,200,111,.58);color:#f7d98d}
 .lb{box-shadow:0 0 0 3px rgba(56,221,176,.06)}
 .hero-note{border-color:rgba(243,200,111,.28);background:rgba(243,200,111,.075);color:#e7d4a9}
-.portfolio-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0}.portfolio-tools input{flex:1 1 190px}.portfolio-tools select{flex:0 1 180px}.portfolio-tools button{white-space:nowrap}.portfolio-tools+div .ptable td:nth-child(7){white-space:nowrap}
+.portfolio-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0}.portfolio-tools input{flex:1 1 190px}.portfolio-tools select{flex:0 1 180px}.portfolio-tools button{white-space:nowrap}.portfolio-tools+div .ptable td:nth-child(9){white-space:nowrap}
 @media print{body{background:#fff!important;color:#111!important}.w>header,.w>section.c:nth-of-type(1),.app-footer,.toast{display:none!important}#out{display:block!important;border:0!important;box-shadow:none!important;color:#111!important;background:#fff!important}#out *{color:#111!important;background:#fff!important}.printing-portfolio #out{display:none!important}.printing-portfolio .w>section.c:nth-of-type(1){display:block!important}.printing-portfolio #tab-portfolio{display:block!important}.printing-portfolio #tab-portfolio>*:not(#portfolioOut){display:none!important}.printing-portfolio #portfolioOut{display:block!important}.printing-portfolio #portfolioOut *{color:#111!important;background:#fff!important;box-shadow:none!important}.printing-portfolio .portfolio-tools{display:none!important}}
 body.theme-light{--bg:#eef4fa;--cd:#ffffff;--bd:#c9d7e5;--tx:#102033;--mu:#53677d;--ac:#087fbd;--up:#087f67;--dn:#c53955;--wn:#9a6900;--in:#f4f8fc;--glow:rgba(8,127,189,.18);color-scheme:light;background:radial-gradient(circle at 92% -8%,rgba(8,127,189,.14),transparent 34%),linear-gradient(180deg,#f7fbff,#eaf2f9)}
 body.theme-light .c{background:linear-gradient(145deg,#fff,#f7fbff);box-shadow:0 14px 38px rgba(41,73,105,.1),inset 0 1px rgba(255,255,255,.9)}
@@ -145,6 +145,14 @@ body.theme-light input,body.theme-light select,body.theme-light .kv div,body.the
   .sg{grid-template-columns:1fr 1fr}
 }
 @media(max-width:390px){.w>section.c:nth-of-type(1)>[id^="tab-"]{padding-inline:12px}.hero h1{font-size:1.38rem}.hero-status{font-size:.64rem}.sg{gap:7px}.sc{padding:10px 7px}}
+.fvbox{background:var(--in);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:14px 0}
+.fvbox>summary{cursor:pointer;font-size:.95rem}
+.fvchk{list-style:none;padding:0;margin:8px 0}.fvchk li{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:.86rem}
+.fvchk .ok{color:var(--up);font-weight:700}.fvchk .no{color:var(--dn);font-weight:700}.fvchk .gate{border-right:3px solid var(--ac);padding-right:7px}
+.fvform{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0}
+#tab-holdings .hT td[data-l="القيمة العادلة"],#tab-holdings .hT td[data-l="إشارة الخروج"]{grid-column:1/-1}
+body.theme-light .fvbox{background:#f4f8fc;border-color:#c9d7e5}
+@media print{#fvManager{display:none!important}}
 </style>
 
 </head>
@@ -186,6 +194,7 @@ body.theme-light input,body.theme-light select,body.theme-light .kv div,body.the
 <div class="add-row"><input id="newSym" list="egxl" placeholder="اكتب رمز أو اسم السهم..."><button id="addSym" class="sm">＋ إضافة</button><button id="clearPort" class="sec sm dn">مسح الكل</button></div>
 </div>
 <div id="portfolioOut"></div>
+<div id="fvManager"></div>
 </div>
 
 <div id="tab-history" style="display:none">
@@ -633,6 +642,165 @@ function study(bars,livePrice=null){
   return{b:bars,px,a,e20:e20[n],e50:e50[n],e200:e200?e200[n]:null,E20:e20,E50:e50,e20Period,e50Period,rsi:ra[n],mh:hist[n],mhp:hist[n-1],s,dir,st,lv,vr:volBase>0?volRecent/volBase:null,atrPct:a/px*100,live:livePrice>0,coverage};
 }
 
+// ===== القيمة العادلة وإشارة الخروج =====
+// القيمة العادلة = القيمة التي تدخلها يدوياً، وإلا «رقم جراهام» = √(22.5 × EPS × القيمة الدفترية للسهم)
+// إشارة الخروج: الشرط الأول (البوابة) هو بلوغ السعر القيمة العادلة؛ بعدها يجب أن تتحقق كل الشروط الفنية.
+const FV_KEY='u_fv_v1',FV_MAX_AGE_DAYS=120,FV_MAX_AGE_STATEMENT_DAYS=365,FV_GRAHAM_K=22.5,FV_EXIT_PREMIUM=0;
+const fvKey=s=>String(s||'').trim().toUpperCase().replace(/\.CA$/,'');
+const fvAll=()=>{try{const o=JSON.parse(localStorage.getItem(FV_KEY)||'{}');return o&&typeof o==='object'&&!Array.isArray(o)?o:{}}catch(e){return{}}};
+const fvWrite=o=>{try{localStorage.setItem(FV_KEY,JSON.stringify(o));return true}catch(e){return false}};
+function fvSet(sym,rec){const o=fvAll();o[fvKey(sym)]=rec;return fvWrite(o)}
+function fvDel(sym){const o=fvAll();delete o[fvKey(sym)];return fvWrite(o)}
+function fvTk(sym){try{const a=detectAsset(sym);return a.type==='egx'||a.type==='stock'?a.yahoo:null}catch(e){return null}}
+function fvValue(sym){
+  const r=fvAll()[fvKey(sym)];if(!r)return null;
+  const pos=v=>+v>0&&isFinite(+v)?+v:0,fv=pos(r.fv),eps=pos(r.eps),bv=pos(r.bvps);
+  const asOfMs=r.asOf?Date.parse(r.asOf):NaN,hasAsOf=Number.isFinite(asOfMs),basis=hasAsOf?asOfMs:r.ts;
+  const ageDays=basis?Math.max(0,(Date.now()-basis)/86400000):Infinity,maxAge=hasAsOf?FV_MAX_AGE_STATEMENT_DAYS:FV_MAX_AGE_DAYS,asOf=hasAsOf?r.asOf:null;
+  if(fv)return{fv,method:'قيمة عادلة مدخلة',src:r.src||'يدوي',ts:r.ts,asOf,ageDays,maxAge,eps,bvps:bv};
+  if(eps&&bv)return{fv:Math.sqrt(FV_GRAHAM_K*eps*bv),method:'رقم جراهام',src:r.src||'يدوي',ts:r.ts,asOf,ageDays,maxAge,eps,bvps:bv};
+  return null;
+}
+async function fvFetchJson(url,custom){
+  const base=((custom&&custom.trim())||(typeof DEFAULT_PROXY!=='undefined'?DEFAULT_PROXY:'')||'').replace(/\/+$/,'');
+  if(!base)throw Error('لا يوجد وسيط');
+  const r=await tfetch(base+'/?url='+encodeURIComponent(url),8000);
+  if(!r.ok)throw Error('HTTP '+r.status);
+  return JSON.parse(await r.text());
+}
+async function fvFetchYahoo(tk,custom){
+  const types=['trailingDilutedEPS','trailingBasicEPS','annualDilutedEPS','annualBasicEPS','quarterlyStockholdersEquity','annualStockholdersEquity','quarterlyOrdinarySharesNumber','annualOrdinarySharesNumber'].join(',');
+  const p2=Math.floor(Date.now()/1000),p1=p2-4*365*86400;
+  const j=await fvFetchJson(`https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(tk)}?symbol=${encodeURIComponent(tk)}&type=${types}&period1=${p1}&period2=${p2}`,custom);
+  const res=j?.timeseries?.result;if(!Array.isArray(res)||!res.length)throw Error('لا توجد بيانات أساسية لهذا الرمز');
+  const pick=name=>{const r=res.find(x=>x?.meta?.type?.[0]===name),a=r?.[name];if(!Array.isArray(a))return null;
+    for(let i=a.length-1;i>=0;i--){const v=a[i]?.reportedValue?.raw;if(v!=null&&isFinite(v))return{v:+v,d:a[i].asOfDate}}return null};
+  const eps=pick('trailingDilutedEPS')||pick('trailingBasicEPS')||pick('annualDilutedEPS')||pick('annualBasicEPS');
+  const eq=pick('quarterlyStockholdersEquity')||pick('annualStockholdersEquity');
+  const sh=pick('quarterlyOrdinarySharesNumber')||pick('annualOrdinarySharesNumber');
+  const bvps=eq&&sh&&sh.v>0?eq.v/sh.v:null;
+  if(!(eps&&eps.v>0)||!(bvps>0))throw Error('EPS أو القيمة الدفترية غير متاحة أو سالبة (رقم جراهام لا يُحسب)');
+  return{eps:eps.v,bvps,asOf:[eps.d,eq?.d].filter(Boolean).sort().pop()};
+}
+// يجلب تلقائياً عند غياب القيمة؛ لا يستبدل قيمة يدوية إلا بطلب صريح (force)
+async function fvEnsure(key,tk,custom,force=false){
+  key=fvKey(key);if(!tk)return null;
+  const o=fvAll(),r=o[key];
+  if(!force){
+    if(r&&r.src==='يدوي')return r;
+    if(r&&r.src&&r.ts&&Date.now()-r.ts<7*86400000)return r;
+    if(r&&r.tried&&Date.now()-r.tried<86400000)return r;
+  }
+  if(navigator.onLine===false){if(force)throw Error('لا يوجد اتصال');return r||null}
+  try{const f=await fvFetchYahoo(tk,custom);const cur=fvAll();cur[key]={eps:f.eps,bvps:f.bvps,src:'Yahoo',ts:Date.now(),asOf:f.asOf};fvWrite(cur);return cur[key]}
+  catch(e){const cur=fvAll();cur[key]={...(cur[key]||{}),tried:Date.now()};fvWrite(cur);if(force)throw e;return cur[key]}
+}
+function fvExit(sym,x,d,live){
+  const v=fvValue(sym),px=x.px,out={has:false,fv:null,status:'nofv',conds:[],reason:''};
+  if(!v){out.reason='القيمة العادلة غير متاحة لهذا السهم؛ أدخلها يدوياً أو اجلبها تلقائياً. لا تصدر إشارة خروج بدونها.';return out}
+  const prem=(px/v.fv-1)*100,mos=(v.fv-px)/v.fv*100;
+  Object.assign(out,{has:true,fv:v.fv,method:v.method,src:v.src,ts:v.ts,asOf:v.asOf,maxAge:v.maxAge,ageDays:v.ageDays,eps:v.eps,bvps:v.bvps,prem,mos});
+  out.verdict=prem<=-15?'مقيّم بأقل من قيمته العادلة':prem<0?'قريب من القيمة العادلة (أقل)':prem<=10?'قريب من القيمة العادلة (أعلى)':'مقيّم بأعلى من قيمته العادلة';
+  const cached=!!(live&&live.source==='ذاكرة محلية'),full=!!x.coverage?.decisionReady;
+  const fresh=v.ageDays<=v.maxAge,ratio=px/v.fv,sane=v.src==='يدوي'||(ratio<=3&&ratio>=1/3),below=x.e20>0&&px<x.e20,macdNeg=x.mh<0&&x.mh<x.mhp,noBuy=x.dir!=='صاعد'&&d?.v!=='شراء';
+  const sgn=n=>(n>=0?'+':'')+n.toFixed(1)+'%';
+  out.conds=[
+    {gate:true,ok:prem>=FV_EXIT_PREMIUM,label:'الشرط الأول: السعر عند القيمة العادلة أو فوقها',detail:`السعر ${fmt(px)} مقابل ${fmt(v.fv)} (${sgn(prem)})`},
+    {ok:fresh,label:'القيمة العادلة حديثة',detail:Number.isFinite(v.ageDays)?`${v.asOf?'آخر قوائم مالية قبل':'أُدخلت قبل'} ${Math.round(v.ageDays)} يوماً (الحد ${v.maxAge})`:'تاريخها غير معروف'},
+    {ok:sane,label:'القيمة العادلة معقولة مقارنة بالسعر',detail:v.src==='يدوي'?'مدخلة يدوياً':`السعر = ${ratio.toFixed(2)}× القيمة (المقبول 0.33–3×؛ خارجه تحقق من وحدات بيانات Yahoo)`},
+    {ok:full&&!cached,label:'بيانات فنية كاملة وسعر غير مخزّن',detail:cached?'السعر من الذاكرة المحلية':full?`${x.coverage.bars} شمعة`:'بيانات محدودة أو قديمة'},
+    {ok:below,label:`السعر أسفل EMA${x.e20Period}`,detail:`EMA ${fmt(x.e20)}`},
+    {ok:macdNeg,label:'زخم MACD سلبي ومتراجع',detail:`الهستوغرام ${fmt(x.mh)} (السابق ${fmt(x.mhp)})`},
+    {ok:noBuy,label:'الاتجاه غير صاعد ولا توجد إشارة شراء فنية',detail:`الاتجاه ${x.dir} • الإشارة ${d?.v||'—'}`}
+  ];
+  const failed=out.conds.slice(1).filter(c=>!c.ok);
+  if(!out.conds[0].ok){out.status='hold';out.reason=`السعر أقل من القيمة العادلة بنسبة ${mos.toFixed(1)}% — لا إشارة خروج مبنية على التقييم.`}
+  else if(!failed.length){out.status='exit';out.reason=`السعر فوق القيمة العادلة بنسبة ${prem.toFixed(1)}% وتحققت جميع شروط الخروج.`}
+  else{out.status='watch';out.reason=`السعر فوق القيمة العادلة بنسبة ${prem.toFixed(1)}% لكن الخروج غير مؤكد — لم يتحقق: ${failed.map(c=>c.label).join('، ')}.`}
+  return out;
+}
+function fvCells(fx){
+  if(!fx||!fx.has)return'<td class="mu">—</td><td class="mu" style="font-size:.75rem">أدخل القيمة</td>';
+  const c=fx.prem>=10?'dn':fx.prem>=0?'nt':'up';
+  return`<td class="ltr">${fmt(fx.fv)}</td><td class="${c}" title="${esc(fx.verdict)}">${fx.prem>=0?'+':''}${fx.prem.toFixed(1)}%</td>`;
+}
+function fvHoldInfo(sym,price){
+  const v=fvValue(sym);if(!v)return{fv:'—',sig:'<span class="mu">القيمة العادلة غير مدخلة</span>'};
+  const prem=(price/v.fv-1)*100,pr=PORT_RES[fvKey(sym)]||PORT_RES[sym];
+  const fv=`${fmt(v.fv)} <span class="${prem>=0?'nt':'up'}">(${prem>=0?'+':''}${prem.toFixed(1)}%)</span>`;
+  let sig;
+  if(pr&&pr.action&&pr.x)sig=`<span class="${pr.action.cls}">${esc(pr.action.v)}</span>`;
+  else sig=prem<0?'<span class="up">لا خروج (دون القيمة العادلة)</span>':'<span class="nt">فوق القيمة العادلة — شغّل تحليل المحفظة للتأكيد</span>';
+  return{fv,sig};
+}
+function fvFormHtml(key,open){
+  const r=fvAll()[key]||{},inp=(k,v,l)=>`<div><label>${l}</label><input class="fvf" data-k="${k}" type="number" min="0" step="any" inputmode="decimal" dir="ltr" value="${v>0?+(+v).toFixed(4):''}"></div>`;
+  return`<details class="fvbox"${open?' open':''}><summary>إدخال / تعديل القيمة العادلة</summary><div data-fv="${esc(key)}"><div class="fvform">${inp('fv',r.fv,'القيمة العادلة مباشرة')}${inp('eps',r.eps,'ربحية السهم EPS')}${inp('bvps',r.bvps,'القيمة الدفترية للسهم')}</div><p class="mu" style="font-size:.78rem">أدخل القيمة العادلة مباشرة، أو EPS والقيمة الدفترية معاً لحساب رقم جراهام. القيمة المدخلة مباشرة لها الأولوية.</p><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" data-fvs>حفظ</button><button type="button" class="sec" data-fva>جلب تلقائي</button><button type="button" class="sec dn" data-fvd>مسح</button></div></div></details>`;
+}
+function fvSectionHtml(key,fx,px){
+  let h='<h2>القيمة العادلة وإشارة الخروج</h2>';
+  if(fx.has){
+    const above=fx.prem>=0;
+    h+=`<div class="kv"><div>القيمة العادلة<b class="ltr" style="color:var(--ac)">${fmt(fx.fv)}</b></div><div>السعر الحالي<b class="ltr">${fmt(px)}</b></div><div>${above?'العلاوة فوق القيمة':'هامش الأمان'}<b class="${above?'dn':'up'}">${above?fx.prem.toFixed(1):fx.mos.toFixed(1)}%</b></div><div>التقييم<b style="font-size:.88rem">${esc(fx.verdict)}</b></div><div>الطريقة<b style="font-size:.88rem">${esc(fx.method)}</b></div></div>`;
+    const st={exit:['إشارة خروج مؤكدة','dn','var(--dn)'],watch:['مراقبة خروج — الشروط غير مكتملة','nt','var(--wn)'],hold:['لا خروج — السعر دون القيمة العادلة','up','var(--up)']}[fx.status];
+    h+=`<div class="al" style="border-right-color:${st[2]}"><b class="${st[1]}">${st[0]}</b><br><span class="mu">${esc(fx.reason)}</span></div>`;
+    h+=`<ul class="fvchk">${fx.conds.map(c=>`<li${c.gate?' class="gate"':''}><span class="${c.ok?'ok':'no'}">${c.ok?'✔':'✘'}</span><span>${esc(c.label)} <span class="mu">— ${esc(c.detail)}</span></span></li>`).join('')}</ul>`;
+    h+=`<p class="mu" style="font-size:.78rem">${fx.eps&&fx.bvps?`EPS ${fmt(fx.eps)} • القيمة الدفترية/سهم ${fmt(fx.bvps)} • `:''}المصدر: ${esc(fx.src)}${fx.ts?' • '+esc(new Date(fx.ts).toLocaleDateString(LOC)):''}${fx.asOf?' • قوائم مالية بتاريخ '+esc(fx.asOf):''}. شروط الخروج تُطبَّق على الأسهم المملوكة؛ رقم جراهام تقدير محافظ يناسب الشركات المستقرة الرابحة ولا يناسب شركات النمو أو الخاسرة، فاستبدله بقيمتك العادلة عند الحاجة.</p>`;
+  }else h+=`<div class="al"><b class="nt">القيمة العادلة غير متاحة</b><br><span class="mu">${esc(fx.reason)}</span></div>`;
+  return h+fvFormHtml(key,!fx.has);
+}
+function bindFvActions(root,after){
+  root.querySelectorAll('[data-fvs]').forEach(b=>b.onclick=()=>{
+    const c=b.closest('[data-fv]'),sym=c.dataset.fv,g=k=>{const i=c.querySelector(`.fvf[data-k="${k}"]`);return i?parseFloat(i.value):NaN};
+    const fv=g('fv'),eps=g('eps'),bv=g('bvps');
+    if(fv>0)fvSet(sym,{fv,...(eps>0?{eps}:{}),...(bv>0?{bvps:bv}:{}),src:'يدوي',ts:Date.now()});
+    else if(eps>0&&bv>0)fvSet(sym,{eps,bvps:bv,src:'يدوي',ts:Date.now()});
+    else return toast('أدخل القيمة العادلة مباشرة، أو EPS مع القيمة الدفترية للسهم معاً (قيم موجبة)',true);
+    toast('✔ حُفظت القيمة العادلة لـ '+sym);if(after)after();
+  });
+  root.querySelectorAll('[data-fva]').forEach(b=>b.onclick=async()=>{
+    const sym=b.closest('[data-fv]').dataset.fv,tk=fvTk(sym);
+    if(!tk)return toast('الجلب التلقائي متاح للأسهم فقط',true);
+    const cur=fvAll()[sym];
+    if(cur&&cur.src==='يدوي'&&!await dlg({title:'استبدال القيمة اليدوية',msg:`توجد قيمة مدخلة يدوياً لـ ${sym}. هل تستبدلها ببيانات Yahoo؟`,ok:'استبدال'}))return;
+    b.disabled=true;
+    try{await fvEnsure(sym,tk,($('px')?.value||'').trim(),true);toast('✔ تم الجلب التلقائي لـ '+sym)}
+    catch(e){toast('تعذّر الجلب التلقائي: '+e.message+' — أدخل القيمة يدوياً',true)}
+    finally{b.disabled=false;if(after)after()}
+  });
+  root.querySelectorAll('[data-fvd]').forEach(b=>b.onclick=()=>{fvDel(b.closest('[data-fv]').dataset.fv);toast('تم مسح القيمة العادلة');if(after)after()});
+}
+function afterFvChange(){
+  try{
+    if(last&&last.x){
+      if(last.action){const k=fvKey(last.label);last.action=portfolioSignal(k,last.x,last.d,fvExit(k,last.x,last.d,last.live))}
+      render(last);
+    }
+  }catch(e){}
+  renderFvManager();
+}
+function renderFvManager(){
+  const box=$('fvManager');if(!box)return;
+  const wasOpen=box.querySelector('details')?.open,syms=[],add=s=>{const k=fvKey(s);if(k&&!syms.includes(k)&&fvTk(k))syms.push(k)};
+  (Array.isArray(MY_PORTFOLIO)?MY_PORTFOLIO:[]).forEach(add);
+  try{const a=JSON.parse(localStorage.getItem('u_hold_list_v3')||'[]');if(Array.isArray(a))a.forEach(r=>Array.isArray(r)&&r[0]&&add(r[0]))}catch(e){}
+  if(!syms.length){box.innerHTML='';return}
+  const all=fvAll(),inp=(k,v)=>`<input class="fvf" data-k="${k}" type="number" min="0" step="any" inputmode="decimal" dir="ltr" value="${v>0?+(+v).toFixed(4):''}" style="min-width:84px">`;
+  const rows=syms.map(k=>{const r=all[k]||{},v=fvValue(k);
+    return`<tr data-fv="${esc(k)}"><td><b class="ltr">${esc(k)}</b></td><td>${inp('fv',r.fv)}</td><td>${inp('eps',r.eps)}</td><td>${inp('bvps',r.bvps)}</td><td class="ltr">${v?fmt(v.fv):'—'}</td><td class="mu" style="font-size:.75rem">${v?esc(v.src)+(r.ts?' • '+esc(new Date(r.ts).toLocaleDateString(LOC)):''):(r.tried?'تعذّر الجلب التلقائي':'—')}</td><td style="white-space:nowrap"><button type="button" class="sm" data-fvs>حفظ</button> <button type="button" class="sec sm" data-fva>جلب</button> <button type="button" class="sec sm dn" data-fvd>×</button></td></tr>`}).join('');
+  box.innerHTML=`<details class="fvbox"${wasOpen?' open':''}><summary><b>القيمة العادلة لكل سهم</b> <span class="mu">(${syms.length} سهم)</span></summary><p class="mu" style="font-size:.8rem;margin:8px 0">أدخل القيمة العادلة مباشرة، أو EPS والقيمة الدفترية للسهم لحساب رقم جراهام، أو اضغط «جلب» للمحاولة التلقائية من Yahoo (قد لا تتوفر بيانات بعض أسهم EGX). إشارة الخروج لا تصدر لأي سهم بلا قيمة عادلة.</p><div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0"><button type="button" id="fvAutoAll" class="wn sm">جلب تلقائي للأسهم الناقصة</button></div><div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>قيمة عادلة</th><th>EPS</th><th>دفترية/سهم</th><th>المعتمدة</th><th>المصدر</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+  bindFvActions(box,renderFvManager);
+  const ba=$('fvAutoAll');
+  if(ba)ba.onclick=async()=>{
+    const todo=syms.filter(k=>!fvValue(k));if(!todo.length)return toast('كل الأسهم لديها قيمة عادلة');
+    ba.disabled=true;let ok=0;const custom=($('px')?.value||'').trim();
+    for(let i=0;i<todo.length;i++){ba.textContent=`جاري الجلب ${i+1} / ${todo.length}`;try{await fvEnsure(todo[i],fvTk(todo[i]),custom,true);ok++}catch(e){}}
+    toast(`تم جلب ${ok} من ${todo.length} — الباقي يحتاج إدخالاً يدوياً`,ok!==todo.length);renderFvManager();
+  };
+}
+{const _rpl=renderPortList;renderPortList=function(){_rpl.apply(this,arguments);try{renderFvManager()}catch(e){}}}
+try{renderFvManager()}catch(e){}
+
 // ===== Decision + notes =====
 function decide(x,h,cost){
   let t=x.s;
@@ -743,23 +911,27 @@ function shortRec(d,x){
 function ownedPosition(sym){
   try{
     const a=JSON.parse(localStorage.getItem('u_hold_list_v3')||'[]');
-    const r=Array.isArray(a)?a.find(x=>Array.isArray(x)&&String(x[0]).toUpperCase()===String(sym).toUpperCase()):null;
+    const r=Array.isArray(a)?a.find(x=>Array.isArray(x)&&fvKey(x[0])===fvKey(sym)):null;
     return r?Math.max(0,+r[2]||0):0;
   }catch(e){return 0}
 }
-function portfolioSignal(sym,x,d){
+function portfolioSignal(sym,x,d,fx){
   const qty=ownedPosition(sym);
-  if(d.limited)return{v:qty>0?'احتفاظ':'انتظار',cls:'nt',qty,reason:'بيانات غير مكتملة؛ لا يصدر التطبيق أمر شراء أو بيع حاسم.'};
+  fx=fx||fvExit(sym,x,d);
+  const fvTxt=fx.has?` القيمة العادلة ${fmt(fx.fv)} (${fx.prem>=0?'+':''}${fx.prem.toFixed(1)}%).`:'';
+  if(d.limited)return{v:qty>0?'احتفاظ':'انتظار',cls:'nt',qty,fx,reason:'بيانات غير مكتملة؛ لا يصدر التطبيق أمر شراء أو بيع حاسم.'+fvTxt};
   if(qty<=0){
-    if(d.v==='شراء')return{v:'شراء',cls:'up',qty,reason:'السهم غير مملوك وتوافرت شروط دخول فنية كاملة.'};
-    if(d.v==='تجنّب')return{v:'تجنّب',cls:'dn',qty,reason:'السهم غير مملوك والإشارات لا تدعم الدخول.'};
-    return{v:'انتظار',cls:'nt',qty,reason:'السهم غير مملوك ولا توجد أفضلية دخول حاسمة.'};
+    const over=fx.has&&fx.prem>=0?' تنبيه: السعر فوق القيمة العادلة.':fvTxt;
+    if(d.v==='شراء')return{v:'شراء',cls:'up',qty,fx,reason:'السهم غير مملوك وتوافرت شروط دخول فنية كاملة.'+over};
+    if(d.v==='تجنّب')return{v:'تجنّب',cls:'dn',qty,fx,reason:'السهم غير مملوك والإشارات لا تدعم الدخول.'+fvTxt};
+    return{v:'انتظار',cls:'nt',qty,fx,reason:'السهم غير مملوك ولا توجد أفضلية دخول حاسمة.'+fvTxt};
   }
-  if(d.v==='تجنّب'&&x.dir==='هابط'&&x.e50&&x.px<x.e50){
-    return{v:'بيع / خفض',cls:'dn',qty,reason:`مركز مملوك مع اتجاه هابط والسعر أسفل EMA50 (${fmt(x.e50)}). راجع وقفك وسيولة المركز.`};
-  }
-  if(d.v==='شراء')return{v:'احتفاظ / تعزيز مشروط',cls:'up',qty,reason:'المركز مملوك؛ الإشارة الإيجابية لا تعني زيادة الكمية دون مراجعة المخاطرة والتركيز.'};
-  return{v:'احتفاظ',cls:'nt',qty,reason:d.v==='تجنّب'?'المركز مملوك لكن شروط البيع الحاسمة لم تكتمل؛ راقب الدعم ووقف الخسارة.':'لا توجد إشارة خروج حاسمة حاليًا.'};
+  // مركز مملوك: الخروج مبني أولاً على القيمة العادلة، ثم تُشترط كل الشروط الفنية
+  if(fx.status==='exit')return{v:'بيع / خفض',cls:'dn',qty,fx,reason:`إشارة خروج: ${fx.reason}${fvTxt}`};
+  if(fx.status==='watch')return{v:'مراقبة خروج',cls:'nt',qty,fx,reason:fx.reason};
+  if(fx.status==='nofv')return{v:'احتفاظ',cls:'nt',qty,fx,reason:fx.reason+(d.v==='تجنّب'?' ويوجد ضعف فني؛ راجع الدعم ووقف الخسارة.':'')};
+  if(d.v==='شراء')return{v:'احتفاظ / تعزيز مشروط',cls:'up',qty,fx,reason:`المركز مملوك والسعر دون القيمة العادلة مع إشارة فنية إيجابية؛ لا تزد الكمية دون مراجعة المخاطرة والتركيز.${fvTxt}`};
+  return{v:'احتفاظ',cls:'nt',qty,fx,reason:`${fx.reason}${d.v==='تجنّب'?' يوجد ضعف فني؛ راجع الدعم ووقف الخسارة.':''}`};
 }
 function sourceQuality(r){
   const bars=r.x?.coverage?.bars||r.x?.b?.length||0, fresh=r.live&&r.live.source!=='ذاكرة محلية', complete=r.x?.coverage?.decisionReady!==false;
@@ -823,6 +995,7 @@ if($('go'))$('go').onclick=async()=>{
   busy(true);$('ex').style.display='none';ms(mp>0?'⏳ جاري جلب الشموع التاريخية...':'⏳ جاري جلب البيانات والسعر اللحظي...');
   try{
     let{bars,live,higher}=await loadAll(asset,tf,custom,mp>0?mp:null);
+    if(asset.type==='egx'||asset.type==='stock'){ms('⏳ جاري جلب بيانات القيمة العادلة...');try{await fvEnsure(fvKey(asset.label),asset.yahoo,custom)}catch(e){}}
     analyze(asset.label,asset.name,tf,bars,higher,asset.type,live);
   }catch(e){
     ms('تعذّر: '+e.message,true);$('out').style.display='block';$('out').innerHTML=`<div class="al">${esc(e.message)}</div>`;
@@ -859,9 +1032,10 @@ async function runPort(){
         const attempt=async mp=>{const r=await loadAll(asset,effectiveTf,custom,mp);const bad=sanity(r.bars,r.live);if(bad)throw Error(bad);return r};
         let R;try{R=await attempt(null)}catch(err){const wm=watchMan()[sym];if(wm&&wm.price>0)R=await attempt(wm.price);else throw err}
         const {bars,live,higher}=R;
+        if(asset.type==='egx'||asset.type==='stock'){try{await fvEnsure(fvKey(sym),asset.yahoo,custom)}catch(e){}}
         const x=study(bars,live?.price,{tf:effectiveTf,assetType:asset.type});const htf={'1h':'4h','4h':'1d','1d':'1w'}[effectiveTf];let h=higher&&higher.length>=FULL_DECISION_BARS?study(higher,null,{tf:htf,assetType:asset.type}):null;if(h&&!h.coverage.decisionReady)h=null;const d=decideWithCoverage(x,h,cost),nr=generateNotes(x,h,d);
-        const action=portfolioSignal(sym,x,d);
-        const rec={sym,x,h,d,nr,live,action,label:asset.label,name:displayName,type:asset.type,requestedTf:tf,tf:effectiveTf,frameNote:isValmore&&effectiveTf!==tf?'تم استخدام الإطار اليومي الموثق لأن أرشيف Valmore المتاح يومي فقط.':null};
+        const fx=fvExit(sym,x,d,live),action=portfolioSignal(sym,x,d,fx);
+        const rec={sym,x,h,d,nr,live,action,fx,label:asset.label,name:displayName,type:asset.type,requestedTf:tf,tf:effectiveTf,frameNote:isValmore&&effectiveTf!==tf?'تم استخدام الإطار اليومي الموثق لأن أرشيف Valmore المتاح يومي فقط.':null};
         results.push(rec);PORT_RES[sym]=rec;
       }catch(e){results.push({sym,error:true,msg:e.message})}
       done++;
@@ -870,7 +1044,7 @@ async function runPort(){
     }};
   try{await Promise.all([worker(),worker(),worker()])}catch(e){}
 
-  const valid=results.filter(r=>!r.error),alerts=valid.map(positionAlert).filter(Boolean),buys=valid.filter(r=>r.d.v==='شراء'&&!r.d.limited),avoids=valid.filter(r=>r.d.v==='تجنّب'&&!r.d.limited),waits=valid.filter(r=>r.d.v==='انتظار'),limited=valid.filter(r=>r.d.limited),adjusted=valid.filter(r=>r.frameNote),sellActions=valid.filter(r=>r.action?.v==='بيع / خفض'),holdActions=valid.filter(r=>r.action?.v==='احتفاظ'||r.action?.v==='احتفاظ / تعزيز مشروط');
+  const valid=results.filter(r=>!r.error),alerts=valid.map(positionAlert).filter(Boolean),buys=valid.filter(r=>r.d.v==='شراء'&&!r.d.limited),avoids=valid.filter(r=>r.d.v==='تجنّب'&&!r.d.limited),waits=valid.filter(r=>r.d.v==='انتظار'),limited=valid.filter(r=>r.d.limited),adjusted=valid.filter(r=>r.frameNote),sellActions=valid.filter(r=>r.action?.v==='بيع / خفض'),holdActions=valid.filter(r=>r.action?.v==='احتفاظ'||r.action?.v==='احتفاظ / تعزيز مشروط'),watchActions=valid.filter(r=>r.action?.v==='مراقبة خروج');
   const failed=results.filter(r=>r.error);
   const pn=[];
   if(!valid.length)pn.push('لم تتوفر شموع تاريخية كافية لتحليل هذه الرموز. راجع رسائل كل سهم؛ قد يكون السعر الحالي متاحًا بينما مصدر الشموع لا يدعم رمزه.');
@@ -882,23 +1056,27 @@ async function runPort(){
     if(!buys.length)pn.push('لا توجد إشارات شراء قوية حالياً. الصبر أفضل من الدخول الضعيف.');
     if(waits.length>valid.length*.5)pn.push('معظم الأسهم في حالة انتظار. راقب الكسور والحجم.');
     if(alerts.length)pn.push(`تنبيهات إدارة مركز: ${alerts.length} سهمًا وصل إلى وقف أو هدف في الخطة؛ راجع التفاصيل قبل أي إجراء.`);
+    const noFv=valid.filter(r=>!r.fx?.has&&(r.type==='egx'||r.type==='stock'));
+    if(sellActions.length)pn.push(`إشارة خروج مؤكدة (السعر فوق القيمة العادلة وكل الشروط الفنية): ${sellActions.map(r=>r.sym).join('، ')}.`);
+    if(watchActions.length)pn.push(`مراقبة خروج (فوق القيمة العادلة وتنقص بعض الشروط): ${watchActions.map(r=>r.sym).join('، ')}.`);
+    if(noFv.length)pn.push(`${noFv.length} سهم بلا قيمة عادلة (${noFv.slice(0,8).map(r=>r.sym).join('، ')}${noFv.length>8?'…':''}) — لا تصدر لها إشارة خروج. أدخلها من «القيمة العادلة لكل سهم» أسفل الجدول.`);
     pn.push('راجع كل سهم على حدة قبل اتخاذ أي قرار.');
   }
   if(failed.length&&valid.length)pn.push(`تعذّر تحليل ${failed.length} من ${total} رموز بسبب عدم توفر بيانات تاريخية كافية. راجع سبب كل رمز أدناه؛ السعر الحي وحده لا يكفي لحساب المؤشرات الفنية.`);
-  let html=`<div class="sg"><div class="sc"><div class="num up">${buys.length}</div><div class="mu">شراء فني</div></div><div class="sc"><div class="num nt">${waits.length}</div><div class="mu">انتظار</div></div><div class="sc"><div class="num dn">${avoids.length}</div><div class="mu">تجنّب دخول</div></div><div class="sc"><div class="num dn">${sellActions.length}</div><div class="mu">بيع / خفض</div></div><div class="sc"><div class="num nt">${holdActions.length}</div><div class="mu">احتفاظ</div></div></div>
+  let html=`<div class="sg"><div class="sc"><div class="num up">${buys.length}</div><div class="mu">شراء فني</div></div><div class="sc"><div class="num nt">${waits.length}</div><div class="mu">انتظار</div></div><div class="sc"><div class="num dn">${avoids.length}</div><div class="mu">تجنّب دخول</div></div><div class="sc"><div class="num dn">${sellActions.length}</div><div class="mu">بيع / خفض (خروج)</div></div><div class="sc"><div class="num nt">${watchActions.length}</div><div class="mu">مراقبة خروج</div></div><div class="sc"><div class="num nt">${holdActions.length}</div><div class="mu">احتفاظ</div></div></div>
   <div class="nb"><h3>ملاحظات وتوصيات عامة على المحفظة</h3><ul>${pn.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>
-  <div class="portfolio-tools"><input id="portSearch" placeholder="بحث بالرمز أو الاسم" aria-label="بحث في نتائج المحفظة"><select id="portFilter" aria-label="تصفية نتائج المحفظة"><option value="all">كل النتائج</option><option value="شراء">شراء فني</option><option value="انتظار">انتظار</option><option value="تجنّب">تجنّب الدخول</option><option value="بيع / خفض">بيع / خفض</option><option value="احتفاظ">احتفاظ</option><option value="جودة">بيانات تحتاج مراجعة</option></select><button id="printPortfolio" class="sec sm" type="button">طباعة التقرير</button></div>
-  <div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>إشارة السوق</th><th>إجراء المحفظة</th><th>توافق</th><th>السعر</th><th>RSI</th><th>جودة البيانات</th><th>التوصية المختصرة</th></tr></thead><tbody>`;
+  <div class="portfolio-tools"><input id="portSearch" placeholder="بحث بالرمز أو الاسم" aria-label="بحث في نتائج المحفظة"><select id="portFilter" aria-label="تصفية نتائج المحفظة"><option value="all">كل النتائج</option><option value="شراء">شراء فني</option><option value="انتظار">انتظار</option><option value="تجنّب">تجنّب الدخول</option><option value="بيع / خفض">بيع / خفض</option><option value="مراقبة خروج">مراقبة خروج</option><option value="احتفاظ">احتفاظ</option><option value="جودة">بيانات تحتاج مراجعة</option></select><button id="printPortfolio" class="sec sm" type="button">طباعة التقرير</button></div>
+  <div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>إشارة السوق</th><th>إجراء المحفظة</th><th>توافق</th><th>السعر</th><th>القيمة العادلة</th><th>التقييم</th><th>RSI</th><th>جودة البيانات</th><th>التوصية المختصرة</th></tr></thead><tbody>`;
   const ord={'شراء':0,'انتظار':1,'تجنّب':2};
   results.sort((a,b)=>a.error?1:b.error?-1:(ord[a.d.v]??3)-(ord[b.d.v]??3)||b.d.conf-a.d.conf);
   for(const r of results){
     if(r.error){
-      html+=`<tr><td><b class="ltr">${esc(r.sym)}</b></td><td colspan="6" class="dn">${esc(r.msg||'تعذّر الجلب')}</td><td><button class="sec sm wn" data-manual="${esc(r.sym)}" style="padding:3px 8px;font-size:.75rem">سعر يدوي</button></td></tr>`;
+      html+=`<tr><td><b class="ltr">${esc(r.sym)}</b></td><td colspan="8" class="dn">${esc(r.msg||'تعذّر الجلب')}</td><td><button class="sec sm wn" data-manual="${esc(r.sym)}" style="padding:3px 8px;font-size:.75rem">سعر يدوي</button></td></tr>`;
       continue;
     }
     const cls=r.d.v==='شراء'?'up':r.d.v==='تجنّب'?'dn':'nt';
-    const q=sourceQuality(r),actionKey=r.action?.v==='بيع / خفض'?'بيع / خفض':r.action?.v?.startsWith('احتفاظ')?'احتفاظ':r.d.v;
-    html+=`<tr tabindex="0" data-sym="${esc(r.sym)}" data-filter="${esc(actionKey)}" data-quality="${esc(q.v)}"><td><b class="ltr">${esc(r.sym)}</b><div class="mu" style="font-size:.7rem">${esc(r.name||'')}${r.action?.qty?` • ${r.action.qty.toLocaleString('en-US')} سهم`:''}</div></td><td class="${cls}" style="font-weight:700">${r.d.v}${r.d.limited?' • محدود':''}</td><td class="${r.action?.cls||'nt'}" title="${esc(r.action?.reason||'')}"><b>${esc(r.action?.v||'—')}</b></td><td>${r.d.conf}%</td><td class="ltr">${fmt(r.x.px)}${r.x.live?(r.live&&r.live.source==='ذاكرة محلية'?' <span class="nt">◷</span>':' <span style="color:var(--up)">●</span>'):''}</td><td>${r.x.rsi.toFixed(1)}</td><td class="${q.cls}" title="${esc(q.reason)}"><b>${q.v}</b></td><td class="rec">${esc(r.action?.reason||shortRec(r.d,r.x))}</td></tr>`;
+    const q=sourceQuality(r),actionKey=r.action?.v==='بيع / خفض'?'بيع / خفض':r.action?.v==='مراقبة خروج'?'مراقبة خروج':r.action?.v?.startsWith('احتفاظ')?'احتفاظ':r.d.v;
+    html+=`<tr tabindex="0" data-sym="${esc(r.sym)}" data-filter="${esc(actionKey)}" data-quality="${esc(q.v)}"><td><b class="ltr">${esc(r.sym)}</b><div class="mu" style="font-size:.7rem">${esc(r.name||'')}${r.action?.qty?` • ${r.action.qty.toLocaleString('en-US')} سهم`:''}</div></td><td class="${cls}" style="font-weight:700">${r.d.v}${r.d.limited?' • محدود':''}</td><td class="${r.action?.cls||'nt'}" title="${esc(r.action?.reason||'')}"><b>${esc(r.action?.v||'—')}</b></td><td>${r.d.conf}%</td><td class="ltr">${fmt(r.x.px)}${r.x.live?(r.live&&r.live.source==='ذاكرة محلية'?' <span class="nt">◷</span>':' <span style="color:var(--up)">●</span>'):''}</td>${fvCells(r.fx)}<td>${r.x.rsi.toFixed(1)}</td><td class="${q.cls}" title="${esc(q.reason)}"><b>${q.v}</b></td><td class="rec">${esc(r.action?.reason||shortRec(r.d,r.x))}</td></tr>`;
   }
   html+=`</tbody></table></div><p class="mu" style="margin-top:10px">● = سعر مباشر • ◷ = آخر سعر مخزن • جودة البيانات لا تعني جودة الإشارة الاستثمارية • اضغط على أي صف لعرض التحليل التفصيلي.</p>`;
   if(failed.length)html+=`<button id="retryFailed" class="sec sm wn" style="margin-top:8px">🔄 إعادة المحاولة</button>`;
@@ -944,7 +1122,8 @@ function analyze(label,name,tf,bars,higherBars,assetType,live){
   const cost=Math.max(0,parseFloat($('cs').value)||0);
   const x=study(bars,live?.price);let h=higherBars&&higherBars.length>=FULL_DECISION_BARS?study(higherBars):null;if(h&&!h.coverage.decisionReady)h=null;
   const d=decideWithCoverage(x,h,cost),nr=generateNotes(x,h,d);
-  last={label,name,tf,x,h,d,nr,assetType,live};
+  const _k=fvKey(label),_fx=fvExit(_k,x,d,live);
+  last={label,name,tf,x,h,d,nr,assetType,live,action:ownedPosition(_k)>0?portfolioSignal(_k,x,d,_fx):null};
   render(last);save(label,name,tf,x,d,live);
   ms('✔ '+(live&&live.source==='ذاكرة محلية'?'آخر سعر مخزن ':live&&live.source==='يدوي'?'سعر يدوي ':x.live?'سعر مباشر ':'آخر إغلاق ')+fmt(x.px));
 }
@@ -953,6 +1132,8 @@ function render(data){
   const{label,name,tf,x,d,nr,assetType,live,action,frameNote}=data;
   const cls=d.v==='شراء'?'up':d.v==='تجنّب'?'dn':'nt',plan=d.plan;
   const cap=parseFloat($('ac').value),riskPct=parseFloat($('rk').value),cost=Math.max(0,parseFloat($('cs').value)||0);
+  const fvK=fvKey(label),fx=(assetType==='egx'||assetType==='stock')?fvExit(fvK,x,d,live):null;data.fx=fx;
+  const fvBlock=fx?fvSectionHtml(fvK,fx,x.px):'';
   const badge={egx:'🇪🇬 EGX',crypto:'🪙 كريبتو',stock:'📊 سهم',fx:'💱 فوركس'}[assetType]||'';
   let size='';
   if(plan&&cap>0&&riskPct>0){
@@ -977,11 +1158,12 @@ function render(data){
   $('out').innerHTML=`<h2 style="margin-top:0">${esc(name)} <span class="mu ltr">${esc(label)}</span> <span class="tag">${badge}</span> • ${esc(tf)}</h2>
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0"><div class="vd ${cls}">${d.v}${d.limited?' • محدودة':''} <span class="mu" style="font-size:1rem">${d.limited?'قراءة أولية':'توافق الإشارات'} ${d.conf}%</span></div>${x.live?`<span class="${live&&live.source==='ذاكرة محلية'?'tag':'lb'}">${live&&live.source==='ذاكرة محلية'?'◷ آخر سعر مخزن':live&&live.source==='يدوي'?'سعر يدوي':live&&String(live.source||'').includes('TradingView')?'TradingView':'سعر مباشر'}</span>`:''}</div>
   <div class="kv"><div>السعر المستخدم<b class="ltr" style="color:var(--ac)">${fmt(x.px)}</b></div><div>RSI(${x.coverage.periods.rsi})<b>${x.rsi.toFixed(1)}</b></div><div>ATR(${x.coverage.periods.atr}) %<b>${x.atrPct.toFixed(2)}%</b></div><div>الاتجاه<b>${x.dir}</b></div><div>الهيكل<b>${x.st}</b></div></div>
-  ${stale}${d.reason?`<div class="al">${esc(d.reason)}</div>`:''}
+  ${fvBlock}${stale}${d.reason?`<div class="al">${esc(d.reason)}</div>`:''}
   <canvas id="cv" role="img" aria-label="رسم شموع مع المتوسطات والدعم والمقاومة"></canvas><p class="mu">الأزرق EMA${x.e20Period} • الأصفر EMA${x.e50Period} • الخطوط المتقطعة: دعم / مقاومة</p>
   ${plan?`<h2>خطة التداول</h2><div class="kv"><div>الدخول<b class="ltr">${fmt(plan.e)}</b></div><div>الوقف<b class="dn ltr">${fmt(plan.s)}</b></div><div>هدف 1<b class="up ltr">${fmt(plan.t[0])}</b></div><div>هدف 2<b class="up ltr">${fmt(plan.t[1])}</b></div><div>المخاطرة %<b>${plan.rkp.toFixed(2)}%</b></div><div>R:R<b>${plan.rr||'—'}</b></div></div>${size}`:''}
   ${box('الملاحظات الفنية',nr.notes,'')}${box('المخاطر التي يجب مراعاتها',nr.risks,'warning')}${box('التوصيات',nr.recs,'success')}
   <p class="mu" style="margin-top:14px">البيانات التاريخية: ${x.b.length} شمعة • ${x.coverage?.source?`المصدر ${esc(x.coverage.source)} • آخر شمعة ${esc(x.coverage.asOf||'—')} • `:''}${x.live?'السعر من '+esc(live?.source||'المصدر')+' • آخر تحديث '+esc(new Date(live.time).toLocaleString(LOC)):'آخر إغلاق: '+esc(new Date(x.b[x.b.length-1].t).toLocaleDateString(LOC))}</p>`;
+  bindFvActions($('out'),afterFvChange);
   draw(x,plan);
   const cvEl=$('cv');if(cvEl){const N=Math.min(110,x.b.length),cw=(900-70)/N;cvEl.onpointermove=e=>{const r=cvEl.getBoundingClientRect();draw(x,plan,Math.floor((e.clientX-r.left)/r.width*900/cw))};cvEl.onpointerleave=()=>draw(x,plan)}
 }
@@ -990,6 +1172,7 @@ if($('ex'))$('ex').onclick=()=>{
   if(!last)return;
   const{name,label,tf,x,d,nr}=last;
   let t=`تقرير ${name} (${label}) • ${tf}\nالقرار: ${d.v}${d.limited?' — بيانات محدودة':''} • ${d.limited?'قراءة أولية':'توافق الإشارات'} ${d.conf}%\nالسعر المستخدم: ${fmt(x.px)}\nالشموع: ${x.coverage?.bars||x.b.length} • المصدر: ${x.coverage?.source||'غير محدد'} • حتى: ${x.coverage?.asOf||'غير محدد'}\n\n`;
+  if(last.fx&&last.fx.has)t+=`القيمة العادلة: ${fmt(last.fx.fv)} (${last.fx.prem>=0?'+':''}${last.fx.prem.toFixed(1)}% عن السعر) • ${last.fx.reason}\n\n`;
   [['الملاحظات',nr.notes],['المخاطر',nr.risks],['التوصيات',nr.recs]].forEach(([h,a])=>{if(a.length)t+=h+':\n'+a.map(n=>'• '+n).join('\n')+'\n\n'});
   t+='⚠️ تحليل تعليمي وليس نصيحة استثمارية';
   (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('تم نسخ التقرير')).catch(()=>toast('تعذر النسخ',true));
@@ -1043,6 +1226,7 @@ if($('exportAll'))$('exportAll').onclick=()=>{
       snaps:JSON.parse(localStorage.getItem('u_hold_snap_v1')||'[]'),
       log:JSON.parse(localStorage.getItem('u_hold_log_v1')||'[]'),
       lim:JSON.parse(localStorage.getItem('u_hold_lim_v1')||'null'),
+      fairValues:fvAll(),
       settings:{cap:localStorage.getItem('u_cap'),px:localStorage.getItem('u_px')}
     };
     const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
@@ -1061,9 +1245,21 @@ if($('importFile'))$('importFile').onchange=async e=>{
     if(data.manual!=null&&(typeof data.manual!=='object'||Array.isArray(data.manual)))throw Error('بيانات الأسعار اليدوية غير صالحة');
     if(data.quotes!=null&&(typeof data.quotes!=='object'||Array.isArray(data.quotes)))throw Error('بيانات الأسعار المخزنة غير صالحة');
     if(data.settings!=null&&(typeof data.settings!=='object'||Array.isArray(data.settings)))throw Error('الإعدادات في النسخة غير صالحة');
+    if(data.fairValues!=null&&(typeof data.fairValues!=='object'||Array.isArray(data.fairValues)))throw Error('بيانات القيمة العادلة غير صالحة');
     if(!await dlg({msg:'سيتم تحديث البيانات الموجودة في ملف النسخة فقط؛ وأي بيانات غير واردة فيه ستبقى كما هي. نزّل نسخة حالية قبل المتابعة إذا لزم.',ok:'استعادة'}))return;
     const keys={portfolio:'u_portfolio_v4',history:'u_hist_v4',holdings:'u_hold_list_v3',flows:'u_hold_flow_v1',snaps:'u_hold_snap_v1',log:'u_hold_log_v1',manual:'u_hold_man_v1',lim:'u_hold_lim_v1',quotes:'u_market_quotes_v1'};
     const writes={};for(const [field,key] of Object.entries(keys))if(data[field]!=null)writes[key]=JSON.stringify(data[field]);
+    if(data.fairValues!=null){const clean={},num=x=>+x>0&&isFinite(+x)?+x:0;
+      for(const [k,v] of Object.entries(data.fairValues)){
+        if(!/^[A-Z0-9\-]{1,20}$/.test(k)||!v||typeof v!=='object'||Array.isArray(v))continue;
+        const r={};['fv','eps','bvps'].forEach(f=>{const q=num(v[f]);if(q)r[f]=q});
+        if(v.src==='يدوي'||v.src==='Yahoo')r.src=v.src;
+        if(num(v.ts))r.ts=num(v.ts);if(num(v.tried))r.tried=num(v.tried);
+        if(typeof v.asOf==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v.asOf))r.asOf=v.asOf;
+        clean[k]=r;
+      }
+      writes[FV_KEY]=JSON.stringify(clean);
+    }
     if(data.settings&&Object.prototype.hasOwnProperty.call(data.settings,'cap'))writes.u_cap=data.settings.cap==null?null:String(data.settings.cap);
     if(data.settings&&Object.prototype.hasOwnProperty.call(data.settings,'px'))writes.u_px=(data.settings.px&&validProxy(String(data.settings.px)))?String(data.settings.px):null;
     const previous=Object.fromEntries(Object.keys(writes).map(k=>[k,localStorage.getItem(k)]));
@@ -1673,11 +1869,11 @@ function paint(){
   const zeroRows=allRows.filter(r=>!(r.qty>0));
 
   if(rows.length>1)h+=`<div class="sortbar"><span class="mu">ترتيب حسب</span><select id="hSortK" aria-label="ترتيب الأسهم">${Object.entries(SORTS).map(([k,l])=>`<option value="${k}"${SORT.k===k?' selected':''}>${l}</option>`).join('')}</select><button id="hSortD" class="sec sm" type="button"${SORT.k==='orig'?' disabled':''} aria-label="اتجاه الترتيب">${SORT.d==='asc'?'⬆ تصاعدي':'⬇ تنازلي'}</button></div>`;
-  h+=`<table class="ptable hT"><thead><tr><th>السهم</th><th>الكمية</th><th>متوسط التكلفة</th><th>السعر</th><th>التغير اليومي</th><th>القيمة</th><th>ربح/خسارة</th><th>نسبة الربح/الخسارة</th><th>الوزن</th></tr></thead><tbody>`;
+  h+=`<table class="ptable hT"><thead><tr><th>السهم</th><th>الكمية</th><th>متوسط التكلفة</th><th>السعر</th><th>التغير اليومي</th><th>القيمة</th><th>ربح/خسارة</th><th>نسبة الربح/الخسارة</th><th>الوزن</th><th>القيمة العادلة</th><th>إشارة الخروج</th></tr></thead><tbody>`;
   const cell=(label,cls,val)=>`<td data-l="${label}"${cls?` class="${cls}"`:''}><span class="v">${val}</span></td>`;
 
   if(!rows.length&&!zeroRows.length){
-    h+=`<tr><td colspan="9" class="mu">لا توجد أسهم</td></tr>`;
+    h+=`<tr><td colspan="11" class="mu">لا توجد أسهم</td></tr>`;
   }
 
   sortRows(rows).forEach(r=>{
@@ -1685,7 +1881,7 @@ function paint(){
     const head=`<td class="nm"><b class="ltr">${esc(r.sym)}</b><div class="mu">${esc(r.name)}</div></td>`;
     if(!q){h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('السعر','mu','لم تُجلب')}</tr>`;return}
     if(q.err){h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('السعر','dn',esc(q.err))}</tr>`;return}
-    const hasP=r.pct!=null;
+    const hasP=r.pct!=null,_fi=(typeof fvHoldInfo==='function')?fvHoldInfo(r.sym,q.price):{fv:'—',sig:'—'};
     const wBar=r.w?`<div class="weight-bar"><div style="width:${Math.min(100,r.w)}%"></div></div>`:'';
     const avgStr=r.avgCost>0?fmt(r.avgCost):'—';
     const uplStr=r.upl!=null?`<span class="${cl(r.upl)}">${sg(r.upl)}</span>`:'—';
@@ -1694,7 +1890,7 @@ function paint(){
     else if(q.source&&String(q.source).includes('TradingView'))statusLabel='TV • '+q.status;
     else if(q.source&&String(q.source).includes('Yahoo'))statusLabel='Yahoo • '+q.status;
     else if(q.status==='يدوي')statusLabel='يدوي';
-    h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('متوسط التكلفة','ltr',avgStr)}${cell('السعر','ltr',fmt(q.price))}${cell('التغير اليومي','ltr '+(hasP?cl(r.pct):''),hasP?sg(+r.pct.toFixed(2))+'%':'—')}${cell('القيمة','ltr',fmt(r.val))}${cell('ربح/خسارة','',uplStr)}${cell('نسبة الربح/الخسارة','ltr '+(r.uplPct!=null?cl(r.upl):''),r.uplPct!=null?sg(+r.uplPct.toFixed(2))+'%':'—')}${cell('الوزن','',r.w.toFixed(1)+'%'+wBar)}</tr>`;
+    h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('متوسط التكلفة','ltr',avgStr)}${cell('السعر','ltr',fmt(q.price))}${cell('التغير اليومي','ltr '+(hasP?cl(r.pct):''),hasP?sg(+r.pct.toFixed(2))+'%':'—')}${cell('القيمة','ltr',fmt(r.val))}${cell('ربح/خسارة','',uplStr)}${cell('نسبة الربح/الخسارة','ltr '+(r.uplPct!=null?cl(r.upl):''),r.uplPct!=null?sg(+r.uplPct.toFixed(2))+'%':'—')}${cell('الوزن','',r.w.toFixed(1)+'%'+wBar)}${cell('القيمة العادلة','ltr',_fi.fv)}${cell('إشارة الخروج','',_fi.sig)}</tr>`;
   });
   h+=`</tbody></table>`;
 

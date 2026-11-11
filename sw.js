@@ -1,10 +1,13 @@
 /* نواة PWA — كاش محلي للغلاف فقط، مع تحديث شبكي للنسخة المنشورة. */
-const CACHE_NAME = 'nawa-pwa-shell-v24';
+const CACHE_NAME = 'nawa-pwa-shell-v25';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_URLS = ['./','./index.html','./manifest.webmanifest','./data/vlmra-egp-history.json','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png'].map(path => new URL(path, BASE_URL).href);
 const isShell = url => /\/(index\.html|manifest\.webmanifest|sw\.js)$/.test(url.pathname) || url.href === BASE_URL.href;
 // بيانات الأرشيف تُجلب من الشبكة أولاً حتى لا تتأخر نسخة واحدة عن المنشور (قاعدة «10 أيام» تعتمد عليها).
 const isData = url => url.pathname.startsWith(BASE_URL.pathname + 'data/');
+
+// جلب شبكي بمهلة: الشبكة البطيئة جداً لا تُعلّق التطبيق، فنعود للنسخة المحفوظة.
+const fetchTimeout=(req,opts,ms)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(req,{...opts,signal:c.signal}).finally(()=>clearTimeout(t))};
 
 // تثبيت لا يفشل كله إذا غاب ملف واحد (أيقونة أو أرشيف) — كان addAll يُسقط التثبيت بالكامل.
 self.addEventListener('install', event => event.waitUntil((async()=>{
@@ -25,7 +28,7 @@ self.addEventListener('fetch', event => {
   event.respondWith((async()=>{
     const cache=await caches.open(CACHE_NAME);
     if(isShell(url) || isData(url) || request.mode==='navigate') {
-      try { const response=await fetch(request,{cache:'no-store'}); if(response.ok) cache.put(request,response.clone()).catch(()=>{}); return response; }
+      try { const response=await fetchTimeout(request,{cache:'no-store'},6000); if(response.ok) cache.put(request.mode==='navigate'?new URL('./index.html',BASE_URL).href:request,response.clone()).catch(()=>{}); return response; }
       catch(_) { return (await cache.match(request,{ignoreSearch:true})) || (await cache.match(new URL('./index.html',BASE_URL).href)) || new Response('<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width"><body style="font:16px system-ui;background:#0b1220;color:#e8eef8;padding:2rem;direction:rtl">التطبيق غير متاح دون اتصال حاليًا. افتحه مرة واحدة متصلًا ليُحفظ على الجهاز.</body>',{status:503,headers:{'Content-Type':'text/html; charset=utf-8'}}); }
     }
     const cached=await cache.match(request);

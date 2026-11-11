@@ -164,7 +164,7 @@ input:user-invalid{border-color:var(--dn);box-shadow:0 0 0 3px rgba(248,113,113,
 button:disabled,button[disabled]{filter:saturate(.5)}
 @media(hover:hover){button:not(:disabled):hover{box-shadow:0 6px 18px rgba(96,165,250,.22);transform:translateY(-1px)}button.sec:not(:disabled):hover{border-color:var(--ac);box-shadow:none}.tab:not(.active):hover{color:var(--tx);border-color:rgba(105,211,255,.3)}}
 @media(pointer:coarse){button,select,input{min-height:44px}button.sm{min-height:38px}}
-@media(max-width:680px){.ptable{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}.ptable th,.ptable td{white-space:nowrap}}
+@media(max-width:680px){.ptable th,.ptable td{white-space:nowrap}.ptable td.rec{white-space:normal;min-width:250px;max-width:none;line-height:1.65;text-align:right}}
 #hl{content-visibility:auto;contain-intrinsic-size:auto 480px}
 .toast{max-width:min(92vw,460px);text-wrap:balance}
 body.theme-light input::placeholder{color:#7a8da3}
@@ -1252,11 +1252,14 @@ if($('exportAll'))$('exportAll').onclick=()=>{
       lim:JSON.parse(localStorage.getItem('u_hold_lim_v1')||'null'),
       fairValues:fvAll(),
       dividends:JSON.parse(localStorage.getItem('u_div_v1')||'null'),
+      watchManual:JSON.parse(localStorage.getItem('u_watch_man_v1')||'{}'),
+      snapDel:JSON.parse(localStorage.getItem('u_hold_snapdel_v1')||'[]'),
+      snapMax:JSON.parse(localStorage.getItem('u_hold_snapmax_v1')||'0'),
       settings:{cap:localStorage.getItem('u_cap'),px:localStorage.getItem('u_px')}
     };
     const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
     const a=document.createElement('a');a.href=url;a.download='my-portfolio-full-backup.json';document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),1500);toast('تم تصدير النسخة الاحتياطية');
+    setTimeout(()=>URL.revokeObjectURL(url),1500);try{localStorage.setItem('u_last_backup',String(Date.now()))}catch(_){}toast('تم تصدير النسخة الاحتياطية');
   }catch(e){toast('تعذّر التصدير',true)}
 };
 if($('importAll'))$('importAll').onclick=()=>$('importFile')?.click();
@@ -1272,7 +1275,9 @@ if($('importFile'))$('importFile').onchange=async e=>{
     if(data.settings!=null&&(typeof data.settings!=='object'||Array.isArray(data.settings)))throw Error('الإعدادات في النسخة غير صالحة');
     if(data.fairValues!=null&&(typeof data.fairValues!=='object'||Array.isArray(data.fairValues)))throw Error('بيانات القيمة العادلة غير صالحة');
     if(!await dlg({msg:'سيتم تحديث البيانات الموجودة في ملف النسخة فقط؛ وأي بيانات غير واردة فيه ستبقى كما هي. نزّل نسخة حالية قبل المتابعة إذا لزم.',ok:'استعادة'}))return;
-    const keys={portfolio:'u_portfolio_v4',history:'u_hist_v4',holdings:'u_hold_list_v3',flows:'u_hold_flow_v1',snaps:'u_hold_snap_v1',log:'u_hold_log_v1',manual:'u_hold_man_v1',lim:'u_hold_lim_v1',quotes:'u_market_quotes_v1'};
+    if(data.watchManual!=null&&(typeof data.watchManual!=='object'||Array.isArray(data.watchManual)))throw Error('أسعار قائمة المتابعة اليدوية غير صالحة');
+    if(data.snapDel!=null&&(!Array.isArray(data.snapDel)||!data.snapDel.every(x=>typeof x==='string')))throw Error('قائمة الجلسات المحذوفة غير صالحة');
+    const keys={portfolio:'u_portfolio_v4',history:'u_hist_v4',holdings:'u_hold_list_v3',flows:'u_hold_flow_v1',snaps:'u_hold_snap_v1',log:'u_hold_log_v1',manual:'u_hold_man_v1',lim:'u_hold_lim_v1',quotes:'u_market_quotes_v1',watchManual:'u_watch_man_v1',snapDel:'u_hold_snapdel_v1',snapMax:'u_hold_snapmax_v1'};
     const writes={};for(const [field,key] of Object.entries(keys))if(data[field]!=null)writes[key]=JSON.stringify(data[field]);
     if(data.fairValues!=null){const clean={},num=x=>+x>0&&isFinite(+x)?+x:0;
       for(const [k,v] of Object.entries(data.fairValues)){
@@ -2461,7 +2466,6 @@ async function notify(){const V=window.__dv;if(!V||typeof Notification==='undefi
  for(const a of build()){if(!a.nk||st.ack[a.nk])continue;const o={body:a.x,tag:a.nk,lang:'ar',dir:'rtl'};
   try{const r=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(r&&r.showNotification)await r.showNotification('نواة: '+a.t,o);else new Notification('نواة: '+a.t,o);st.ack[a.nk]=Date.now()}catch(x){}}
  Object.keys(st.ack).forEach(k=>{if(Date.now()-st.ack[k]>60*D)delete st.ack[k]});sv()}
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#exportAll'))localStorage.setItem('u_last_backup',String(Date.now()))},true);
 const run=()=>{try{paint();notify()}catch(e){}};
 setTimeout(run,2500);setInterval(run,5*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)run()});
 window.__alerts={build};

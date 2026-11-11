@@ -1,5 +1,5 @@
 /* نواة PWA — كاش محلي للغلاف مع أولوية الشبكة ومهلة قصيرة، فلا ينتظر المستخدم على اتصال ضعيف. */
-const CACHE_NAME = 'nawa-pwa-shell-v25';
+const CACHE_NAME = 'nawa-pwa-shell-v26';
 const NET_TIMEOUT = 4500; // مللي ثانية قبل الرجوع إلى النسخة المحفوظة
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_URLS = ['./','./index.html','./manifest.webmanifest','./data/vlmra-egp-history.json','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png'].map(path => new URL(path, BASE_URL).href);

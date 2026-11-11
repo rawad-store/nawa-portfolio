@@ -9,8 +9,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#08111f",
-  "theme_color": "#09111f",
+  "background_color": "#050b17",
+  "theme_color": "#050b17",
   "categories": [
     "finance",
     "utilities"

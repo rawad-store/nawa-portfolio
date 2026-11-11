@@ -181,8 +181,9 @@ body.theme-light input::placeholder{color:#7a8da3}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main-content">تجاوز إلى المحتوى الرئيسي</a>
 <noscript><div class="c" style="margin:12px">يتطلب هذا التطبيق تفعيل JavaScript.</div></noscript>
-<div class="w" role="main">
+<main class="w" id="main-content">
 <header class="c hero"><div class="hero-top"><span class="brand-mark" aria-hidden="true">N</span><span class="eyebrow">منصة متابعة وتحليل شخصية</span><span class="hero-status" id="netStatus"><i></i><span id="netText">جارٍ التحقق من الاتصال</span></span></div><h1>نواة <span class="mu">الأسواق والمحفظة</span></h1><p class="mu">رؤية أوضح للسوق، وقرارات مبنية على بياناتك ومؤشرات قابلة للمراجعة.</p><div class="hero-note">الأسعار والتحليلات آلية وقد تتأخر؛ تحقق دائمًا من وسيطك. درجة التوافق مقياس استدلالي للإشارات وليست احتمالًا إحصائيًا للربح أو توصية استثمارية.</div><div id="offlineNotice" class="offline-notice" hidden>أنت دون اتصال. سيُستخدم آخر سعر وبيانات مخزنة إن توفرت، مع إظهار وقتها؛ لن تُعرض على أنها أسعار حية.</div><div class="pwa-actions"><button id="themeToggle" class="sec sm" type="button" aria-pressed="false">☼ مظهر نهاري</button><button id="installApp" class="sec sm" type="button" hidden>تثبيت نواة كتطبيق</button><span id="installHint" class="mu" hidden></span></div></header>
 
 <section class="c">
@@ -243,7 +244,7 @@ body.theme-light input::placeholder{color:#7a8da3}
 
 <section class="c" id="out" style="display:none"></section>
 <p class="mu" style="text-align:center;font-size:.8rem">تحليل فني تقديري لأغراض تعليمية فقط • البيانات المخزنة دون اتصال ليست أسعارًا حية • لا يمثل نصيحة استثمارية أو ضمانًا للنتائج.</p>
-</div>
+</main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -2506,5 +2507,68 @@ setTimeout(run,2500);setInterval(run,5*60*1000);document.addEventListener('visib
 window.__alerts={build};
 })();
 </script>
+
+<style id="nawa-final-polish">
+/* Accessible finishing layer: restrained motion, readable focus, and reliable narrow-screen layout. */
+.skip-link{position:fixed;z-index:10000;top:10px;right:10px;padding:10px 14px;border-radius:10px;background:var(--ac);color:#07111f;font-weight:800;transform:translateY(-160%);transition:transform .18s ease}
+.skip-link:focus{transform:translateY(0);outline:3px solid #fff;outline-offset:3px}
+#main-content{min-width:0}
+:where(a,button,input,select,summary,[tabindex]):focus-visible{outline:3px solid var(--ac)!important;outline-offset:3px!important}
+button,select{touch-action:manipulation}
+input,select,textarea{max-width:100%}
+.ptable{min-width:620px}
+#tab-holdings .hT{min-width:900px}
+#tab-holdings .hT td[data-l]::before{content:attr(data-l)}
+#tab-holdings .hT td.nm::before{content:none}
+#out{overflow:hidden}
+.hero-note{cursor:default}
+.hero-note[role="button"]{cursor:pointer}
+@media(max-width:760px){
+  body{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+  .w>section.c:nth-of-type(1)>[id^="tab-"]{overflow-x:hidden}
+  .ptable{font-size:.78rem}
+  .ptable th,.ptable td{padding:8px 7px}
+  .hero-status{max-width:48%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pwa-actions button{min-height:42px}
+  .toast{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+}
+@media(max-width:420px){
+  .hero-status{max-width:44%}
+  .hero .eyebrow{max-width:42%;line-height:1.35}
+  .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #tab-divs .dvhero{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* Compact holdings cards on phones: override the full-width valuation cells. */
+@media(max-width:640px){
+  #tab-holdings .hT{min-width:0!important;width:100%;table-layout:fixed}
+  #tab-holdings .hT tr{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"nm nm" "px chg" "pl plp" "qty avg" "val w" "fv exit";gap:8px 12px;padding:13px 14px;margin:8px 0}
+  #tab-holdings .hT td{min-width:0;overflow-wrap:anywhere}
+  #tab-holdings .hT td.nm{grid-area:nm}
+  #tab-holdings .hT td[data-l="السعر"]{grid-area:px}
+  #tab-holdings .hT td[data-l="التغير اليومي"]{grid-area:chg}
+  #tab-holdings .hT td[data-l="ربح/خسارة"]{grid-area:pl}
+  #tab-holdings .hT td[data-l="نسبة الربح/الخسارة"]{grid-area:plp}
+  #tab-holdings .hT td[data-l="الكمية"]{grid-area:qty}
+  #tab-holdings .hT td[data-l="متوسط التكلفة"]{grid-area:avg}
+  #tab-holdings .hT td[data-l="القيمة"]{grid-area:val}
+  #tab-holdings .hT td[data-l="الوزن"]{grid-area:w}
+  #tab-holdings .hT td[data-l="القيمة العادلة"]{grid-area:fv;grid-column:auto!important}
+  #tab-holdings .hT td[data-l="إشارة الخروج"]{grid-area:exit;grid-column:auto!important}
+  #tab-holdings .hT td[data-l="إشارة الخروج"]>.v{white-space:normal;line-height:1.4}
+  #tab-holdings .hT td[colspan]{grid-column:1/-1}
+}
+@media(hover:hover){.c:not(.hero):hover{box-shadow:0 18px 48px rgba(0,0,0,.2)}}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto!important}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+@media print{
+  body{padding:0!important;background:#fff!important}
+  .skip-link,.np-top,.pwa-actions,.hero-note{display:none!important}
+  .w{max-width:none!important;gap:8px!important}
+  .c{break-inside:avoid;box-shadow:none!important}
+}
+</style>
+
 </body>
 </html>

@@ -37,6 +37,30 @@
   ],
   "shortcuts": [
     {
+      "name": "تحليل فني",
+      "short_name": "تحليل",
+      "url": "./?source=pwa&tab=analyze",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "قائمة المتابعة",
+      "short_name": "المتابعة",
+      "url": "./?source=pwa&tab=portfolio",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "توزيعات الأرباح",
       "short_name": "التوزيعات",
       "url": "./?source=pwa&tab=divs",
@@ -47,6 +71,29 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "سجل التحليل",
+      "short_name": "السجل",
+      "url": "./?source=pwa&tab=history",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
-  ]
+  ],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": [
+      "navigate-existing",
+      "auto"
+    ]
+  }
 }

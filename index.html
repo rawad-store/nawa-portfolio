@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <meta name="description" content="لوحة عربية لتحليل الأسهم وإدارة المحفظة ومتابعة الملكية والتكلفة.">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
 <title>نواة | لوحة الأسواق والمحفظة</title>
 <style>
 :root{--bg:#0b1220;--cd:#131c2e;--bd:#25324a;--tx:#e8eef8;--mu:#94a3b8;--ac:#60a5fa;--up:#34d399;--dn:#f87171;--wn:#fbbf24;--in:#0e1626;--glow:rgba(96,165,250,.15);color-scheme:dark}
@@ -1594,10 +1595,11 @@ function shell(){
   <div class="add-row">
     <select id="avgS" style="max-width:140px"></select>
     <input id="avgP" type="number" min="0" step="any" placeholder="متوسط التكلفة (ج.م)">
+    <input id="avgT" type="number" min="0" step="any" placeholder="أو إجمالي التكلفة من الوسيط (ج.م)">
     <button id="avgB" class="sec sm wn">حفظ المتوسط</button>
     <button id="avgC" class="sec sm dn">مسح المتوسط</button>
   </div>
-  <p class="mu" style="margin:8px 0 0">لتعديل متوسط التكلفة لسهم موجود بدون تغيير الكمية. يُستخدم لحساب الربح/الخسارة غير المحققة.</p>
+  <p class="mu" style="margin:8px 0 0">لتعديل متوسط التكلفة لسهم موجود بدون تغيير الكمية. يُستخدم لحساب الربح/الخسارة غير المحققة. للمطابقة التامة مع الوسيط أدخل «إجمالي التكلفة» الظاهر عنده بدل المتوسط المقرّب.</p>
 </div>
 
 <div class="section-card">
@@ -1657,18 +1659,20 @@ function shell(){
 
   // تعيين متوسط التكلفة يدوياً
   if($('avgB'))$('avgB').onclick=()=>{
-    const sy=$('avgS').value,p=+$('avgP').value;
+    const sy=$('avgS').value,tot=+($('avgT')?.value)||0;let p=+$('avgP').value;
     if(!sy)return toast('اختر السهم',true);
-    if(!(p>0))return toast('أدخل متوسط تكلفة صحيحاً',true);
     const ex=REF.find(r=>r[0]===sy);
     if(!ex)return toast('السهم غير موجود في محفظتك',true);
+    /* إجمالي التكلفة له الأولوية: المتوسط = الإجمالي ÷ الكمية بدقة كاملة بلا تقريب */
+    if(tot>0){if(!(ex[2]>0))return toast('الكمية صفر؛ لا يمكن اشتقاق المتوسط',true);p=tot/ex[2]}
+    if(!(p>0))return toast('أدخل متوسط التكلفة أو إجمالي التكلفة',true);
     const old=ex[4]||0;
     ex[4]=p;
     saveList();
     const l=ld(K.log,[]);
     l.unshift({ts:Date.now(),s:sy,from:old,to:p,act:'avg'});
     sv(K.log,l);
-    $('avgP').value='';
+    $('avgP').value='';if($('avgT'))$('avgT').value='';
     paint();
     toast('تم تعيين متوسط تكلفة '+sy+' = '+fmt(p));
   };
@@ -2338,9 +2342,10 @@ function advise(e){const T=today(),c=P(e.cum),d=Math.round((c-T)/DAY),q=px(e.sym
  const gy=q?e.dps/q.price*100:null,ny=gy==null?null:gy*(1-tax),own=owned()[e.sym]||0,o={d,gy,ny,own,gross:r2(own*e.dps),tx:r2(own*e.dps*tax),cash:r2(r2(own*e.dps)-r2(own*e.dps*tax)),lv:'nt',t:''};
  if(isNaN(d))o.t='تاريخ غير صالح';
  else if(d<0){o.lv='mu';o.t='انتهى الحق؛ الشراء الآن لا يمنح هذا الكوبون.'+(P(e.pay)>=T?' الكوبون بانتظار الصرف في '+dfmt(P(e.pay))+'.':'')}
- else if(d===0){o.lv='dn';o.t='اليوم آخر يوم للأحقية: الشراء المنفَّذ قبل نهاية جلسة اليوم يستحق الكوبون. لا تؤجل القرار.'}
+ else if(d===0){o.lv='dn';o.t=own>0?'اليوم آخر يوم للأحقية: احتفظ بأسهمك حتى نهاية جلسة اليوم لتستحق الكوبون (≈ '+money(o.cash)+' ج صافي).':'اليوم آخر يوم للأحقية: الشراء المنفَّذ قبل نهاية جلسة اليوم يستحق الكوبون. لا تؤجل القرار.'}
  else{const by=Math.max(prevT(c),T);o.lv=d<=1?'dn':d<=3?'nt':'up';
   o.t=(ny!=null&&ny<cost)?'العائد الصافي ('+ny.toFixed(2)+'%) أقل من تكلفة الصفقة ('+cost+'%): لا يبرر الشراء لأجل التوزيع وحده.':'التوقيت الآمن للشراء: حتى '+dfmt(by)+' (قبل الجلسة الأخيرة بجلسة) لتفادي تعذّر التنفيذ؛ متبقٍ '+(n=>n===1?'جلسة واحدة':n===2?'جلستان':n<=10?n+' جلسات':n+' جلسة')(tdLeft(T,c))+' (تشمل اليوم إن كان يوم تداول).';
+  if(own>0)o.t='تملك السهم: احتفظ به حتى نهاية جلسة '+dfmt(c)+' لتستحق الكوبون (≈ '+money(o.cash)+' ج صافي)؛ البيع قبلها يُفقدك الكوبون.';
   o.t+=' تذكّر: ينخفض سعر السهم غالبًا بقدر الكوبون بعد نهاية الحق، فالتوزيع ليس ربحًا إضافيًا بحد ذاته.'}
  return o}
 /* جلب تلقائي لتاريخ التوزيعات (Yahoo عبر الوسيط) لأسهمك ومتابعتك فقط؛ يُستخدم للتقدير لا للتنبيه */
@@ -2573,5 +2578,33 @@ input,select,textarea{max-width:100%}
 }
 </style>
 
+<style id="nawa-final">
+/* طبقة الإتقان النهائية: خطوط عربية نظامية، أرقام متراصة، لمس مريح، تركيز موحّد، دعم الحواف الآمنة */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+body{font-family:"Segoe UI","Noto Sans Arabic","SF Arabic","Geeza Pro","Dubai",Tahoma,system-ui,sans-serif;
+ padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));padding-bottom:max(18px,env(safe-area-inset-bottom));
+ text-rendering:optimizeLegibility;overscroll-behavior-y:none}
+h1,h2,h3{text-wrap:balance;line-height:1.35}
+p,li,.mu,.al,.nb{text-wrap:pretty}
+.vd,.kv b,.ptable td,.ptable th,.hero [class*="stat"],input[type=number]{font-variant-numeric:tabular-nums lining-nums}
+.w>*{min-width:0}
+button,.tab,summary,select{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+::selection{background:var(--glow);color:var(--tx)}
+*{scrollbar-width:thin;scrollbar-color:var(--bd) transparent}
+:where(button,.tab,input,select,summary,a,[tabindex]):focus-visible{outline:2px solid var(--ac);outline-offset:2px;box-shadow:0 0 0 5px var(--glow)}
+:where(input,select):focus-visible{outline-offset:0}
+.toast{bottom:max(22px,calc(env(safe-area-inset-bottom) + 14px))}
+.ptable{display:table}
+@media(pointer:coarse){
+  button,.tab,select,input:not([type=checkbox]):not([type=radio]){min-height:44px}
+  button.sm{min-height:40px;padding-inline:14px}
+}
+@media(max-width:760px){input,select{font-size:16px}}
+@media(forced-colors:active){
+  .tab.active{outline:2px solid Highlight;outline-offset:-2px}
+  button,input,select,.c{border:1px solid CanvasText}
+}
+</style>
 </body>
 </html>

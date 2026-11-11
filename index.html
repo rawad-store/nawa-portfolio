@@ -2251,27 +2251,45 @@ new MutationObserver(()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;d.querySe
 <style id="nawa-div-css">
 #dvBanner{display:none;border-color:rgba(243,200,111,.5)}
 .dvl{margin:6px 0;font-size:.88rem}.dvl.up,.dvd.up{color:var(--up)}.dvl.nt,.dvd.nt{color:var(--wn)}.dvl.dn,.dvd.dn{color:var(--dn)}.dvd.mu{color:var(--mu)}
-#tab-divs .dvc{background:var(--in);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:12px 0}
+#tab-divs small{display:block;color:var(--mu);font-size:.72rem;margin-bottom:2px}
+#tab-divs .dvhero{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+#tab-divs .dvstat{border:1px solid var(--bd);background:var(--in);border-radius:14px;padding:12px;min-width:0}
+#tab-divs .dvstat b{font-size:1rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#tab-divs .dvstat.net{grid-column:1/-1;background:linear-gradient(135deg,rgba(52,211,153,.18),rgba(96,165,250,.12));border-color:rgba(52,211,153,.4)}
+#tab-divs .dvstat.net b{font-size:1.75rem;color:var(--up)}
+#tab-divs .dvc{background:var(--in);border:1px solid var(--bd);border-radius:16px;padding:14px;margin:12px 0;box-shadow:0 6px 18px rgba(0,0,0,.14)}
 #tab-divs .dvc.past{opacity:.6}#tab-divs .dvh{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-#tab-divs .dvd{margin-inline-start:auto;font-weight:700}
-#tab-divs .dvs{padding:2px 8px;border-radius:6px;background:rgba(96,165,250,.14);color:var(--ac);font-weight:700;font-size:.82rem}
+#tab-divs .dvd{margin-inline-start:auto;font-weight:700;padding:3px 10px;border-radius:999px;border:1px solid currentColor;font-size:.8rem}
+#tab-divs .dvs{padding:3px 10px;border-radius:8px;background:rgba(96,165,250,.16);color:var(--ac);font-weight:800;font-size:.85rem;letter-spacing:.04em;direction:ltr}
+#tab-divs .dvbar{height:6px;border-radius:6px;background:var(--bd);overflow:hidden;margin:12px 0 4px}
+#tab-divs .dvbar i{display:block;height:100%;border-radius:6px;background:var(--ac);transition:width .5s}
+#tab-divs .dvbar.up i{background:var(--up)}#tab-divs .dvbar.nt i{background:var(--wn)}#tab-divs .dvbar.dn i{background:var(--dn)}#tab-divs .dvbar.mu i{background:var(--mu)}
+#tab-divs .dvtl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+#tab-divs .dvtl div{border-top:3px solid var(--ac);padding-top:6px;font-size:.78rem}
+#tab-divs .dvtl div.fin{border-color:var(--bd);opacity:.65}#tab-divs .dvtl div.now{border-color:var(--wn)}
+#tab-divs .dvtl b,#tab-divs .dvm b,#tab-divs .dvcash b{display:block;font-variant-numeric:tabular-nums}
+#tab-divs .dvm{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+#tab-divs .dvm>div{background:rgba(133,158,190,.08);border-radius:10px;padding:8px 10px}
+#tab-divs .dvcash{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+#tab-divs .dvcash>div{border:1px solid var(--bd);border-radius:10px;padding:8px 10px;min-width:0}
+#tab-divs .dvcash .net{border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.1)}#tab-divs .dvcash .net b{color:var(--up)}
+#tab-divs .dvw{font-size:.82rem;margin:8px 0}
+#tab-divs .dvi{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--bd);font-size:.84rem}
 #tab-divs .dvt{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin:12px 0}#tab-divs .dvt>div{flex:0 1 110px}
 #tab-divs .dvf{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:10px 0}
 #tab-divs .dvk{padding:0;margin:8px 0}#tab-divs .dvk li{list-style:none;font-size:.8rem;margin:3px 0}
-#tab-divs .dvb{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.tab[data-dv]::before{content:'◷'}
+#tab-divs .dvb{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}#tab-divs .dvb button,#tab-divs .dvt button{min-height:40px}
+.tab[data-dv]::before{content:'◷ '}
+@media(max-width:420px){#tab-divs .dvcash,#tab-divs .dvhero{grid-template-columns:1fr 1fr}#tab-divs .dvcash .net{grid-column:1/-1}#tab-divs .dvstat b{font-size:.92rem}}
+@media(prefers-reduced-motion:reduce){#tab-divs .dvbar i{transition:none}}
 @media print{#dvBanner,#tab-divs{display:none!important}}
 </style>
 <script id="nawa-div">
 (()=>{'use strict';
 const KEY='u_div_v1',DAY=864e5,g=id=>document.getElementById(id);
-/* بيانات رسمية من إفصاحات البورصة المصرية كما نُشرت (تم جمعها في 11 نوفمبر 2026). آخر يوم للأحقية = «نهاية الحق»: من يملك السهم حتى نهاية جلسته يستحق الكوبون */
+/* بذور رسمية لأسهم المحفظة فقط (إفصاحات البورصة المصرية، 11 نوفمبر 2026). أي سهم خارج «محفظتي الفعلية» وقائمة المتابعة لا يُعرض ولا يُنبَّه له. آخر يوم للأحقية = «نهاية الحق»: من يملك السهم حتى نهاية جلسته يستحق الكوبون */
 const SEED=[
-{id:'s-EGAL-24',sym:'EGAL',name:'مصر للألومنيوم',dps:16,cum:'2026-11-16',pay:'2026-11-19',cpn:24,src:'إفصاح البورصة المصرية (نُشر 2 نوفمبر 2026)'},
-{id:'s-POUL-42',sym:'POUL',name:'القاهرة للدواجن',dps:1.9,cum:'2026-11-15',pay:'2026-11-18',cpn:42,src:'إفصاح البورصة المصرية (نُشر 1 نوفمبر 2026)'},
-{id:'s-CPCI-29',sym:'CPCI',name:'القاهرة للأدوية',dps:22,cum:'2026-11-17',pay:'2026-11-22',cpn:29,src:'بيان البورصة المصرية (نُشر 5 نوفمبر 2026)'},
-{id:'s-IRON-5',sym:'IRON',name:'الحديد والصلب للمناجم والمحاجر',dps:0.35,cum:'2026-11-16',pay:'2026-11-19',cpn:5,src:'إفصاح البورصة المصرية (نُشر 4 نوفمبر 2026)',note:'تحقق من رمز السهم عند وسيطك'},
-{id:'s-BIOC-25',sym:'BIOC',name:'جلاكسو سميثكلاين',dps:0.75,cum:'2026-11-23',pay:'2026-11-26',cpn:25,src:'إعلان البورصة المصرية (نُشر 10 نوفمبر 2026)',note:'المصدر كتب الصرف «الأربعاء 26 نوفمبر» بينما التاريخ يوافق الخميس؛ راجع يوم الصرف. وتحقق من رمز السهم'}
+{id:'s-POUL-42',sym:'POUL',name:'القاهرة للدواجن',dps:1.9,cum:'2026-11-15',pay:'2026-11-18',cpn:42,src:'إفصاح البورصة المصرية (نُشر 1 نوفمبر 2026)'}
 ].map(x=>({...x,conf:'official',fol:false}));
 let S={};try{S=JSON.parse(localStorage.getItem(KEY))||{}}catch(e){}
 if(!S||typeof S!=='object'||Array.isArray(S))S={};
@@ -2295,9 +2313,14 @@ const nm=s=>{const h=EGX.find(e=>e[0]===s);return h?h[1]:s};
 const jl=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
 const owned=()=>{const m={};(jl('u_hold_list_v3')||[]).forEach(r=>{if(Array.isArray(r)&&r[0])m[nz(r[0])]=+r[2]||0});return m};
 const watched=()=>(jl('u_portfolio_v4')||[]).map(nz);
+const relevant=e=>{const s=e&&e.sym;return !!s&&((owned()[s]||0)>0||watched().includes(s))};
+const r2=n=>Math.round((n+Number.EPSILON)*100)/100;
+const hname=s=>{const h=(jl('u_hold_list_v3')||[]).find(r=>Array.isArray(r)&&r[0]&&nz(r[0])===s);return(h&&h[1])||nm(s)};
+const money=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const px=s=>{const q=(jl('u_market_quotes_v1')||{})[s];return q&&q.price>0?q:null};
 /* آلية التحقق: أي خطأ يمنع الإضافة ويمنع التنبيه؛ التحذيرات تظهر للمراجعة */
 function check(e){const er=[],wn=[],c=P(e.cum),p=P(e.pay);
+ if(!relevant(e))er.push('السهم ليس في محفظتك الفعلية ولا في قائمة المتابعة');
  if(!/^[A-Z0-9\-]{2,12}$/.test(e.sym))er.push('رمز السهم غير صالح');
  if(!(e.dps>0&&isFinite(e.dps)))er.push('قيمة الكوبون يجب أن تكون أكبر من صفر');
  if(isNaN(c))er.push('تاريخ نهاية الحق غير صالح');else if(!trade(c))wn.push('نهاية الحق لا تقع في يوم تداول (الأحد–الخميس)');
@@ -2308,9 +2331,9 @@ function check(e){const er=[],wn=[],c=P(e.cum),p=P(e.pay);
  return{er,wn}}
 const ok=e=>e.conf==='official'&&!check(e).er.length;
 function advise(e){const T=today(),c=P(e.cum),d=Math.round((c-T)/DAY),q=px(e.sym),tax=S.cfg.tax/100,cost=+(g('cs')&&g('cs').value)||0.4;
- const gy=q?e.dps/q.price*100:null,ny=gy==null?null:gy*(1-tax),own=owned()[e.sym]||0,o={d,gy,ny,own,cash:own*e.dps*(1-tax),lv:'nt',t:''};
+ const gy=q?e.dps/q.price*100:null,ny=gy==null?null:gy*(1-tax),own=owned()[e.sym]||0,o={d,gy,ny,own,gross:r2(own*e.dps),tx:r2(own*e.dps*tax),cash:r2(r2(own*e.dps)-r2(own*e.dps*tax)),lv:'nt',t:''};
  if(isNaN(d))o.t='تاريخ غير صالح';
- else if(d<0){o.lv='mu';o.t='انتهى الحق؛ الشراء الآن لا يمنح هذا الكوبون.'}
+ else if(d<0){o.lv='mu';o.t='انتهى الحق؛ الشراء الآن لا يمنح هذا الكوبون.'+(P(e.pay)>=T?' الكوبون بانتظار الصرف في '+dfmt(P(e.pay))+'.':'')}
  else if(d===0){o.lv='dn';o.t='اليوم آخر يوم للأحقية: الشراء المنفَّذ قبل نهاية جلسة اليوم يستحق الكوبون. لا تؤجل القرار.'}
  else{const by=Math.max(prevT(c),T);o.lv=d<=1?'dn':d<=3?'nt':'up';
   o.t=(ny!=null&&ny<cost)?'العائد الصافي ('+ny.toFixed(2)+'%) أقل من تكلفة الصفقة ('+cost+'%): لا يبرر الشراء لأجل التوزيع وحده.':'التوقيت الآمن للشراء: حتى '+dfmt(by)+' (قبل الجلسة الأخيرة بجلسة) لتفادي تعذّر التنفيذ؛ متبقٍ '+tdLeft(T,c)+' جلسة (تشمل اليوم إن كان يوم تداول).';
@@ -2325,17 +2348,18 @@ async function fetchDiv(force){if(typeof viaProxy!=='function'||navigator.onLine
    S.auto[s]={ts:Date.now(),L};n+=L.length?1:0}catch(e){S.auto[s]={ts:Date.now(),L:[],err:1}}}));
  save();return n}
 /* تقدير: يلزم نمط سنوي واضح (دفعتان متتاليتان بفارق 300–430 يومًا)؛ آخر يوم للأحقية = آخر جلسة قبل تاريخ بدء التداول بدون الكوبون */
-function est(){const T=today(),out=[];Object.entries(S.auto).forEach(([s,o])=>{const L=(o&&o.L)||[];if(L.length<2||S.ev.some(e=>e.sym===s&&P(e.cum)>=T))return;
+function est(){const T=today(),out=[];Object.entries(S.auto).forEach(([s,o])=>{const L=(o&&o.L)||[];if(!relevant({sym:s})||L.length<2||S.ev.some(e=>e.sym===s&&P(e.cum)>=T))return;
  const l=L[L.length-1],pr=L[L.length-2],gap=(P(l.d)-P(pr.d))/DAY;if(!(gap>=300&&gap<=430))return;
  let ex=P(l.d),k=0;while(ex<T&&k<3){const q=new Date(ex);ex=Date.UTC(q.getUTCFullYear()+1,q.getUTCMonth(),q.getUTCDate());k++}
  if(isNaN(ex)||ex<T)return;out.push({sym:s,name:nm(s),dps:l.a,cum:dstr(prevT(ex)),last:l.d})});
  return out.sort((a,b)=>P(a.cum)-P(b.cum))}
-const ecard=e=>'<div class="dvc"><div class="dvh"><b class="dvs">'+esc(e.sym)+'</b><span>'+esc(e.name)+'</span><span class="tag">تقديري — بلا تنبيه</span></div><div class="kv"><div>آخر كوبون مسجَّل<b>'+fmt(e.dps)+' ج ('+esc(e.last)+')</b></div><div>آخر يوم أحقية متوقع<b>'+dfmt(P(e.cum))+'</b></div></div><p class="mu" style="font-size:.78rem">استنتاج من نمط سنوي سابق (Yahoo)؛ قد يتغير المبلغ والموعد أو يُلغى التوزيع. لن يصلك تنبيه حتى تؤكده بمصدر رسمي.</p><div class="dvb"><button class="sec sm" data-act="conf" data-sym="'+esc(e.sym)+'" data-dps="'+e.dps+'" data-cum="'+esc(e.cum)+'">تأكيد بمصدر رسمي</button></div></div>';
-const due=()=>{const T=today(),w=watched(),ow=owned();return S.ev.filter(e=>{const c=P(e.cum);return ok(e)&&c>=T&&(c-T)/DAY<=7&&(e.fol||w.includes(e.sym)||e.sym in ow)}).sort((a,b)=>P(a.cum)-P(b.cum))};
+const estCash=e=>{const q=owned()[e.sym]||0;return q?'<div>تملك '+fmt(q)+' سهم<b>≈ '+money(q*e.dps*(1-S.cfg.tax/100))+' ج صافي</b></div>':''};
+const ecard=e=>'<div class="dvc"><div class="dvh"><b class="dvs">'+esc(e.sym)+'</b><span>'+esc(e.name)+'</span><span class="tag">تقديري — بلا تنبيه</span></div><div class="kv"><div>آخر كوبون مسجَّل<b>'+fmt(e.dps)+' ج ('+esc(e.last)+')</b></div><div>آخر يوم أحقية متوقع<b>'+dfmt(P(e.cum))+'</b></div>'+estCash(e)+'</div><p class="mu" style="font-size:.78rem">استنتاج من نمط سنوي سابق (Yahoo)؛ قد يتغير المبلغ والموعد أو يُلغى التوزيع. لن يصلك تنبيه حتى تؤكده بمصدر رسمي.</p><div class="dvb"><button class="sec sm" data-act="conf" data-sym="'+esc(e.sym)+'" data-dps="'+e.dps+'" data-cum="'+esc(e.cum)+'">تأكيد بمصدر رسمي</button></div></div>';
+const due=()=>{const T=today();return S.ev.filter(e=>{const c=P(e.cum);return ok(e)&&c>=T&&(c-T)/DAY<=7&&relevant(e)}).sort((a,b)=>P(a.cum)-P(b.cum))};
 /* الإشعارات تعمل أثناء فتح التطبيق فقط (لا خادم دفع)؛ التقويم هو التنبيه الموثوق في الخلفية */
 async function notify(){if(!S.cfg.notif||typeof Notification==='undefined'||Notification.permission!=='granted')return;
  const T=today();for(const e of due()){const d=Math.round((P(e.cum)-T)/DAY),lv=[0,1,3,7].find(o=>d<=o),k=e.id+'|'+lv;if(S.ack[k])continue;const a=advise(e);
-  const o={body:e.sym+' — آخر يوم للأحقية '+dfmt(P(e.cum))+' • كوبون '+fmt(e.dps)+' ج'+(a.gy!=null?' ('+a.gy.toFixed(1)+'%)':'')+'. '+a.t.split(' تذكّر')[0],tag:k,lang:'ar',dir:'rtl'};
+  const o={body:e.sym+' — آخر يوم للأحقية '+dfmt(P(e.cum))+' • كوبون '+fmt(e.dps)+' ج'+(a.gy!=null?' ('+a.gy.toFixed(1)+'%)':'')+'. '+a.t.split(' تذكّر')[0],tag:k,lang:'ar',dir:'rtl',icon:new URL('icons/icon-192.png',location.href).href,badge:new URL('icons/icon-192.png',location.href).href};
   try{const r=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(r&&r.showNotification)await r.showNotification('نواة: استحقاق توزيعات قريب',o);else new Notification('نواة: استحقاق توزيعات قريب',o);S.ack[k]=Date.now()}catch(x){}}
  Object.keys(S.ack).forEach(k=>{if(Date.now()-S.ack[k]>60*DAY)delete S.ack[k]});save()}
 const ban=document.createElement('div');ban.id='dvBanner';ban.className='c';
@@ -2343,28 +2367,37 @@ const hd=document.querySelector('.w>header');if(hd)hd.after(ban);
 function banner(){const L=due();if(!L.length){ban.style.display='none';ban.innerHTML='';return}
  ban.style.display='block';ban.innerHTML='<b>⏰ استحقاق توزيعات قريب</b>'+L.slice(0,4).map(e=>{const a=advise(e);return'<div class="dvl '+a.lv+'">'+esc(e.sym)+' — '+(a.d===0?'اليوم آخر يوم':'بعد '+a.d+' يوم')+' ('+dfmt(P(e.cum))+') • كوبون '+fmt(e.dps)+' ج'+(a.gy!=null?' ('+a.gy.toFixed(1)+'%)':'')+'</div>'}).join('')+'<button class="sec sm" data-go="1" style="margin-top:6px">فتح التوزيعات</button>'}
 const tabs=document.querySelector('.tabs'),tb=document.createElement('div');
-tb.className='tab';tb.dataset.dv='1';tb.textContent='التوزيعات';tb.setAttribute('role','tab');
+tb.className='tab';tb.dataset.dv='1';tb.textContent='التوزيعات';tb.setAttribute('role','tab');tb.id='tabbtn-divs';tb.setAttribute('aria-controls','tab-divs');tb.setAttribute('aria-selected','false');tb.tabIndex=-1;
 tabs.insertBefore(tb,tabs.querySelector('[data-tab="settings"]'));
-const pn=document.createElement('div');pn.id='tab-divs';pn.style.display='none';document.querySelector('#tab-settings').parentNode.appendChild(pn);
+const pn=document.createElement('div');pn.id='tab-divs';pn.setAttribute('role','tabpanel');pn.setAttribute('aria-labelledby','tabbtn-divs');pn.style.display='none';document.querySelector('#tab-settings').parentNode.appendChild(pn);
 function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});
  tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;
  ['analyze','portfolio','history','settings','holdings'].forEach(i=>{const el=g('tab-'+i);if(el)el.style.display='none'});
- pn.style.display='block';render();fetchDiv().then(n=>{if(n&&pn.style.display==='block')render()})}
+ pn.style.display='block';render();banner();fetchDiv().then(n=>{if(n&&pn.style.display==='block')render()})}
 tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;if(t===tb)show();else pn.style.display='none'});
 ban.addEventListener('click',e=>{if(e.target.closest('[data-go]')){show();scrollTo({top:0,behavior:'smooth'})}});
 const bdg=e=>e.conf==='official'?'<span class="lb">مؤكد رسميًا</span>':'<span class="tag">تقديري — بلا تنبيه</span>';
-function card(e){const c=P(e.cum),a=advise(e),k=check(e),ex=isNaN(c)?NaN:nextT(c);
- return'<div class="dvc'+(a.d<0?' past':'')+'"><div class="dvh"><b class="dvs">'+esc(e.sym)+'</b><span>'+esc(e.name||nm(e.sym))+'</span>'+bdg(e)+'<span class="dvd '+a.lv+'">'+(isNaN(a.d)?'—':a.d<0?'منتهٍ':a.d===0?'اليوم':'بعد '+a.d+' يوم')+'</span></div>'
- +'<div class="kv"><div>الكوبون<b>'+fmt(e.dps)+' ج</b></div><div>آخر يوم للأحقية<b>'+dfmt(c)+'</b></div><div>أول جلسة بدون الكوبون<b>'+dfmt(ex)+'</b></div><div>الصرف<b>'+dfmt(P(e.pay))+'</b></div><div>العائد إجمالي / صافي<b>'+(a.gy==null?'—':a.gy.toFixed(2)+'% / '+a.ny.toFixed(2)+'%')+'</b></div>'+(a.own?'<div>تملك '+fmt(a.own)+' سهم<b>≈ '+fmt(a.cash)+' ج صافي</b></div>':'')+'</div>'
- +'<div class="al">'+esc(a.t)+'</div><ul class="dvk">'+k.er.map(x=>'<li class="dn">✕ '+esc(x)+'</li>').join('')+k.wn.map(x=>'<li class="nt">⚠ '+esc(x)+'</li>').join('')+(k.er.length?'':'<li class="up">✓ اجتاز التحقق الأساسي</li>')+(e.note?'<li class="nt">ℹ '+esc(e.note)+'</li>':'')+'</ul>'
- +'<p class="mu" style="font-size:.76rem">المصدر: '+esc(e.src||'غير مذكور')+(e.cpn?' • كوبون رقم '+esc(e.cpn):'')+'</p>'
- +'<div class="dvb"><button class="sec sm" data-act="fol" data-id="'+esc(e.id)+'">'+(e.fol?'🔔 متابَع':'🔕 تتبّع للتنبيه')+'</button><button class="sec sm" data-act="edit" data-id="'+esc(e.id)+'">تعديل</button><button class="sec sm dn" data-act="del" data-id="'+esc(e.id)+'">حذف</button></div></div>'}
+function card(e){const T=today(),c=P(e.cum),a=advise(e),k=check(e),ex=isNaN(c)?NaN:nextT(c),pp=P(e.pay),pend=a.d<0&&pp>=T,fin=a.d<0&&!pend,
+ lab=isNaN(a.d)?'—':a.d<0?(pend?'بانتظار الصرف':'منتهٍ'):a.d===0?'اليوم':'بعد '+a.d+' يوم',pct=a.d>=0?Math.max(5,Math.min(100,(14-a.d)/14*100)):100,
+ sh=t=>isNaN(t)?'—':new Date(t).toLocaleDateString('ar-EG-u-nu-latn',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}),
+ stp=(l,t)=>'<div class="'+(isNaN(t)?'':t<T?'fin':t===T?'now':'')+'"><small>'+l+'</small><b>'+sh(t)+'</b></div>';
+ return'<div class="dvc'+(fin?' past':'')+'"><div class="dvh"><b class="dvs">'+esc(e.sym)+'</b><span>'+esc(e.name||nm(e.sym))+'</span>'+bdg(e)+'<span class="dvd '+a.lv+'">'+lab+'</span></div>'
+ +'<div class="dvbar '+a.lv+'" role="img" aria-label="'+lab+'"><i style="width:'+pct+'%"></i></div>'
+ +'<div class="dvtl">'+stp('آخر يوم للأحقية',c)+stp('أول جلسة بدونه',ex)+stp('الصرف',pp)+'</div>'
+ +'<div class="dvm"><div><small>الكوبون للسهم</small><b>'+money(e.dps)+' ج</b></div><div><small>العائد إجمالي / صافي</small><b>'+(a.gy==null?'—':a.gy.toFixed(2)+'% / '+a.ny.toFixed(2)+'%')+'</b></div></div>'
+ +(a.own?'<div class="dvcash"><div><small>'+fmt(a.own)+' سهم · إجمالي</small><b>'+money(a.gross)+'</b></div><div><small>ضريبة '+S.cfg.tax+'%</small><b>− '+money(a.tx)+'</b></div><div class="net"><small>الصافي (ج)</small><b>'+money(a.cash)+'</b></div></div>':'<div class="mu dvw">قائمة متابعة — لا تملك أسهماً منه حالياً.</div>')
+ +'<div class="al">'+esc(a.t)+'</div>'
+ +((k.er.length||k.wn.length||e.note)?'<ul class="dvk">'+k.er.map(x=>'<li class="dn">✕ '+esc(x)+'</li>').join('')+k.wn.map(x=>'<li class="nt">⚠ '+esc(x)+'</li>').join('')+(e.note?'<li class="nt">ℹ '+esc(e.note)+'</li>':'')+'</ul>':'')
+ +'<p class="mu" style="font-size:.76rem">'+(k.er.length?'':'✓ اجتاز التحقق • ')+'المصدر: '+esc(e.src||'غير مذكور')+(e.cpn?' • كوبون رقم '+esc(e.cpn):'')+'</p>'
+ +'<div class="dvb"><button class="sec sm" data-act="edit" data-id="'+esc(e.id)+'">تعديل</button><button class="sec sm dn" data-act="del" data-id="'+esc(e.id)+'">حذف</button></div></div>'}
 function render(){const ids=['dvS','dvA','dvC','dvP','dvN2','dvT','dvR'],keep=ids.map(i=>g(i)&&g(i).value),op=[...pn.querySelectorAll('details')].map(x=>x.open);
- const es=est(),T=today(),all=[...S.ev].sort((a,b)=>P(a.cum)-P(b.cum)),up=all.filter(e=>P(e.cum)>=T),mineTot=up.filter(e=>ok(e)&&owned()[e.sym]>0).reduce((m,e)=>({v:m.v+advise(e).cash,n:m.n+1}),{v:0,n:0}),ps=all.filter(e=>!(P(e.cum)>=T));
+ const es=est(),T=today(),all=S.ev.filter(relevant).sort((a,b)=>P(a.cum)-P(b.cum)),up=all.filter(e=>P(e.cum)>=T||P(e.pay)>=T),mineTot=(m=>({...m,v:r2(m.v)}))(up.filter(e=>ok(e)&&owned()[e.sym]>0).reduce((m,e)=>{const a=advise(e);return{g:m.g+a.gross,t:m.t+a.tx,v:m.v+a.cash,n:m.n+1}},{g:0,t:0,v:0,n:0})),ps=all.filter(e=>!(P(e.cum)>=T||P(e.pay)>=T));
+ const ow=owned(),busy=new Set(up.map(e=>e.sym)),idle=[...new Set([...Object.keys(ow).filter(x=>ow[x]>0),...watched()])].filter(x=>!busy.has(x)),
+  idleHtml=idle.length?'<details class="fvbox"><summary>أسهم بلا توزيع قادم معلن ('+idle.length+')</summary>'+idle.map(x=>{const L=(S.auto[x]&&S.auto[x].L)||[],l=L[L.length-1];return'<div class="dvi"><b class="dvs">'+esc(x)+'</b><span>'+esc(hname(x))+'</span><span class="mu">'+(l?'آخر كوبون '+money(l.a)+' ج ('+esc(l.d)+')':'لا بيانات سابقة')+'</span></div>'}).join('')+'</details>':'';
  pn.innerHTML='<h2 style="margin:0">📅 توزيعات الأرباح <span class="mu">(الأسهم المصرية)</span></h2>'
- +'<p class="mu" style="margin:4px 0">«آخر يوم للأحقية» هو نهاية الحق المعلن من البورصة: من يملك السهم حتى نهاية جلسته يستحق الكوبون. التنبيه لا يعمل إلا للتوزيعات المؤكدة التي اجتازت التحقق وللأسهم التي تملكها أو في قائمة متابعتك أو التي فعّلت تتبّعها. راجع إفصاح البورصة قبل أي قرار.</p>'
+ +'<p class="mu" style="margin:4px 0">«آخر يوم للأحقية» هو نهاية الحق المعلن من البورصة: من يملك السهم حتى نهاية جلسته يستحق الكوبون. التنبيه لا يعمل إلا للتوزيعات المؤكدة التي اجتازت التحقق وللأسهم التي تملكها أو في قائمة متابعتك فقط؛ أي سهم آخر يُستبعد تلقائيًا. راجع إفصاح البورصة قبل أي قرار.</p>'
  +'<div class="dvt"><div><label for="dvTax">ضريبة التوزيعات %</label><input id="dvTax" type="number" min="0" max="50" step="0.5" value="'+S.cfg.tax+'"></div><button id="dvN" class="sec sm">'+(S.cfg.notif&&typeof Notification!=='undefined'&&Notification.permission==='granted'?'🔔 الإشعارات مفعّلة':'🔔 تفعيل الإشعارات')+'</button><button id="dvI" class="sec sm">📆 تصدير للتقويم (تنبيه بالخلفية)</button><button id="dvQ" class="sec sm">⟳ تحديث الأسعار</button><button id="dvF" class="sec sm">🔎 جلب تلقائي للتقدير</button></div>'
- +(mineTot.n?'<div class="al">نقد متوقع من أسهمك المؤكدة القادمة: <b>'+fmt(mineTot.v)+' ج</b> صافي بعد الضريبة ('+mineTot.n+' توزيع)</div>':'')+(up.length?up.map(card).join(''):'<p class="mu">لا توجد توزيعات قادمة مسجّلة.</p>')+(es.length?'<h2>📈 توقعات تقديرية من نمط سابق</h2>'+es.map(ecard).join(''):'')
+ +(mineTot.n?'<div class="dvhero"><div class="dvstat net"><small>صافي التدفق النقدي المتوقع</small><b>'+money(mineTot.v)+' ج</b></div><div class="dvstat"><small>إجمالي قبل الضريبة</small><b>'+money(r2(mineTot.g))+'</b></div><div class="dvstat"><small>الضريبة '+S.cfg.tax+'%</small><b>− '+money(r2(mineTot.t))+'</b></div><div class="dvstat"><small>توزيعات مؤكدة</small><b>'+mineTot.n+'</b></div></div>':'<div class="al">لا توجد توزيعات مؤكدة قادمة لأسهمك الحالية.</div>')+(up.length?up.map(card).join(''):'<p class="mu">لا توجد توزيعات قادمة مسجّلة.</p>')+idleHtml+(es.length?'<h2>📈 توقعات تقديرية من نمط سابق</h2>'+es.map(ecard).join(''):'')
  +(ps.length?'<details class="fvbox"><summary>توزيعات منتهية ('+ps.length+')</summary>'+ps.map(card).join('')+'</details>':'')
  +'<details class="fvbox"><summary>＋ إضافة أو تأكيد توزيع</summary><div class="dvf"><div><label for="dvS">الرمز</label><input id="dvS" list="egxl" dir="ltr"></div><div><label for="dvA">الكوبون (ج/سهم)</label><input id="dvA" type="number" min="0" step="any" inputmode="decimal"></div><div><label for="dvC">آخر يوم للأحقية</label><input id="dvC" type="date"></div><div><label for="dvP">تاريخ الصرف</label><input id="dvP" type="date"></div><div><label for="dvN2">رقم الكوبون (اختياري)</label><input id="dvN2"></div><div><label for="dvT">الحالة</label><select id="dvT"><option value="official">مؤكد رسميًا</option><option value="est">تقديري</option></select></div></div><label for="dvR">المصدر (إلزامي للمؤكد)</label><input id="dvR" placeholder="مثال: إفصاح البورصة بتاريخ ..."><button id="dvAdd" style="margin-top:10px">حفظ بعد التحقق</button></details>'
  +'<p class="mu" style="font-size:.76rem;margin-top:10px">لا يشمل الجدول كل الأسهم المقيدة؛ يُضاف أي توزيع جديد من إفصاحات البورصة. العطل الرسمية لا تُحتسب تلقائيًا. التقدير الضريبي افتراضي قابل للتعديل وليس استشارة ضريبية.</p>';
@@ -2384,7 +2417,7 @@ pn.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)r
   if(typeof getEgxMarketQuote==='function')await Promise.all(ss.map(s=>getEgxMarketQuote(s,g('px')&&g('px').value).catch(()=>null)));render();banner();toast('اكتمل تحديث الأسعار')}});
 pn.addEventListener('change',e=>{if(e.target.id==='dvTax'){S.cfg.tax=Math.min(50,Math.max(0,+e.target.value||0));save();render();banner()}});
 const ics=s=>String(s).replace(/[\\;,]/g,'\\$&').replace(/\n/g,'\\n');
-function exp(){const w=watched(),ow=owned(),L=S.ev.filter(e=>ok(e)&&P(e.cum)>=today()&&(e.fol||w.includes(e.sym)||e.sym in ow));
+function exp(){const L=S.ev.filter(e=>ok(e)&&P(e.cum)>=today()&&relevant(e));
  if(!L.length){toast('لا توجد توزيعات مؤكدة ومتابَعة للتصدير',true);return}
  const out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Nawa//Dividends//AR','CALSCALE:GREGORIAN'],st=new Date().toISOString().replace(/[-:]|\.\d+/g,'');
  L.forEach(e=>{const c=P(e.cum),a=advise(e);out.push('BEGIN:VEVENT','UID:'+e.id+'@nawa','DTSTAMP:'+st,'DTSTART;VALUE=DATE:'+dstr(c).replace(/-/g,''),'DTEND;VALUE=DATE:'+dstr(c+DAY).replace(/-/g,''),
@@ -2394,7 +2427,9 @@ function exp(){const w=watched(),ow=owned(),L=S.ev.filter(e=>ok(e)&&P(e.cum)>=to
   const pp=P(e.pay);if(!isNaN(pp))out.push('BEGIN:VEVENT','UID:'+e.id+'-pay@nawa','DTSTAMP:'+st,'DTSTART;VALUE=DATE:'+dstr(pp).replace(/-/g,''),'DTEND;VALUE=DATE:'+dstr(pp+DAY).replace(/-/g,''),'SUMMARY:'+ics('بدء صرف كوبون '+e.sym+' ('+fmt(e.dps)+' ج)'),'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+ics('صرف كوبون '+e.sym),'TRIGGER;RELATED=START:PT9H','END:VALARM','END:VEVENT')});
  out.push('END:VCALENDAR');const url=URL.createObjectURL(new Blob([out.join('\r\n')],{type:'text/calendar;charset=utf-8'})),a=document.createElement('a');
  a.href=url;a.download='nawa-dividends.ics';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('صُدّر '+L.length+' توزيع بتنبيهات قبل 7 و3 ويوم واحد وصباح اليوم نفسه')}
-window.__dv={P,today,trade,check,advise,due,S,est,fetchDiv};
+if(/[?&]tab=divs\b/.test(location.search))setTimeout(show,300);
+if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.type==='OPEN_DIVS'){show();scrollTo({top:0,behavior:'smooth'})}});
+window.__dv={card,relevant,P,today,trade,check,advise,due,S,est,fetchDiv};
 banner();setTimeout(notify,1500);setTimeout(()=>fetchDiv().then(()=>banner()),4000);
 setInterval(()=>{banner();notify()},30*60*1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){banner();notify()}});

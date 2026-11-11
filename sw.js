@@ -1,5 +1,5 @@
 /* نواة PWA — كاش محلي للغلاف فقط، مع تحديث شبكي للنسخة المنشورة. */
-const CACHE_NAME = 'nawa-pwa-shell-v25';
+const CACHE_NAME = 'nawa-pwa-shell-v27';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_URLS = ['./','./index.html','./manifest.webmanifest','./data/vlmra-egp-history.json','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png'].map(path => new URL(path, BASE_URL).href);
 const isShell = url => /\/(index\.html|manifest\.webmanifest|sw\.js)$/.test(url.pathname) || url.href === BASE_URL.href;
@@ -28,7 +28,7 @@ self.addEventListener('fetch', event => {
   event.respondWith((async()=>{
     const cache=await caches.open(CACHE_NAME);
     if(isShell(url) || isData(url) || request.mode==='navigate') {
-      try { const response=await fetchTimeout(request,{cache:'no-store'},6000); if(response.ok) cache.put(request.mode==='navigate'?new URL('./index.html',BASE_URL).href:request,response.clone()).catch(()=>{}); return response; }
+      try { const response=await fetchTimeout(request,{cache:'no-store'},6000); if(response.ok) cache.put(request.mode==='navigate'?new URL('./index.html',BASE_URL).href:request,response.clone()).catch(()=>{}); if(!response.ok&&response.status>=500){const c=await cache.match(request,{ignoreSearch:true});if(c)return c} return response; }
       catch(_) { return (await cache.match(request,{ignoreSearch:true})) || (await cache.match(new URL('./index.html',BASE_URL).href)) || new Response('<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width"><body style="font:16px system-ui;background:#0b1220;color:#e8eef8;padding:2rem;direction:rtl">التطبيق غير متاح دون اتصال حاليًا. افتحه مرة واحدة متصلًا ليُحفظ على الجهاز.</body>',{status:503,headers:{'Content-Type':'text/html; charset=utf-8'}}); }
     }
     const cached=await cache.match(request);
@@ -43,8 +43,8 @@ self.addEventListener('notificationclick', event => {
   event.notification.close();
   event.waitUntil((async()=>{
     const list=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-    for(const c of list){ if(c.url.startsWith(BASE_URL.href) && 'focus' in c) return c.focus(); }
-    return self.clients.openWindow(BASE_URL.href);
+    for(const c of list){ if(c.url.startsWith(BASE_URL.href) && 'focus' in c){ try{c.postMessage({type:'OPEN_DIVS'})}catch(_){} return c.focus(); } }
+    return self.clients.openWindow(new URL('?tab=divs',BASE_URL).href);
   })());
 });
 

@@ -2284,6 +2284,9 @@ new MutationObserver(()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;d.querySe
 @media(max-width:420px){#tab-divs .dvcash,#tab-divs .dvhero{grid-template-columns:1fr 1fr}#tab-divs .dvcash .net{grid-column:1/-1}#tab-divs .dvstat b{font-size:.92rem}}
 @media(prefers-reduced-motion:reduce){#tab-divs .dvbar i{transition:none}}
 @media print{#dvBanner,#tab-divs{display:none!important}}
+#tab-divs button:focus-visible,#tab-divs input:focus-visible,#tab-divs summary:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+#tab-divs summary{cursor:pointer}
+@media(prefers-reduced-motion:reduce){#tab-divs *{transition:none!important;animation:none!important}}
 </style>
 <script id="nawa-div">
 (()=>{'use strict';
@@ -2337,7 +2340,7 @@ function advise(e){const T=today(),c=P(e.cum),d=Math.round((c-T)/DAY),q=px(e.sym
  else if(d<0){o.lv='mu';o.t='انتهى الحق؛ الشراء الآن لا يمنح هذا الكوبون.'+(P(e.pay)>=T?' الكوبون بانتظار الصرف في '+dfmt(P(e.pay))+'.':'')}
  else if(d===0){o.lv='dn';o.t='اليوم آخر يوم للأحقية: الشراء المنفَّذ قبل نهاية جلسة اليوم يستحق الكوبون. لا تؤجل القرار.'}
  else{const by=Math.max(prevT(c),T);o.lv=d<=1?'dn':d<=3?'nt':'up';
-  o.t=(ny!=null&&ny<cost)?'العائد الصافي ('+ny.toFixed(2)+'%) أقل من تكلفة الصفقة ('+cost+'%): لا يبرر الشراء لأجل التوزيع وحده.':'التوقيت الآمن للشراء: حتى '+dfmt(by)+' (قبل الجلسة الأخيرة بجلسة) لتفادي تعذّر التنفيذ؛ متبقٍ '+tdLeft(T,c)+' جلسة (تشمل اليوم إن كان يوم تداول).';
+  o.t=(ny!=null&&ny<cost)?'العائد الصافي ('+ny.toFixed(2)+'%) أقل من تكلفة الصفقة ('+cost+'%): لا يبرر الشراء لأجل التوزيع وحده.':'التوقيت الآمن للشراء: حتى '+dfmt(by)+' (قبل الجلسة الأخيرة بجلسة) لتفادي تعذّر التنفيذ؛ متبقٍ '+(n=>n===1?'جلسة واحدة':n===2?'جلستان':n<=10?n+' جلسات':n+' جلسة')(tdLeft(T,c))+' (تشمل اليوم إن كان يوم تداول).';
   o.t+=' تذكّر: ينخفض سعر السهم غالبًا بقدر الكوبون بعد نهاية الحق، فالتوزيع ليس ربحًا إضافيًا بحد ذاته.'}
  return o}
 /* جلب تلقائي لتاريخ التوزيعات (Yahoo عبر الوسيط) لأسهمك ومتابعتك فقط؛ يُستخدم للتقدير لا للتنبيه */
@@ -2359,13 +2362,13 @@ const ecard=e=>'<div class="dvc"><div class="dvh"><b class="dvs">'+esc(e.sym)+'<
 const due=()=>{const T=today();return S.ev.filter(e=>{const c=P(e.cum);return ok(e)&&c>=T&&(c-T)/DAY<=7&&relevant(e)}).sort((a,b)=>P(a.cum)-P(b.cum))};
 /* الإشعارات تعمل أثناء فتح التطبيق فقط (لا خادم دفع)؛ التقويم هو التنبيه الموثوق في الخلفية */
 async function notify(){if(!S.cfg.notif||typeof Notification==='undefined'||Notification.permission!=='granted')return;
- const T=today();for(const e of due()){const d=Math.round((P(e.cum)-T)/DAY),lv=[0,1,3,7].find(o=>d<=o),k=e.id+'|'+lv;if(S.ack[k])continue;const a=advise(e);
+ const T=today();for(const e of due()){const d=Math.round((P(e.cum)-T)/DAY),lv=[0,1,3,7].find(o=>d<=o),k=e.id+'|'+lv;if(S.ack[k]||(lv===7&&e.sym in owned()))continue;const a=advise(e);
   const o={body:e.sym+' — آخر يوم للأحقية '+dfmt(P(e.cum))+' • كوبون '+fmt(e.dps)+' ج'+(a.gy!=null?' ('+a.gy.toFixed(1)+'%)':'')+'. '+a.t.split(' تذكّر')[0],tag:k,lang:'ar',dir:'rtl',icon:new URL('icons/icon-192.png',location.href).href,badge:new URL('icons/icon-192.png',location.href).href};
   try{const r=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(r&&r.showNotification)await r.showNotification('نواة: استحقاق توزيعات قريب',o);else new Notification('نواة: استحقاق توزيعات قريب',o);S.ack[k]=Date.now()}catch(x){}}
  Object.keys(S.ack).forEach(k=>{if(Date.now()-S.ack[k]>60*DAY)delete S.ack[k]});save()}
 const ban=document.createElement('div');ban.id='dvBanner';ban.className='c';
 const hd=document.querySelector('.w>header');if(hd)hd.after(ban);
-function banner(){const L=due();if(!L.length){ban.style.display='none';ban.innerHTML='';return}
+function banner(){const ow=owned(),L=due().filter(e=>!(e.sym in ow));if(!L.length){ban.style.display='none';ban.innerHTML='';return}
  ban.style.display='block';ban.innerHTML='<b>⏰ استحقاق توزيعات قريب</b>'+L.slice(0,4).map(e=>{const a=advise(e);return'<div class="dvl '+a.lv+'">'+esc(e.sym)+' — '+(a.d===0?'اليوم آخر يوم':'بعد '+a.d+' يوم')+' ('+dfmt(P(e.cum))+') • كوبون '+fmt(e.dps)+' ج'+(a.gy!=null?' ('+a.gy.toFixed(1)+'%)':'')+'</div>'}).join('')+'<button class="sec sm" data-go="1" style="margin-top:6px">فتح التوزيعات</button>'}
 const tabs=document.querySelector('.tabs'),tb=document.createElement('div');
 tb.className='tab';tb.dataset.dv='1';tb.textContent='التوزيعات';tb.setAttribute('role','tab');tb.id='tabbtn-divs';tb.setAttribute('aria-controls','tab-divs');tb.setAttribute('aria-selected','false');tb.tabIndex=-1;
@@ -2374,7 +2377,7 @@ const pn=document.createElement('div');pn.id='tab-divs';pn.setAttribute('role','
 function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});
  tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;
  ['analyze','portfolio','history','settings','holdings'].forEach(i=>{const el=g('tab-'+i);if(el)el.style.display='none'});
- pn.style.display='block';render();banner();fetchDiv().then(n=>{if(n&&pn.style.display==='block')render()})}
+ pn.style.display='block';render();tabs.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});banner();fetchDiv().then(n=>{if(n&&pn.style.display==='block')render()})}
 tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;if(t===tb)show();else pn.style.display='none'});
 ban.addEventListener('click',e=>{if(e.target.closest('[data-go]')){show();scrollTo({top:0,behavior:'smooth'})}});
 const bdg=e=>e.conf==='official'?'<span class="lb">مؤكد رسميًا</span>':'<span class="tag">تقديري — بلا تنبيه</span>';
@@ -2387,7 +2390,7 @@ function card(e){const T=today(),c=P(e.cum),a=advise(e),k=check(e),ex=isNaN(c)?N
  +'<div class="dvtl">'+stp('آخر يوم للأحقية',c)+stp('أول جلسة بدونه',ex)+stp('الصرف',pp)+'</div>'
  +'<div class="dvm"><div><small>الكوبون للسهم</small><b>'+money(e.dps)+' ج</b></div><div><small>العائد إجمالي / صافي</small><b>'+(a.gy==null?'—':a.gy.toFixed(2)+'% / '+a.ny.toFixed(2)+'%')+'</b></div></div>'
  +(a.own?'<div class="dvcash"><div><small>'+fmt(a.own)+' سهم · إجمالي</small><b>'+money(a.gross)+'</b></div><div><small>ضريبة '+S.cfg.tax+'%</small><b>− '+money(a.tx)+'</b></div><div class="net"><small>الصافي (ج)</small><b>'+money(a.cash)+'</b></div></div>':'<div class="mu dvw">قائمة متابعة — لا تملك أسهماً منه حالياً.</div>')
- +'<div class="al">'+esc(a.t)+'</div>'
+ +(a.own&&a.d<0?'<p class="mu" style="font-size:.76rem">المبلغ محسوب على كميتك الحالية؛ الاستحقاق الفعلي لمن كان مالكًا حتى نهاية جلسة الأحقية.</p>':'')+'<div class="al">'+esc(a.t)+'</div>'
  +((k.er.length||k.wn.length||e.note)?'<ul class="dvk">'+k.er.map(x=>'<li class="dn">✕ '+esc(x)+'</li>').join('')+k.wn.map(x=>'<li class="nt">⚠ '+esc(x)+'</li>').join('')+(e.note?'<li class="nt">ℹ '+esc(e.note)+'</li>':'')+'</ul>':'')
  +'<p class="mu" style="font-size:.76rem">'+(k.er.length?'':'✓ اجتاز التحقق • ')+'المصدر: '+esc(e.src||'غير مذكور')+(e.cpn?' • كوبون رقم '+esc(e.cpn):'')+'</p>'
  +'<div class="dvb"><button class="sec sm" data-act="edit" data-id="'+esc(e.id)+'">تعديل</button><button class="sec sm dn" data-act="del" data-id="'+esc(e.id)+'">حذف</button></div></div>'}
@@ -2396,7 +2399,7 @@ function render(){const ids=['dvS','dvA','dvC','dvP','dvN2','dvT','dvR'],keep=id
  const ow=owned(),busy=new Set(up.map(e=>e.sym)),idle=[...new Set([...Object.keys(ow).filter(x=>ow[x]>0),...watched()])].filter(x=>!busy.has(x)),
   idleHtml=idle.length?'<details class="fvbox"><summary>أسهم بلا توزيع قادم معلن ('+idle.length+')</summary>'+idle.map(x=>{const L=(S.auto[x]&&S.auto[x].L)||[],l=L[L.length-1];return'<div class="dvi"><b class="dvs">'+esc(x)+'</b><span>'+esc(hname(x))+'</span><span class="mu">'+(l?'آخر كوبون '+money(l.a)+' ج ('+esc(l.d)+')':'لا بيانات سابقة')+'</span></div>'}).join('')+'</details>':'';
  pn.innerHTML='<h2 style="margin:0">📅 توزيعات الأرباح <span class="mu">(الأسهم المصرية)</span></h2>'
- +'<p class="mu" style="margin:4px 0">«آخر يوم للأحقية» هو نهاية الحق المعلن من البورصة: من يملك السهم حتى نهاية جلسته يستحق الكوبون. التنبيه لا يعمل إلا للتوزيعات المؤكدة التي اجتازت التحقق وللأسهم التي تملكها أو في قائمة متابعتك فقط؛ أي سهم آخر يُستبعد تلقائيًا. راجع إفصاح البورصة قبل أي قرار.</p>'
+ +'<details class="fvbox"><summary>كيف تعمل التنبيهات ومتى تصلك؟</summary><p class="mu" style="margin:4px 0">«آخر يوم للأحقية» هو نهاية الحق المعلن من البورصة: من يملك السهم حتى نهاية جلسته يستحق الكوبون. التنبيه لا يعمل إلا للتوزيعات المؤكدة التي اجتازت التحقق وللأسهم التي تملكها أو في قائمة متابعتك فقط؛ أي سهم آخر يُستبعد تلقائيًا. راجع إفصاح البورصة قبل أي قرار.</p></details>'
  +'<div class="dvt"><div><label for="dvTax">ضريبة التوزيعات %</label><input id="dvTax" type="number" min="0" max="50" step="0.5" value="'+S.cfg.tax+'"></div><button id="dvN" class="sec sm">'+(S.cfg.notif&&typeof Notification!=='undefined'&&Notification.permission==='granted'?'🔔 الإشعارات مفعّلة':'🔔 تفعيل الإشعارات')+'</button><button id="dvI" class="sec sm">📆 تصدير للتقويم (تنبيه بالخلفية)</button><button id="dvQ" class="sec sm">⟳ تحديث الأسعار</button><button id="dvF" class="sec sm">🔎 جلب تلقائي للتقدير</button></div>'
  +(mineTot.n?'<div class="dvhero"><div class="dvstat net"><small>صافي التدفق النقدي المتوقع</small><b>'+money(mineTot.v)+' ج</b></div><div class="dvstat"><small>إجمالي قبل الضريبة</small><b>'+money(r2(mineTot.g))+'</b></div><div class="dvstat"><small>الضريبة '+S.cfg.tax+'%</small><b>− '+money(r2(mineTot.t))+'</b></div><div class="dvstat"><small>توزيعات مؤكدة</small><b>'+mineTot.n+'</b></div></div>':'<div class="al">لا توجد توزيعات مؤكدة قادمة لأسهمك الحالية.</div>')+(up.length?up.map(card).join(''):'<p class="mu">لا توجد توزيعات قادمة مسجّلة.</p>')+idleHtml+(es.length?'<h2>📈 توقعات تقديرية من نمط سابق</h2>'+es.map(ecard).join(''):'')
  +(ps.length?'<details class="fvbox"><summary>توزيعات منتهية ('+ps.length+')</summary>'+ps.map(card).join('')+'</details>':'')

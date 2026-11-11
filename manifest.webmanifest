@@ -9,7 +9,7 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0b1220",
+  "background_color": "#08111f",
   "theme_color": "#09111f",
   "categories": [
     "finance",
@@ -35,42 +35,16 @@
       "purpose": "maskable"
     }
   ],
-  "display_override": [
-    "standalone",
-    "minimal-ui"
-  ],
-  "prefer_related_applications": false,
   "shortcuts": [
     {
-      "name": "قائمة المتابعة",
-      "short_name": "المتابعة",
-      "url": "./?tab=portfolio&source=shortcut",
+      "name": "توزيعات الأرباح",
+      "short_name": "التوزيعات",
+      "url": "./?source=pwa&tab=divs",
       "icons": [
         {
           "src": "./icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "تحليل فني",
-      "short_name": "تحليل",
-      "url": "./?tab=analyze&source=shortcut",
-      "icons": [
-        {
-          "src": "./icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "سجل التحليل",
-      "short_name": "السجل",
-      "url": "./?tab=history&source=shortcut",
-      "icons": [
-        {
-          "src": "./icons/icon-192.png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }

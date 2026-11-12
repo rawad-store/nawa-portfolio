@@ -344,6 +344,7 @@ body.theme-light input::placeholder{color:#7a8da3}
 #tab-holdings .hT td[data-l="ربح/خسارة"],#tab-holdings .hT td[data-l="نسبة الربح/الخسارة"]{background:rgba(255,255,255,.045);border-radius:11px;padding:9px 12px}
 #tab-holdings .hT td[data-l="ربح/خسارة"]>.v,#tab-holdings .hT td[data-l="نسبة الربح/الخسارة"]>.v{font-size:1.2rem}
 #tab-holdings .hT td[data-l="الوزن"]>.v{display:block}
+#tab-holdings .hT td[data-l="إشارة الخروج"]>.v{direction:rtl;unicode-bidi:plaintext;font-size:.92rem;line-height:1.5;white-space:normal;overflow-wrap:anywhere;max-width:100%;text-align:right}
 #tab-holdings .hT .weight-bar{display:block;height:5px;margin-top:7px}
 #tab-holdings .hT td[colspan]{grid-column:1/-1}
 #tab-holdings .hT tr::before{content:"";position:absolute;right:0;top:16px;bottom:16px;width:4px;border-radius:4px 0 0 4px;background:var(--bd)}
@@ -367,8 +368,8 @@ body.theme-light input::placeholder{color:#7a8da3}
 button,select{touch-action:manipulation}
 input,select,textarea{max-width:100%}
 .ptable{min-width:620px}
-#tab-holdings .hT{min-width:900px}
-#tab-holdings .hT td[data-l]::before{content:attr(data-l)}
+@media(min-width:641px){#tab-holdings .hT{min-width:0;width:100%;table-layout:auto;font-size:.82rem}#tab-holdings .hT th,#tab-holdings .hT td{padding:8px 5px;white-space:nowrap;overflow-wrap:normal;vertical-align:middle}#tab-holdings .hT td.nm,#tab-holdings .hT td[data-l="إشارة الخروج"]{white-space:normal;overflow-wrap:anywhere}#tab-holdings .hT th{white-space:normal;line-height:1.3}#tab-holdings .hT td[data-l="إشارة الخروج"]{min-width:96px;font-size:.78rem;line-height:1.45}#tab-holdings .hT td.nm{min-width:110px}}
+@media(max-width:640px){#tab-holdings .hT td[data-l]::before{content:attr(data-l)}}
 #tab-holdings .hT td.nm::before{content:none}
 #out{overflow:hidden}
 @media(max-width:760px){

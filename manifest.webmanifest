@@ -37,6 +37,18 @@
   ],
   "shortcuts": [
     {
+      "name": "محفظتي الفعلية",
+      "short_name": "محفظتي",
+      "url": "./?source=pwa&tab=holdings",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "تحليل فني",
       "short_name": "تحليل",
       "url": "./?source=pwa&tab=analyze",

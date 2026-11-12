@@ -1894,7 +1894,7 @@ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
 
 /* ============ URL TAB ============ */
 const q=new URLSearchParams(location.search).get('tab');
-if(q){const t=document.querySelector('.tabs [data-tab="'+q.replace(/[^a-z]/g,'')+'"]');if(t)setTimeout(()=>t.click(),300)}
+if(q){const k=q.replace(/[^a-z]/g,'');setTimeout(()=>{const t=k==='holdings'?document.getElementById('tabbtn-holdings'):document.querySelector('.tabs [data-tab="'+k+'"]');if(t)t.click()},300)}
 
 /* ============ EXPORT GLOBALS ============ */
 window.__nawa={detectAsset,EGX,study,decide,decideWithCoverage,fvExit,fvValue,fvEnsure,portfolioSignal,sanity,saveMarketQuote,getCachedMarketQuote,getEgxMarketQuote,tvQuote,dayEG,fmt,esc,dlg,toast};

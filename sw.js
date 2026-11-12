@@ -1,5 +1,5 @@
 /* نواة PWA — كاش محلي للغلاف مع أولوية الشبكة ومهلة قصيرة، فلا ينتظر المستخدم على اتصال ضعيف. */
-const CACHE_NAME = 'nawa-pwa-shell-v30';
+const CACHE_NAME = 'nawa-pwa-shell-v31';
 const NET_TIMEOUT = 4500; // مللي ثانية قبل الرجوع إلى النسخة المحفوظة
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_URLS = ['./','./index.html','./manifest.webmanifest','./data/vlmra-egp-history.json','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png'].map(path => new URL(path, BASE_URL).href);
@@ -22,26 +22,29 @@ self.addEventListener('activate', event => event.waitUntil((async()=>{
   await self.clients.claim();
 })()));
 
-// شبكة أولاً بمهلة؛ عند الفشل أو التأخر تُقدَّم النسخة المحفوظة.
+// شبكة أولاً بمهلة؛ عند الفشل أو التأخر أو خطأ الخادم (5xx) تُقدَّم النسخة المحفوظة.
 async function networkFirst(event, cache){
   const request=event.request;
+  let bad=null; // استجابة 5xx تُعاد فقط إن لم توجد نسخة محفوظة
   const fromNet=(async()=>{
     const preload=await event.preloadResponse;
     const response=preload||await fetch(request,{cache:'no-store'});
+    if(response&&response.status>=500){ bad=response; throw new Error('HTTP '+response.status); }
     if(response&&response.ok) cache.put(request,response.clone()).catch(()=>{});
     return response;
   })();
+  // يُبقي العامل حيًا لإكمال التحديث في الخلفية حتى بعد تقديم النسخة المحفوظة عند المهلة.
+  event.waitUntil(fromNet.catch(()=>{}));
   const fallback=async()=>(await cache.match(request,{ignoreSearch:true}))||(request.mode==='navigate'?await cache.match(INDEX_URL):null);
+  let timer;
+  const timeout=new Promise((_,rej)=>{ timer=setTimeout(()=>rej(new Error('timeout')),NET_TIMEOUT); });
   try{
-    return await Promise.race([
-      fromNet,
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),NET_TIMEOUT))
-    ]);
+    return await Promise.race([fromNet,timeout]);
   }catch(_){
     const cached=await fallback();
-    if(cached) { fromNet.catch(()=>{}); return cached; }
-    try{ return await fromNet; }catch(__){ return Response.error(); }
-  }
+    if(cached) return cached;
+    try{ return await fromNet; }catch(__){ return bad||Response.error(); }
+  }finally{ clearTimeout(timer); }
 }
 
 self.addEventListener('fetch', event => {

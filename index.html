@@ -222,7 +222,7 @@ button:disabled,button[disabled]{filter:saturate(.5)}
 @media(pointer:coarse){button,select,input{min-height:44px}button.sm{min-height:38px;padding-inline:14px}}
 @media(max-width:680px){.ptable th,.ptable td{white-space:nowrap}.ptable td.rec{white-space:normal;min-width:250px;max-width:none;line-height:1.65;text-align:right}}
 #hl{content-visibility:auto;contain-intrinsic-size:auto 480px}
-.nb,.section-card,.history-disclosure{content-visibility:auto;contain-intrinsic-size:auto 200px}
+
 .hi{contain:content}
 canvas{contain:layout paint;max-width:100%;height:auto}
 body.theme-light input::placeholder{color:#7a8da3}
@@ -452,6 +452,32 @@ button:not(.sec):not(.wn):not(.dn){background:var(--grad);border-color:transpare
 @media(max-width:760px){body::after{display:none}body::before{animation:none}}
 </style>
 <style id="nawa-touch">@media(hover:none){button:hover:not(:disabled),.kv div:hover,.sc:hover,.kpi:hover,.tab:hover:not(.active){transform:none!important;box-shadow:none}}</style>
+<style id="nawa-polish">
+/* ---- إيقاع موحّد للحقول واللمس ---- */
+input,select,textarea{min-height:46px;font-size:16px;text-overflow:ellipsis}
+input::placeholder{font-size:.84rem;opacity:.7;text-overflow:ellipsis}
+select{appearance:auto;padding-block:9px}
+button,.tab,summary{min-height:44px}
+button.sm,.sortbar button{min-height:38px}
+/* ---- ملاحظة الهيرو: إشارة واضحة أنها قابلة للتوسيع ---- */
+.hero-note{position:relative}
+.hero-note:not(.open)::after{content:"المزيد ⌄";display:inline-block;margin-inline-start:6px;color:var(--ac);font-weight:700;white-space:nowrap}
+.hero-note.open::after{content:"أقل ⌃";display:inline-block;margin-inline-start:6px;color:var(--ac);font-weight:700}
+.hero-note:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+@media(min-width:681px){.hero-note{display:block;max-width:none;width:100%}.hero-note:not(.open)::after,.hero-note.open::after{display:none}}
+@media(max-width:680px){.hero-note:not(.open){-webkit-line-clamp:1;padding-left:74px!important;position:relative}.hero-note:not(.open)::after{position:absolute;left:10px;top:50%;transform:translateY(-50%);margin:0;font-size:.7rem;background:rgba(40,32,12,.9);padding-inline:4px;border-radius:6px;line-height:1.6}.hero{padding:14px 16px}.hero h1{font-size:1.45rem}.hero>p{display:none}.hero-top{margin-bottom:8px}}
+/* ---- شريط التبويبات: تمرير سلس وظل يوضّح وجود المزيد ---- */
+.tabs{scroll-snap-type:x proximity;scroll-padding-inline:12px}
+.tab{scroll-snap-align:center}
+html{scroll-padding-top:12px;-webkit-text-size-adjust:100%}
+body{padding-bottom:max(24px,env(safe-area-inset-bottom))}
+/* ---- بطاقات: بدون قفزات عند التحميل ---- */
+.section-card,.nb,.history-disclosure{content-visibility:visible}
+/* ---- حركة أقل لمن يفضّلها ---- */
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+/* ---- لمس: بلا لون تحديد مزعج ولا تأخير ---- */
+@media(hover:none){a,button,.tab,summary,tr[data-sym],tr[data-hs]{-webkit-tap-highlight-color:transparent}}
+</style>
 </head>
 <body>
 <a class="skip-link" href="#main-content">تجاوز إلى المحتوى الرئيسي</a>
@@ -480,7 +506,7 @@ button:not(.sec):not(.wn):not(.dn){background:var(--grad);border-color:transpare
 
 <div id="tab-analyze" role="tabpanel" aria-labelledby="tabbtn-analyze">
 <div class="g">
-<div><label for="sy">الرمز أو الاسم</label><input id="sy" list="egxl" placeholder="ABUK • BTCUSDT • AAPL" maxlength="40" autocomplete="off"></div>
+<div><label for="sy">الرمز أو الاسم</label><input id="sy" list="egxl" placeholder="مثال: AAPL أو ABUK" maxlength="40" autocomplete="off"></div>
 <div><label for="tf">الإطار</label><select id="tf"><option value="1d" selected>يومي</option><option value="1w">أسبوعي</option><option value="4h">4 ساعات</option><option value="1h">ساعة</option></select></div>
 <div><label for="ac">رأس المال (بعملة السعر)</label><input id="ac" type="number" min="0" step="any" value="100000"><small class="field-help">استخدم العملة نفسها التي يُسعّر بها الأصل.</small></div>
 <div><label for="rk">المخاطرة لكل صفقة %</label><input id="rk" type="number" min="0.1" max="5" step="0.1" value="1"></div>
@@ -2233,7 +2259,7 @@ function paint(){
   if(!pn.dataset.ready)return;
   merge();
   const fillSelect=(id)=>{const el=$(id);if(!el)return;const cur=el.value;el.innerHTML=REF.map(r=>`<option value="${esc(r[0])}">${esc(r[0])}${r[4]>0?' • متوسط '+fmt(r[4]):''}</option>`).join('');if(REF.some(r=>r[0]===cur))el.value=cur};
-  fillSelect('mS');fillSelect('avgS');
+  fillSelect('mS');fillSelect('avgS');['mS','avgS'].forEach(id=>{const e=$(id);if(!e)return;if(!REF.length){e.innerHTML='<option value="">لا توجد أسهم بعد</option>';e.disabled=true}else e.disabled=false});
   const allRows=rowsNow(),rows=allRows.filter(r=>r.qty>0),zeroCount=allRows.length-rows.length;
   const fetched=Object.keys(Q).length>0,c=calc(rows),lim=+ld(K.lim,30);
   let h='';
@@ -2692,6 +2718,18 @@ window.__alerts={build};
 <script id="nawa-utils">
 /* ============ Watch manual prices ============ */
 function watchMan(){try{return JSON.parse(localStorage.getItem('u_watch_man_v1')||'{}')||{}}catch(e){return{}}}
+</script>
+<script id="nawa-polish-js">
+(function(){
+  const tabs=document.querySelector('.tabs'); if(!tabs) return;
+  const reveal=()=>{const a=tabs.querySelector('.tab.active'); if(!a) return;
+    try{const tr=tabs.getBoundingClientRect(),ar=a.getBoundingClientRect();
+      if(ar.left<tr.left+8||ar.right>tr.right-8){tabs.scrollTo({left:tabs.scrollLeft+(ar.left+ar.width/2)-(tr.left+tr.width/2),behavior:'smooth'})}}catch(_){}};
+  tabs.addEventListener('click',()=>setTimeout(reveal,60));
+  new MutationObserver(()=>setTimeout(reveal,30)).observe(tabs,{subtree:true,attributes:true,attributeFilter:['class']});
+  window.addEventListener('load',()=>setTimeout(reveal,200));
+  window.addEventListener('resize',()=>setTimeout(reveal,100));
+})();
 </script>
 </body>
 </html>

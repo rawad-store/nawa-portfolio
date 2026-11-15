@@ -1897,7 +1897,7 @@ const q=new URLSearchParams(location.search).get('tab');
 if(q){const k=q.replace(/[^a-z]/g,'');setTimeout(()=>{const t=k==='holdings'?document.getElementById('tabbtn-holdings'):document.querySelector('.tabs [data-tab="'+k+'"]');if(t)t.click()},300)}
 
 /* ============ EXPORT GLOBALS ============ */
-window.__nawa={detectAsset,EGX,study,decide,decideWithCoverage,fvExit,fvValue,fvEnsure,portfolioSignal,sanity,saveMarketQuote,getCachedMarketQuote,getEgxMarketQuote,tvQuote,dayEG,fmt,esc,dlg,toast};
+window.__nawa={detectAsset,loadAll,fvKey,EGX,study,decide,decideWithCoverage,fvExit,fvValue,fvEnsure,portfolioSignal,sanity,saveMarketQuote,getCachedMarketQuote,getEgxMarketQuote,tvQuote,dayEG,fmt,esc,dlg,toast};
 </script>
 
 <script id="nawa-hold">
@@ -2416,6 +2416,205 @@ if(document.readyState==='complete')autoOnLoad();else addEventListener('load',au
 
 // تصدير للمزامنة
 window.__hold={REF:()=>REF,refresh:()=>refresh({silent:false})};
+})();
+</script>
+
+<script id="nawa-best">
+/* ============ قرار الشراء — أفضل سهم في محفظتي ============ */
+(()=>{'use strict';
+const N=window.__nawa;
+if(!N||!N.loadAll||!N.fvKey)return;
+const {detectAsset,study,decideWithCoverage,fvExit,fvEnsure,sanity,loadAll,fvKey,fmt,esc,toast,portfolioSignal}=N;
+const pn=document.getElementById('tab-holdings');
+if(!pn)return;
+const $=id=>document.getElementById(id);
+const CK='u_best_buy_v1',FRESH_MS=30*60e3,AUTO_MAX=12;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const ld=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
+const holdList=()=>{const a=ld('u_hold_list_v3',[]);return Array.isArray(a)?a.filter(r=>Array.isArray(r)&&typeof r[0]==='string'&&r[0]).map(r=>({sym:r[0],name:r[1]||r[0],qty:Math.max(0,+r[2]||0)})):[]};
+let running=false,autoTried=false;
+const sigOf=l=>l.map(r=>r.sym+':'+r.qty).join('|');
+
+async function analyzeOne(item,tf,custom,cost){
+  const asset=detectAsset(item.sym);
+  const isVal=asset.type==='egx'&&String(asset.yahoo||'').toUpperCase().replace(/\.CA$/,'')==='VLMRA';
+  const etf=isVal&&['1h','4h'].includes(tf)?'1d':tf;
+  const R=await loadAll(asset,etf,custom,null);
+  const bad=sanity(R.bars,R.live);if(bad)throw Error(bad);
+  const {bars,live,higher}=R;
+  if(asset.type==='egx'||asset.type==='stock'){try{await fvEnsure(fvKey(item.sym),asset.yahoo,custom)}catch(e){}}
+  const x=study(bars,live&&live.price);
+  let h=higher&&higher.length>=60?study(higher,null):null;
+  if(h&&!h.coverage.decisionReady)h=null;
+  const d=decideWithCoverage(x,h,cost);
+  const fx=fvExit(item.sym,x,d,live);
+  let act=null;
+  if(item.qty>0&&typeof portfolioSignal==='function'){try{act=portfolioSignal(item.sym,x,d,fx)}catch(e){}}
+  return{item,x,h,d,fx,live,act,tf:etf};
+}
+
+/* تقييم سهم واحد: فحوص صارمة (تمنع الشراء) + درجة من 100 للترتيب */
+function evaluate(r,ctx){
+  const {x,h,d,fx,live,item}=r,p=d.plan,checks=[],blockers=[],warns=[];
+  const chk=(ok,txt,hard)=>{checks.push({ok:!!ok,txt});if(!ok&&hard)blockers.push(txt)};
+  const cov=x.coverage||{};
+  chk(cov.decisionReady===true,`بيانات كافية وحديثة (${cov.bars||0} من 60 شمعة)`,true);
+  chk(!!live&&live.source!=='ذاكرة محلية',`سعر حي${live?` من ${live.source||'مصدر مباشر'}`:' غير متاح'}`,true);
+  chk(d.v==='شراء'&&!!p,d.v==='شراء'?'خطة دخول كاملة':('الإشارة الفنية: '+d.v+(d.reason?' — '+d.reason:'')),true);
+  const out={sym:item.sym,name:item.name,owned:item.qty>0,px:x.px,tech:d.v,techReason:d.reason||'',conf:d.conf,act:r.act?{v:r.act.v,reason:r.act.reason}:null};
+  if(!p||blockers.length){
+    out.blockers=blockers;out.checks=checks;out.score=null;out.eligible=false;
+    out.why=blockers[0]||d.reason||'لا توجد أفضلية';
+    out.near=d.t;
+    return out;
+  }
+  const lastClose=x.b[x.b.length-1].c;
+  chk(p.s<p.e&&p.t[0]>p.e&&p.t[1]>p.t[0],'ترتيب الوقف والأهداف منطقي',true);
+  chk(Math.abs(x.px/lastClose-1)<=0.11,'السعر الحي متسق مع آخر شمعة (حد التذبذب اليومي 10%)',true);
+  chk(x.rsi<=74,`RSI لا يدل على تشبع شرائي (${x.rsi.toFixed(0)})`,true);
+  const netRR1=((p.t[0]-p.e)/p.e*100-ctx.cost)/(p.rkp+ctx.cost);
+  chk(netRR1>=1,`العائد/المخاطرة الصافي للهدف الأول ≥ 1 (${netRR1.toFixed(2)})`,true);
+  let fvPart=8,penalty=0;
+  if(fx.has&&!fx.suspect){
+    const fresh=fx.ageDays<=fx.maxAge;
+    if(!fresh)warns.push('القيمة العادلة قديمة؛ حدّثها قبل الاعتماد عليها.');
+    if(fx.prem>25)chk(false,`السعر أعلى من القيمة العادلة بـ ${fx.prem.toFixed(0)}%`,true);
+    else if(fx.prem>10){penalty+=15;warns.push(`السعر أعلى من القيمة العادلة بـ ${fx.prem.toFixed(0)}% (خُصمت 15 نقطة).`)}
+    fvPart=clamp((fx.mos+10)/40,0,1)*20*(fresh?1:.6);
+    if(fx.mos>=0)checks.push({ok:true,txt:`أقل من القيمة العادلة بـ ${fx.mos.toFixed(0)}% (${fx.method})`});
+  }else{
+    warns.push(fx.suspect?'القيمة العادلة المسجلة مشكوك فيها وأُهملت.':'لا توجد قيمة عادلة لهذا السهم؛ التقييم الأساسي محايد.');
+  }
+  if(x.rsi>=70)warns.push(`RSI مرتفع (${x.rsi.toFixed(0)}): الدخول عند تشبع نسبي.`);
+  if(d.limited)warns.push('بيانات محدودة.');
+  const pRsi=x.rsi>=50&&x.rsi<=65?5:x.rsi<=70?3:x.rsi>=45?2:1;
+  const parts={
+    tech:clamp((d.t-5.2)/5,0,1)*35,
+    rr:p.rr!=null?clamp((p.rr-1.35)/1.65,0,1)*10:5,
+    net:clamp(netRR1-1,0,1)*10,
+    fv:fvPart,
+    htf:h?(h.dir==='صاعد'?10:h.dir==='عرضي'?4:0):4,
+    vol:x.vr==null?3:clamp((x.vr-0.7)/0.8,0,1)*5,
+    risk:clamp((6-p.rkp)/4,0,1)*5,
+    rsi:pRsi
+  };
+  let score=Object.values(parts).reduce((a,b)=>a+b,0)-penalty;
+  /* حجم الصفقة: أصغر قيد من (مخاطرة، رأس مال، تركّز) */
+  const rkAmt=ctx.capital*ctx.riskPct/100;
+  const qRisk=Math.floor(rkAmt/p.rk),qCash=Math.floor(ctx.capital/p.e);
+  const owned=item.qty*x.px,lim=ctx.lim/100;
+  let qConc=Infinity;
+  if(ctx.total>0&&lim<1)qConc=Math.floor(Math.max(0,(lim*ctx.total-owned)/(1-lim))/p.e);
+  const qty=Math.max(0,Math.min(qRisk,qCash,qConc));
+  const bind=qty===qConc&&qConc<Math.min(qRisk,qCash)?'حد التركّز':qty===qCash&&qCash<qRisk?'رأس المال':'المخاطرة';
+  chk(qty>=1,qty>=1?`الكمية المقترحة ${qty.toLocaleString('en-US')} سهم (القيد: ${bind})`:`لا مساحة للشراء (القيد: ${bind})`,true);
+  if(qConc<Math.min(qRisk,qCash)&&qty>=1)warns.push('خُفّضت الكمية للالتزام بحد التركّز.');
+  const val=qty*p.e;
+  Object.assign(out,{blockers,checks,warns,parts,score:Math.round(clamp(score,0,100)),eligible:blockers.length===0,
+    plan:{e:p.e,s:p.s,t1:p.t[0],t2:p.t[1],rr:p.rr,rkp:p.rkp},netRR1,qty,val,riskAmt:qty*p.rk,
+    wAfter:(ctx.total+val)>0?(owned+val)/(ctx.total+val)*100:null,
+    fvTxt:fx.has&&!fx.suspect?`${fx.verdict} (${fx.prem>=0?'+':''}${fx.prem.toFixed(0)}%)`:'',
+    dir:x.dir,hdir:h?h.dir:null,tf:r.tf,why:blockers[0]||''});
+  return out;
+}
+
+async function run(){
+  if(running)return;
+  const list=holdList();
+  if(!list.length)return toast('المحفظة فارغة',true);
+  if(navigator.onLine===false)return toast('لا يوجد اتصال بالإنترنت',true);
+  running=true;paintBusy(0,list.length);
+  try{
+    const tf=($('tf')&&$('tf').value)||'1d',custom=($('px')&&$('px').value.trim())||'';
+    const cost=Math.max(0,parseFloat($('cs')&&$('cs').value)||0.4);
+    const capital=Math.max(0,+($('ac')&&$('ac').value)||0);
+    const riskPct=clamp(+($('rk')&&$('rk').value)||1,0.1,5);
+    const lim=+ld('u_hold_lim_v1',30)||30;
+    const queue=[...list],res=[],fail=[];let done=0;
+    const worker=async()=>{while(queue.length){const it=queue.shift();
+      try{res.push(await analyzeOne(it,tf,custom,cost))}catch(e){fail.push({sym:it.sym,msg:e.message||String(e)})}
+      done++;paintBusy(done,list.length);await new Promise(r=>setTimeout(r,120))}};
+    await Promise.all([worker(),worker(),worker()]);
+    const total=res.reduce((t,r)=>t+r.item.qty*r.x.px,0);
+    const ctx={cost,capital,riskPct,lim,total};
+    const rows=res.map(r=>evaluate(r,ctx));
+    rows.sort((a,b)=>(b.eligible-a.eligible)||((b.score??-1)-(a.score??-1))||((b.near??-99)-(a.near??-99)));
+    const data={ts:Date.now(),sig:sigOf(list),tf,cost,capital,riskPct,lim,rows,fail,count:list.length};
+    try{localStorage.setItem(CK,JSON.stringify(data))}catch(e){}
+    paintResult(data);
+  }catch(e){
+    const o=$('hBestOut'),b=$('hBestGo');if(b)b.disabled=false;
+    if(o)o.innerHTML=`<div class="al">تعذّر إكمال التحليل: ${esc(e&&e.message||String(e))}</div>`;
+  }finally{running=false}
+}
+
+function paintBusy(d,n){
+  const o=$('hBestOut'),b=$('hBestGo');if(b)b.disabled=true;
+  if(o)o.innerHTML=`<div class="progress"><div style="width:${n?d/n*100:0}%"></div></div><p class="mu">جاري تحليل أسهم المحفظة… ${d} / ${n}</p>`;
+}
+
+const grade=s=>s>=75?'قوي':s>=60?'جيد':'ضعيف';
+function paintResult(data){
+  const o=$('hBestOut'),b=$('hBestGo'),st=$('hBestSt');if(!o)return;
+  if(b)b.disabled=false;
+  const age=Math.round((Date.now()-data.ts)/60000);
+  if(st){st.textContent=age<=1?'محدّث الآن':`منذ ${age} د`;st.className='status-pill '+(age*60e3<=FRESH_MS?'live':'warn')}
+  const rows=data.rows||[],top=rows[0];
+  let h='';
+  const stale=Date.now()-data.ts>FRESH_MS,changed=data.sig!==sigOf(holdList());
+  if(stale||changed)h+=`<div class="al">⏱ ${changed?'تغيّرت أسهمك أو كمياتها بعد هذا التحليل':'عمر هذا التحليل '+age+' د'}؛ أعد «تحليل القرار» قبل أي تنفيذ، فالأسعار والإشارات تتغير.</div>`;
+  const attn=rows.filter(r=>r.act&&(r.act.v==='بيع / خفض'||r.act.v==='مراقبة خروج'));
+  if(attn.length)h+=`<div class="al" style="border-right-color:var(--dn)">🔔 <b>مراكز تحتاج انتباهاً:</b><br>${attn.map(r=>`<span class="ltr">${esc(r.sym)}</span>: <b>${esc(r.act.v)}</b> — ${esc(r.act.reason)}`).join('<br>')}</div>`;
+  if(!rows.length){
+    h+=`<div class="al">لم يكتمل تحليل أي سهم${data.fail&&data.fail.length?`: ${esc(data.fail[0].msg)}`:''}.</div>`;
+  }else if(top&&top.eligible&&top.score>=60){
+    const q=top.plan;
+    h+=`<div class="al" style="border-right-color:var(--up)">✅ <b>اشترِ: <span class="ltr">${esc(top.sym)}</span></b> — ${esc(top.name)} • درجة ${top.score}/100 (${grade(top.score)})${top.owned?' • مركز قائم (تعزيز)':' • سهم غير مملوك'}</div>`;
+    h+=`<div class="kpi-grid">
+      <div class="kpi"><div class="label">الدخول</div><div class="val ltr">${fmt(q.e)}</div><div class="sub">سعر حي</div></div>
+      <div class="kpi"><div class="label">وقف الخسارة</div><div class="val ltr dn">${fmt(q.s)}</div><div class="sub ltr">-${q.rkp.toFixed(1)}%</div></div>
+      <div class="kpi"><div class="label">الهدف 1 / 2</div><div class="val ltr up" style="font-size:1.05rem">${fmt(q.t1)} / ${fmt(q.t2)}</div><div class="sub">بعد الهدف 1 انقل الوقف للدخول</div></div>
+      <div class="kpi"><div class="label">الكمية المقترحة</div><div class="val ltr">${top.qty.toLocaleString('en-US')}</div><div class="sub ltr">${fmt(top.val)} ج.م${top.wAfter!=null?` • وزن ${top.wAfter.toFixed(1)}%`:''}</div></div>
+      <div class="kpi"><div class="label">الخسارة عند الوقف</div><div class="val ltr dn">${fmt(top.riskAmt)}</div><div class="sub">${data.riskPct}% من ${fmt(data.capital)}</div></div>
+      <div class="kpi"><div class="label">عائد/مخاطرة صافي</div><div class="val ltr">${top.netRR1.toFixed(2)}</div><div class="sub">للهدف 1 بعد تكلفة ${data.cost}%</div></div>
+    </div>`;
+    h+=`<div class="nb"><h3>التحقق قبل القرار</h3><ul>${top.checks.map(c=>`<li>${c.ok?'✅':'❌'} ${esc(c.txt)}</li>`).join('')}</ul></div>`;
+    if(top.warns&&top.warns.length)h+=`<div class="nb"><h3>تحذيرات</h3><ul>${top.warns.map(w=>`<li>⚠️ ${esc(w)}</li>`).join('')}</ul></div>`;
+    h+=`<div class="nb"><h3>لماذا هذا السهم؟</h3><ul>
+      <li>الاتجاه ${esc(top.dir)}${top.hdir?` والإطار الأكبر ${esc(top.hdir)}`:''} على إطار ${esc(top.tf)}.</li>
+      ${top.fvTxt?`<li>التقييم: ${esc(top.fvTxt)}.</li>`:''}
+      <li>درجته ${top.score} مقابل ${rows[1]&&rows[1].score!=null?rows[1].score:'—'} للتالي في الترتيب.</li></ul></div>`;
+  }else{
+    const near=top&&top.eligible?top:null;
+    h+=`<div class="al" style="border-right-color:var(--wn)">⏸ <b>لا شراء الآن في محفظتك.</b> ${near?`أفضل مرشح <span class="ltr">${esc(near.sym)}</span> درجته ${near.score}/100 أقل من حد 60؛ الأفضل الانتظار.`:'لا يوجد سهم اجتاز كل الفحوص الصارمة. الانتظار قرار سليم.'}</div>`;
+  }
+  if(rows.length){
+    h+=`<div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>القرار</th><th>الدرجة</th><th>السبب</th></tr></thead><tbody>`+
+      rows.map((r,i)=>{
+        const dec=r.eligible?(i===0&&r.score>=60?'<b class="up">شراء ★</b>':r.score>=60?'<span class="up">شراء ثانوي</span>':'<span class="mu">مراقبة</span>'):'<span class="dn">لا شراء</span>';
+        return`<tr><td class="nm"><b class="ltr">${esc(r.sym)}</b><div class="mu">${esc(r.name)}${r.owned?' • مملوك':''}</div></td><td>${dec}</td><td class="ltr">${r.score==null?'—':r.score}</td><td class="mu">${esc(r.eligible?(r.warns&&r.warns[0]||'اجتاز الفحوص'):r.why)}</td></tr>`}).join('')+`</tbody></table></div>`;
+  }
+  if(data.fail&&data.fail.length)h+=`<div class="al">⚠️ تعذّر تحليل ${data.fail.length} من ${data.count}: ${data.fail.map(f=>esc(f.sym)).join('، ')}. لم تدخل في الترتيب، وحد التركّز محسوب على الأسهم المكتملة فقط.</div>`;
+  h+=`<p class="mu">يعتمد القرار على الشموع والسعر الحي والقيمة العادلة المتاحة في التطبيق، ولا يضمن ربحاً. هو أداة مساعدة وليست نصيحة استثمارية؛ راجع السيولة والأخبار قبل التنفيذ. تحليل ${new Date(data.ts).toLocaleTimeString('ar-EG')} • إطار ${esc(data.tf)}.</p>`;
+  o.innerHTML=h;
+}
+
+function mount(){
+  const out=$('hOut');
+  if(!out||$('hBestCard'))return;
+  const card=document.createElement('div');
+  card.className='section-card';card.id='hBestCard';
+  card.innerHTML=`<div class="hdr-row"><h3 style="margin:0"><span class="ico">🎯</span> قرار الشراء — أفضل سهم في محفظتي</h3><div class="hdr-actions"><span class="status-pill" id="hBestSt">لم يُحلَّل بعد</span><button id="hBestGo" class="wn sm" type="button">تحليل القرار</button></div></div><div id="hBestOut" class="mu" style="margin-top:10px">اضغط «تحليل القرار» ليفحص التطبيق كل أسهم محفظتك ويختار الأفضل للشراء أو يقول لك أن تنتظر.</div>`;
+  out.parentNode.insertBefore(card,out);
+  $('hBestGo').onclick=run;
+  const c=ld(CK,null);
+  if(c&&Array.isArray(c.rows)&&Date.now()-c.ts<=FRESH_MS){paintResult(c);return}
+  if(c&&Array.isArray(c.rows))paintResult(c);
+  if(!autoTried){autoTried=true;const n=holdList().length;
+    if(n>0&&n<=AUTO_MAX)setTimeout(()=>{if(!running&&$('hBestGo'))run()},1500)}
+}
+mount();
+new MutationObserver(mount).observe(pn,{childList:true});
 })();
 </script>
 

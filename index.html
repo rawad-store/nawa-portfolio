@@ -418,7 +418,7 @@ button:not(.sec):not(.wn):not(.dn){background:var(--grad);border-color:transpare
 .progress>div{background:linear-gradient(90deg,var(--ac),var(--ac2),var(--ac));background-size:200% 100%;animation:np-sh 1.4s linear infinite}
 @keyframes np-sh{to{background-position:-200% 0}}
 .np-top{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:16px;z-index:50;width:42px;height:42px;border-radius:50%;padding:0;display:grid;place-items:center;font-size:1.1rem;opacity:0;transform:translateY(14px) scale(.9);pointer-events:none;transition:opacity .25s,transform .3s var(--ease)}
-.np-top.show{opacity:.92;transform:none;pointer-events:auto}
+.np-top.show{opacity:.72;transform:none;pointer-events:auto;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}.np-top.show:hover,.np-top.show:focus-visible,.np-top.show:active{opacity:1}
 @media(max-width:760px){body::after{display:none}body::before{animation:none}}
 @media(hover:none){button:hover:not(:disabled),.kv div:hover,.sc:hover,.kpi:hover,.tab:hover:not(.active){transform:none!important;box-shadow:none}}
 /* ---- إيقاع موحّد للحقول واللمس ---- */
@@ -2583,7 +2583,7 @@ function paintResult(data){
     const near=top&&top.eligible?top:null;
     const cands=rows.filter(r=>r.cand&&r.cand.ok).sort((a,b)=>b.cand.score-a.cand.score);
     h+=candHtml(cands,data,rows);
-    h+=`<div class="al" style="border-right-color:var(--wn)">⏸ <b>لا شراء الآن في محفظتك.</b> ${near?`أفضل مرشح <span class="ltr">${esc(near.sym)}</span> درجته ${near.score}/100 أقل من حد 60؛ الأفضل الانتظار.`:'لا يوجد سهم اجتاز كل الفحوص الصارمة. الانتظار قرار سليم.'}</div>`;
+    h+=`<div class="al" style="border-right-color:var(--wn)">⏸ <b>لا شراء الآن في محفظتك.</b> ${near?`أعلى درجة في الفحص الصارم <span class="ltr">${esc(near.sym)}</span> (${near.score}/100) أقل من حد 60${near.prem>0?` وسعره فوق قيمته العادلة بنحو ${near.prem.toFixed(0)}%`:''}${cands[0]&&cands[0].sym!==near.sym?`. أما أقرب مرشح بالتقييم فهو <span class="ltr">${esc(cands[0].sym)}</span>`:''}؛ الأفضل الانتظار.`:'لا يوجد سهم اجتاز كل الفحوص الصارمة. الانتظار قرار سليم.'}</div>`;
   }
   if(rows.length){
     h+=`<div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>القرار</th><th>الدرجة</th><th>السبب</th></tr></thead><tbody>`+

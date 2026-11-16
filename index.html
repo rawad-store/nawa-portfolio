@@ -2461,7 +2461,16 @@ function evaluate(r,ctx){
   chk(cov.decisionReady===true,`بيانات كافية وحديثة (${cov.bars||0} من 60 شمعة)`,true);
   chk(!!live&&live.source!=='ذاكرة محلية',`سعر حي${live?` من ${live.source||'مصدر مباشر'}`:' غير متاح'}`,true);
   chk(d.v==='شراء'&&!!p,d.v==='شراء'?'خطة دخول كاملة':('الإشارة الفنية: '+d.v+(d.reason?' — '+d.reason:'')),true);
-  const out={sym:item.sym,name:item.name,owned:item.qty>0,px:x.px,tech:d.v,techReason:d.reason||'',conf:d.conf,act:r.act?{v:r.act.v,reason:r.act.reason}:null};
+  const ownedVal=item.qty*x.px,limF=ctx.lim/100;
+  const room=ctx.total>0&&limF<1?Math.max(0,(limF*ctx.total-ownedVal)/(1-limF)):null;
+  const wt=ctx.total>0?ownedVal/ctx.total*100:0;
+  const fvGood=!!(fx&&fx.has&&!fx.suspect);
+  const out={sym:item.sym,name:item.name,owned:item.qty>0,px:x.px,tech:d.v,techReason:d.reason||'',conf:d.conf,act:r.act?{v:r.act.v,reason:r.act.reason}:null,
+    w:wt,room,mos:fvGood?fx.mos:null,prem:fvGood?fx.prem:null,dir:x.dir,rsi:x.rsi};
+  /* أقرب مرشح: يُرتَّب بالتقييم + قرب الإشارة الفنية + مساحة التركّز + الاتجاه (حتى لو لم تكتمل الإشارة بعد) */
+  const roomOK=room==null||room>=x.px,valOK=!fvGood||fx.prem<=10;
+  const candScore=(fvGood?clamp((fx.mos+10)/50,0,1)*40:12)+clamp((d.t||0)/10,0,1)*35+(limF<1?clamp(1-wt/ctx.lim,0,1)*15:15)+(x.dir==='صاعد'?10:x.dir==='عرضي'?4:0);
+  out.cand={ok:cov.decisionReady===true&&roomOK&&valOK&&x.rsi<74&&d.v!=='بيع',score:Math.round(candScore)};
   if(!p||blockers.length){
     out.blockers=blockers;out.checks=checks;out.score=null;out.eligible=false;
     out.why=blockers[0]||d.reason||'لا توجد أفضلية';
@@ -2554,6 +2563,21 @@ function paintBusy(d,n){
 }
 
 const grade=s=>s>=75?'قوي':s>=60?'جيد':'ضعيف';
+const money=v=>v>=10000?Math.round(v/1000).toLocaleString('en-US')+' ألف':Math.round(v).toLocaleString('en-US');
+function candHtml(cands,data){
+  if(!cands.length)return`<div class="al">🎯 <b>لا يوجد مرشح قريب للشراء:</b> كل أسهمك إما مرتفعة عن قيمتها العادلة، أو بلا مساحة تحت حد التركّز، أو بياناتها ناقصة.</div>`;
+  const c=cands[0],lim=data.lim;
+  const lowest=cands.every(o=>o===c||o.mos==null||(c.mos!=null&&c.mos>=o.mos));
+  let val;
+  if(c.mos==null)val='لا توجد قيمة عادلة معتمدة له، فالتقييم غير محسوم';
+  else if(c.mos>=1)val=(lowest&&cands.length>1?'هو الأقل من قيمته العادلة':'سعره أقل من قيمته العادلة')+` بنحو ${c.mos.toFixed(0)}%`;
+  else val=`سعره قريب من قيمته العادلة (${c.prem>=0?'أعلى':'أقل'} بنحو ${Math.abs(c.prem).toFixed(0)}%)`;
+  const wTxt=c.w<lim/2?`مع وزن صغير (${c.w.toFixed(1)}%)`:`بوزن ${c.w.toFixed(1)}%`;
+  const rTxt=c.room==null?'':`، فالمساحة تحت حد التركّز (${lim}%) ${c.room>=100000?'واسعة':'محدودة'} (حوالي ${money(c.room)} ج.م)`;
+  const need=c.why||c.techReason||'';
+  const rest=cands.slice(1,3).map(o=>`<span class="ltr">${esc(o.sym)}</span>`).join('، ');
+  return`<div class="al" style="border-right-color:var(--wn)">🎯 <b>أقرب مرشح للشراء: <span class="ltr">${esc(c.sym)}</span></b> — ${esc(c.name)}. ${val} ${wTxt}${rTxt}. وهو مرشح فقط حتى تؤكد الإشارة الفنية، فقد تمنعه.${need?`<br><span class="mu">ما ينقصه الآن: ${esc(need)}.</span>`:''}${rest?`<br><span class="mu">التالي في الترتيب: ${rest}.</span>`:''}</div>`;
+}
 function paintResult(data){
   const o=$('hBestOut'),b=$('hBestGo'),st=$('hBestSt');if(!o)return;
   if(b)b.disabled=false;
@@ -2586,6 +2610,8 @@ function paintResult(data){
       <li>درجته ${top.score} مقابل ${rows[1]&&rows[1].score!=null?rows[1].score:'—'} للتالي في الترتيب.</li></ul></div>`;
   }else{
     const near=top&&top.eligible?top:null;
+    const cands=rows.filter(r=>r.cand&&r.cand.ok).sort((a,b)=>b.cand.score-a.cand.score);
+    h+=candHtml(cands,data);
     h+=`<div class="al" style="border-right-color:var(--wn)">⏸ <b>لا شراء الآن في محفظتك.</b> ${near?`أفضل مرشح <span class="ltr">${esc(near.sym)}</span> درجته ${near.score}/100 أقل من حد 60؛ الأفضل الانتظار.`:'لا يوجد سهم اجتاز كل الفحوص الصارمة. الانتظار قرار سليم.'}</div>`;
   }
   if(rows.length){

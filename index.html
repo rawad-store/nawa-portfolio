@@ -15,8 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=no">
 <title>نواة | لوحة الأسواق والمحفظة</title>
-
-<style>
+<<style>
 :root{--bg:#050b17;--cd:#0d1a2e;--bd:#233a58;--tx:#f1f6ff;--mu:#93a8c4;--ac:#5eead4;--ac2:#818cf8;--up:#34e8b0;--dn:#ff6b86;--wn:#f6c96b;--in:#08162a;--glow:rgba(94,234,212,.22);--grad:linear-gradient(135deg,#5eead4,#60a5fa 55%,#818cf8);--line:rgba(150,190,230,.16);--ease:cubic-bezier(.22,1,.36,1);color-scheme:dark}
 *{box-sizing:border-box;margin:0}
 body{background:var(--bg);color:var(--tx);font:15px/1.65 system-ui,"Segoe UI",Tahoma,sans-serif;padding:12px;-webkit-font-smoothing:antialiased;position:relative;min-height:100vh}
@@ -76,9 +75,6 @@ input,select{font-size:16px}
 body{padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-right))}
 @media(max-width:560px){h1{font-size:1.25rem}.c{padding:13px}.g{grid-template-columns:1fr 1fr}}
 @media(max-width:390px){.g{grid-template-columns:1fr}}
-</style>
-
-<style id="nawa-redesign">
 body{background:radial-gradient(ellipse at 85% -15%,rgba(27,91,135,.2),transparent 42%),var(--bg);font-family:Inter,"Segoe UI",Tahoma,Arial,sans-serif;line-height:1.68;letter-spacing:.005em}
 ::selection{background:var(--ac);color:#04121f}
 .w{max-width:1160px;gap:18px}
@@ -127,9 +123,6 @@ canvas{border:1px solid rgba(130,158,190,.13);background:#0a1424}
 #tab-holdings .kpi{background:linear-gradient(145deg,#0c192b,#0a1424);border-color:rgba(133,158,190,.13);border-radius:14px}
 :focus-visible{outline:2px solid var(--ac)!important;outline-offset:2px}
 @media(max-width:680px){body{padding:10px}.w{gap:12px}.c{padding:15px;border-radius:16px}.hero{padding:18px}.hero h1{font-size:1.5rem}.g{grid-template-columns:1fr 1fr}.tab{padding:7px 11px}}
-</style>
-
-<style id="premium-ui">
 .hero{padding:28px 30px;border-color:rgba(94,234,212,.25);background:linear-gradient(135deg,rgba(17,39,64,.98),rgba(10,26,46,.97));box-shadow:0 18px 45px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.05)}
 #appShell{display:grid;grid-template-columns:218px minmax(0,1fr);padding:0;overflow:clip;align-items:start;border-color:var(--line);box-shadow:0 18px 48px rgba(0,0,0,.16)}
 #appShell>.tabs{grid-column:1;grid-row:1;position:sticky;top:14px;display:flex;flex-direction:column;gap:6px;margin:0;padding:20px 14px 24px;border-left:1px solid var(--line);background:linear-gradient(180deg,rgba(8,18,32,.94),rgba(12,25,43,.58));z-index:3;overflow:visible}
@@ -210,9 +203,6 @@ body.theme-light button.sec{background:#f4f8fc;color:#102033;border-color:#c0d0d
 .fvchk .gate{border-right:3px solid var(--ac);padding-right:7px}
 .fvform{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0}
 @media print{#fvManager{display:none!important}}
-</style>
-
-<style id="polish">
 html{scrollbar-color:#2a3b57 transparent;scroll-behavior:smooth}
 body{text-wrap:pretty}h1,h2,h3{text-wrap:balance}
 .ptable,.kv,.vd,.sc,.sg,input[type=number],.al{font-variant-numeric:tabular-nums lining-nums}
@@ -226,9 +216,6 @@ button:disabled,button[disabled]{filter:saturate(.5)}
 .hi{contain:content}
 canvas{contain:layout paint;max-width:100%;height:auto}
 body.theme-light input::placeholder{color:#7a8da3}
-</style>
-
-<style id="alerts-css">
 #alertCenter{display:none;padding:16px 20px}
 #alertCenter .ach{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 #alertCenter .ac{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin:8px 0;padding:10px 12px;background:var(--in);border-radius:10px;border-right:4px solid var(--mu)}
@@ -239,9 +226,6 @@ body.theme-light input::placeholder{color:#7a8da3}
 #alertCenter .acb{display:flex;gap:6px;flex-wrap:wrap}
 #alertCenter summary{cursor:pointer;color:var(--ac);margin-top:6px}
 @media print{#alertCenter{display:none!important}}
-</style>
-
-<style id="div-css">
 #dvBanner{display:none;border-color:rgba(243,200,111,.5)}
 .dvl{margin:6px 0;font-size:.88rem}
 .dvl.up,.dvd.up{color:var(--up)}.dvl.nt,.dvd.nt{color:var(--wn)}.dvl.dn,.dvd.dn{color:var(--dn)}.dvd.mu{color:var(--mu)}
@@ -281,9 +265,6 @@ body.theme-light input::placeholder{color:#7a8da3}
 #tab-divs .dvb button,#tab-divs .dvt button{min-height:40px}
 @media(max-width:420px){#tab-divs .dvcash,#tab-divs .dvhero{grid-template-columns:1fr 1fr}#tab-divs .dvcash .net{grid-column:1/-1}#tab-divs .dvstat b{font-size:.92rem}}
 @media print{#dvBanner,#tab-divs{display:none!important}}
-</style>
-
-<style id="hold-css">
 #tab-holdings{animation:fadeIn .25s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 #tab-holdings .hdr-row{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:4px}
@@ -358,9 +339,6 @@ body.theme-light input::placeholder{color:#7a8da3}
 .sortbar select{flex:1 1 170px;width:auto;max-width:280px}
 .sortbar button{white-space:nowrap}
 @media(max-width:640px){.sortbar{flex-wrap:nowrap}.sortbar>.mu{display:none}.sortbar select{flex:1 1 0;min-width:0;max-width:none}.sortbar button{flex:0 0 auto}}
-</style>
-
-<style id="final-polish">
 .skip-link{position:fixed;z-index:10000;top:10px;right:10px;padding:10px 14px;border-radius:10px;background:var(--ac);color:#07111f;font-weight:800;transform:translateY(-160%);transition:transform .18s ease}
 .skip-link:focus{transform:translateY(0);outline:3px solid #fff;outline-offset:3px}
 #main-content{min-width:0}
@@ -397,9 +375,6 @@ input,select,textarea{max-width:100%}
   .w{max-width:none!important;gap:8px!important}
   .c{break-inside:avoid;box-shadow:none!important}
 }
-</style>
-
-<style id="scroll-fix">
 html,body{min-height:100%;overflow-x:clip}
 html{overflow-y:scroll;overscroll-behavior-y:auto}
 body{overflow-y:visible;touch-action:pan-x pan-y pinch-zoom}
@@ -407,9 +382,6 @@ body{overflow-y:visible;touch-action:pan-x pan-y pinch-zoom}
 .tabs{touch-action:pan-x pan-y;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
 canvas,#cv,canvas#hCv{touch-action:pan-y!important}
 @media(pointer:coarse){body::before,body::after{animation:none!important;will-change:auto!important}}
-</style>
-
-<style id="nawa-final">
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 body{font-family:"Segoe UI","Noto Sans Arabic","SF Arabic","Geeza Pro","Dubai",Tahoma,system-ui,sans-serif;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));padding-bottom:max(18px,env(safe-area-inset-bottom));text-rendering:optimizeLegibility;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
@@ -422,9 +394,6 @@ button,.tab,summary,select{-webkit-tap-highlight-color:transparent;touch-action:
 @media(pointer:coarse){button,.tab,select,input:not([type=checkbox]):not([type=radio]){min-height:44px}button.sm{min-height:40px;padding-inline:14px}}
 @media(max-width:760px){input,select{font-size:16px}}
 @media(forced-colors:active){.tab.active{outline:2px solid Highlight;outline-offset:-2px}button,input,select,.c{border:1px solid CanvasText}}
-</style>
-
-<style id="pro-ui">
 body::before{content:"";position:fixed;inset:-25%;z-index:0;pointer-events:none;background:radial-gradient(38% 32% at 82% 12%,rgba(94,234,212,.17),transparent 70%),radial-gradient(34% 30% at 12% 38%,rgba(129,140,248,.17),transparent 70%),radial-gradient(40% 34% at 60% 95%,rgba(96,165,250,.13),transparent 70%);animation:np-drift 32s ease-in-out infinite alternate;will-change:transform}
 body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:56px 56px;opacity:.22;-webkit-mask-image:radial-gradient(ellipse at 50% 0,#000,transparent 72%);mask-image:radial-gradient(ellipse at 50% 0,#000,transparent 72%)}
 @keyframes np-drift{to{transform:translate3d(-4%,3%,0) scale(1.08)}}
@@ -451,9 +420,7 @@ button:not(.sec):not(.wn):not(.dn){background:var(--grad);border-color:transpare
 .np-top{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:16px;z-index:50;width:42px;height:42px;border-radius:50%;padding:0;display:grid;place-items:center;font-size:1.1rem;opacity:0;transform:translateY(14px) scale(.9);pointer-events:none;transition:opacity .25s,transform .3s var(--ease)}
 .np-top.show{opacity:.92;transform:none;pointer-events:auto}
 @media(max-width:760px){body::after{display:none}body::before{animation:none}}
-</style>
-<style id="nawa-touch">@media(hover:none){button:hover:not(:disabled),.kv div:hover,.sc:hover,.kpi:hover,.tab:hover:not(.active){transform:none!important;box-shadow:none}}</style>
-<style id="nawa-polish">
+@media(hover:none){button:hover:not(:disabled),.kv div:hover,.sc:hover,.kpi:hover,.tab:hover:not(.active){transform:none!important;box-shadow:none}}
 /* ---- إيقاع موحّد للحقول واللمس ---- */
 input,select,textarea{min-height:46px;font-size:16px;text-overflow:ellipsis}
 input::placeholder{font-size:.84rem;opacity:.7;text-overflow:ellipsis}
@@ -479,7 +446,7 @@ body{padding-bottom:max(24px,env(safe-area-inset-bottom))}
 /* ---- لمس: بلا لون تحديد مزعج ولا تأخير ---- */
 @media(hover:none){a,button,.tab,summary,tr[data-sym],tr[data-hs]{-webkit-tap-highlight-color:transparent}}
 </style>
-</head>
+/head>
 <body>
 <a class="skip-link" href="#main-content">تجاوز إلى المحتوى الرئيسي</a>
 <noscript><div class="c" style="margin:12px">يتطلب هذا التطبيق تفعيل JavaScript.</div></noscript>
@@ -530,7 +497,7 @@ body{padding-bottom:max(24px,env(safe-area-inset-bottom))}
 </div>
 <div id="portEditor" style="display:none;background:var(--in);border-radius:12px;padding:14px;margin-bottom:14px">
 <div id="portList"></div>
-<div class="add-row"><input id="newSym" list="egxl" placeholder="اكتب رمز أو اسم السهم..."><button id="addSym" class="sm">＋ إضافة</button><button id="clearPort" class="sec sm dn">مسح الكل</button></div>
+<div class="add-row"><input id="newSym" aria-label="رمز أو اسم السهم" list="egxl" placeholder="اكتب رمز أو اسم السهم..."><button id="addSym" class="sm">＋ إضافة</button><button id="clearPort" class="sec sm dn">مسح الكل</button></div>
 </div>
 <div id="portfolioOut"></div>
 <div id="fvManager"></div>
@@ -610,7 +577,7 @@ const validProxy=v=>{try{const u=new URL(v);return u.protocol==='https:'||u.host
 function dlg({title='تأكيد',msg='',input=null,ok='تأكيد',danger=false}={}){
   return new Promise(res=>{
     const d=document.createElement('dialog');d.className='dlg';
-    d.innerHTML=`<form method="dialog"><h3>${esc(title)}</h3><p>${esc(msg).replace(/\n/g,'<br>')}</p>${input?`<input id="dlgIn" type="number" min="0" step="any" inputmode="decimal" placeholder="${esc(input)}" dir="ltr">`:''}<div class="dlg-b"><button value="ok" class="${danger?'dn':''}">${esc(ok)}</button><button type="button" class="sec" id="dlgNo">إلغاء</button></div></form>`;
+    d.innerHTML=`<form method="dialog"><h3>${esc(title)}</h3><p>${esc(msg).replace(/\n/g,'<br>')}</p>${input?`<input id="dlgIn" aria-label="القيمة" type="number" min="0" step="any" inputmode="decimal" placeholder="${esc(input)}" dir="ltr">`:''}<div class="dlg-b"><button value="ok" class="${danger?'dn':''}">${esc(ok)}</button><button type="button" class="sec" id="dlgNo">إلغاء</button></div></form>`;
     document.body.appendChild(d);
     const fin=v=>{d.close();d.remove();res(v)};
     d.querySelector('#dlgNo').onclick=()=>fin(false);
@@ -650,7 +617,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.12';
+const APP_BUILD='2026.11.16';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -1780,7 +1747,7 @@ if($('importFile'))$('importFile').onchange=async e=>{
     const data=JSON.parse(await file.text());
     if(!data||typeof data!=='object'||!Array.isArray(data.portfolio)||!data.portfolio.every(x=>typeof x==='string')||!Array.isArray(data.history))throw Error('صيغة النسخة الاحتياطية غير معروفة');
     if(['holdings','flows','snaps','log'].some(k=>data[k]!=null&&!Array.isArray(data[k])))throw Error('بعض بيانات النسخة غير صالحة');
-    if(data.holdings&&!data.holdings.every(r=>Array.isArray(r)&&typeof r[0]==='string'))throw Error('بيانات المحفظة الفعلية غير صالحة');
+    if(data.holdings&&!data.holdings.every(r=>Array.isArray(r)&&typeof r[0]==='string'&&/^[A-Za-z0-9\-.]{1,20}$/.test(r[0])&&Number.isFinite(+r[2])&&+r[2]>=0&&(r[4]==null||(Number.isFinite(+r[4])&&+r[4]>=0))))throw Error('بيانات المحفظة الفعلية غير صالحة');
     if(data.manual!=null&&(typeof data.manual!=='object'||Array.isArray(data.manual)))throw Error('بيانات الأسعار اليدوية غير صالحة');
     if(data.quotes!=null&&(typeof data.quotes!=='object'||Array.isArray(data.quotes)))throw Error('بيانات الأسعار المخزنة غير صالحة');
     if(data.settings!=null&&(typeof data.settings!=='object'||Array.isArray(data.settings)))throw Error('الإعدادات غير صالحة');
@@ -2026,7 +1993,7 @@ function shell(){
 <div class="section-card">
   <h3><span class="ico">⚖️</span> حد التركّز</h3>
   <div class="add-row" style="margin:0">
-    <input id="hLim" type="number" min="5" max="100" step="1" style="max-width:120px">
+    <input id="hLim" aria-label="الحد الأقصى لعدد السجلات" type="number" min="5" max="100" step="1" style="max-width:120px">
     <span class="mu">% أقصى وزن مسموح لمركز واحد</span>
   </div>
 </div>
@@ -2034,9 +2001,9 @@ function shell(){
 <div class="section-card">
   <h3><span class="ico">💸</span> تدفقات نقدية <span class="mu" style="font-weight:400">(لا تُحسب ربحاً)</span></h3>
   <div class="add-row">
-    <select id="fT" style="max-width:110px"><option value="إيداع">إيداع</option><option value="سحب">سحب</option><option value="توزيعات">توزيعات</option></select>
-    <input id="fA" type="number" min="0" step="any" placeholder="المبلغ (ج.م)">
-    <input id="fD" type="date">
+    <select id="fT" aria-label="نوع الحركة" style="max-width:110px"><option value="إيداع">إيداع</option><option value="سحب">سحب</option><option value="توزيعات">توزيعات</option></select>
+    <input id="fA" aria-label="المبلغ بالجنيه" type="number" min="0" step="any" placeholder="المبلغ (ج.م)">
+    <input id="fD" aria-label="التاريخ" type="date">
     <button id="fAdd" class="sm">＋ تسجيل</button>
   </div>
   <div id="fL" style="margin-top:10px"></div>
@@ -2045,12 +2012,12 @@ function shell(){
 <div class="section-card">
   <h3><span class="ico">🔄</span> شراء / بيع / تعديل الكمية + متوسط التكلفة</h3>
   <div class="add-row">
-    <select id="qA" style="max-width:130px"><option value="buy">شراء (إضافة)</option><option value="sell">بيع (تقليل)</option><option value="set">تعيين الكمية</option></select>
-    <input id="qS" list="egxl" placeholder="رمز السهم" dir="ltr" style="max-width:130px">
-    <input id="qN" type="number" min="0" step="1" placeholder="عدد الأسهم">
-    <input id="qP" type="number" min="0" step="any" placeholder="سعر الشراء (للمتوسط)">
-    <input id="qM" placeholder="اسم الشركة (لسهم جديد)">
-    <input id="qC" placeholder="القطاع (اختياري)">
+    <select id="qA" aria-label="نوع العملية" style="max-width:130px"><option value="buy">شراء (إضافة)</option><option value="sell">بيع (تقليل)</option><option value="set">تعيين الكمية</option></select>
+    <input id="qS" aria-label="رمز السهم" list="egxl" placeholder="رمز السهم" dir="ltr" style="max-width:130px">
+    <input id="qN" aria-label="عدد الأسهم" type="number" min="0" step="1" placeholder="عدد الأسهم">
+    <input id="qP" aria-label="سعر الشراء" type="number" min="0" step="any" placeholder="سعر الشراء (للمتوسط)">
+    <input id="qM" aria-label="اسم الشركة" placeholder="اسم الشركة (لسهم جديد)">
+    <input id="qC" aria-label="القطاع" placeholder="القطاع (اختياري)">
     <button id="qB" class="sec sm wn">تنفيذ</button>
   </div>
   <p class="mu" style="margin:8px 0 0">عند الشراء أدخل سعر الشراء لحساب متوسط التكلفة بدقة. البيع حتى الصفر يحذف السهم.</p>
@@ -2059,9 +2026,9 @@ function shell(){
 <div class="section-card">
   <h3><span class="ico">📌</span> تعيين متوسط التكلفة يدوياً</h3>
   <div class="add-row">
-    <select id="avgS" style="max-width:140px"></select>
-    <input id="avgP" type="number" min="0" step="any" placeholder="متوسط التكلفة (ج.م)">
-    <input id="avgT" type="number" min="0" step="any" placeholder="أو إجمالي التكلفة (ج.م)">
+    <select id="avgS" aria-label="السهم" style="max-width:140px"></select>
+    <input id="avgP" aria-label="متوسط التكلفة" type="number" min="0" step="any" placeholder="متوسط التكلفة (ج.م)">
+    <input id="avgT" aria-label="إجمالي التكلفة" type="number" min="0" step="any" placeholder="أو إجمالي التكلفة (ج.م)">
     <button id="avgB" class="sec sm wn">حفظ</button>
     <button id="avgC" class="sec sm dn">مسح</button>
   </div>
@@ -2071,9 +2038,9 @@ function shell(){
 <div class="section-card">
   <h3><span class="ico">✍️</span> سعر يدوي</h3>
   <div class="add-row">
-    <select id="mS" style="max-width:130px"></select>
-    <input id="mP" type="number" min="0" step="any" placeholder="السعر">
-    <input id="mV" type="number" min="0" step="any" placeholder="الإغلاق السابق (اختياري)">
+    <select id="mS" aria-label="السهم" style="max-width:130px"></select>
+    <input id="mP" aria-label="السعر" type="number" min="0" step="any" placeholder="السعر">
+    <input id="mV" aria-label="الإغلاق السابق" type="number" min="0" step="any" placeholder="الإغلاق السابق (اختياري)">
     <button id="mB" class="sec sm wn">حفظ</button>
     <button id="mC" class="sec sm dn">مسح</button>
   </div>
@@ -2084,7 +2051,7 @@ function shell(){
   <h3><span class="ico">🗂️</span> السجلات</h3>
   <details class="history-disclosure" id="sessionDisclosure">
     <summary><span class="summary-title">سجل الجلسات</span><span class="summary-count" id="sessionCount">0 جلسة</span><span class="summary-chevron" aria-hidden="true">⌄</span></summary>
-    <div class="disclosure-body"><canvas id="hCv" width="900" height="260" style="display:none;margin-bottom:10px"></canvas><div id="sL"></div></div>
+    <div class="disclosure-body"><canvas id="hCv" role="img" aria-label="رسم تاريخ الحركة" width="900" height="260" style="display:none;margin-bottom:10px"></canvas><div id="sL"></div></div>
   </details>
   <details class="history-disclosure" id="quantityDisclosure">
     <summary><span class="summary-title">تعديلات الكميات</span><span class="summary-count" id="quantityCount">0 تعديل</span><span class="summary-chevron" aria-hidden="true">⌄</span></summary>
@@ -3006,6 +2973,10 @@ function watchMan(){try{return JSON.parse(localStorage.getItem('u_watch_man_v1')
   window.addEventListener('load',()=>setTimeout(reveal,200));
   window.addEventListener('resize',()=>setTimeout(reveal,100));
 })();
+</script>
+<script id="nawa-errors">
+(()=>{let last=0;const show=e=>{const n=Date.now();if(n-last<5000)return;last=n;try{if(typeof toast==='function')toast('حدث خطأ غير متوقع — أعد المحاولة، وبياناتك محفوظة',true)}catch(_){}};
+addEventListener('unhandledrejection',show);addEventListener('error',show)})();
 </script>
 </body>
 </html>

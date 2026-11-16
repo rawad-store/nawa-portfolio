@@ -2456,10 +2456,10 @@ async function analyzeOne(item,tf,custom,cost){
 /* تقييم سهم واحد: فحوص صارمة (تمنع الشراء) + درجة من 100 للترتيب */
 function evaluate(r,ctx){
   const {x,h,d,fx,live,item}=r,p=d.plan,checks=[],blockers=[],warns=[];
-  const chk=(ok,txt,hard)=>{checks.push({ok:!!ok,txt});if(!ok&&hard)blockers.push(txt)};
+  const chk=(ok,txt,hard,failTxt)=>{const t=(!ok&&failTxt)?failTxt:txt;checks.push({ok:!!ok,txt:t});if(!ok&&hard)blockers.push(t)};
   const cov=x.coverage||{};
-  chk(cov.decisionReady===true,`بيانات كافية وحديثة (${cov.bars||0} من 60 شمعة)`,true);
-  chk(!!live&&live.source!=='ذاكرة محلية',`سعر حي${live?` من ${live.source||'مصدر مباشر'}`:' غير متاح'}`,true);
+  chk(cov.decisionReady===true,`بيانات كافية وحديثة (${cov.bars||0} شمعة)`,true,cov.stale?`سجل الشموع قديم: آخر شمعة ${cov.asOf||'غير معروفة'} (منذ ${Math.round(cov.ageDays)} يوماً، الحد 10) — حدّث بيانات السهم`:`بيانات غير كافية (${cov.bars||0} من ${cov.required||60} شمعة)`);
+  chk(!!live&&live.source!=='ذاكرة محلية',`سعر حي من ${live&&live.source||'مصدر مباشر'}`,true,'السعر الحي غير متاح أو مأخوذ من الذاكرة المحلية');
   chk(d.v==='شراء'&&!!p,d.v==='شراء'?'خطة دخول كاملة':('الإشارة الفنية: '+d.v+(d.reason?' — '+d.reason:'')),true);
   const ownedVal=item.qty*x.px,limF=ctx.lim/100;
   const room=ctx.total>0&&limF<1?Math.max(0,(limF*ctx.total-ownedVal)/(1-limF)):null;
@@ -2480,10 +2480,10 @@ function evaluate(r,ctx){
   }
   const lastClose=x.b[x.b.length-1].c;
   chk(p.s<p.e&&p.t[0]>p.e&&p.t[1]>p.t[0],'ترتيب الوقف والأهداف منطقي',true);
-  chk(Math.abs(x.px/lastClose-1)<=0.11,'السعر الحي متسق مع آخر شمعة (حد التذبذب اليومي 10%)',true);
-  chk(x.rsi<=74,`RSI لا يدل على تشبع شرائي (${x.rsi.toFixed(0)})`,true);
+  chk(Math.abs(x.px/lastClose-1)<=0.11,'السعر الحي متسق مع آخر شمعة (حد التذبذب اليومي 10%)',true,'السعر الحي يبتعد أكثر من 11% عن آخر شمعة: تحقق من البيانات');
+  chk(x.rsi<=74,`RSI لا يدل على تشبع شرائي (${x.rsi.toFixed(0)})`,true,`تشبّع شرائي: RSI ${x.rsi.toFixed(0)} فوق 74`);
   const netRR1=((p.t[0]-p.e)/p.e*100-ctx.cost)/(p.rkp+ctx.cost);
-  chk(netRR1>=1,`العائد/المخاطرة الصافي للهدف الأول ≥ 1 (${netRR1.toFixed(2)})`,true);
+  chk(netRR1>=1,`العائد/المخاطرة الصافي للهدف الأول ≥ 1 (${netRR1.toFixed(2)})`,true,`العائد/المخاطرة الصافي للهدف الأول ضعيف (${netRR1.toFixed(2)} أقل من 1)`);
   let fvPart=8,penalty=0;
   if(fx.has&&!fx.suspect){
     const fresh=fx.ageDays<=fx.maxAge;

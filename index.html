@@ -852,7 +852,22 @@ async function getLivePrice(asset,custom){
 const MIN_EXPLORATORY_BARS=5,FULL_DECISION_BARS=60,MAX_HISTORY_AGE_DAYS=10;
 const CACHE_STALE_MS={'1h':5*60000,'4h':15*60000,'1d':300000,'1w':3600000};
 const ck=(tk,tf)=>`u_y_${tk}_${tf}`;
-const dayStamp=t=>t?new Date(t).toISOString().slice(0,10):null;
+const dayStamp=t=>t?new Date(t).toISOString().slice(0,10):null; const sessionLag=a=>{if(!a)return 0;let n=0;for(let d=Date.parse(a+'T12:00:00Z')+864e5,e=Date.now();d<=e;d+=864e5){if(new Date(d).getUTCDay()<=4)n++}return n};
+/* TradingView هو المصدر الأساسي لأحدث جلسة: تُضاف شمعتها فوق تاريخ Yahoo إذا كان Yahoo متأخراً */
+const sessionsBetween=(a,b)=>{let n=0;for(let d=Date.parse(a+'T12:00:00Z')+864e5,e=Date.parse(b+'T12:00:00Z');d<e;d+=864e5){if(new Date(d).getUTCDay()<=4)n++}return n};
+function mergeTvBar(bars,live){
+  if(!bars||!bars.length||!live||!(live.price>0)||!/^\d{4}-\d{2}-\d{2}$/.test(live.sess||''))return null;
+  const L=bars[bars.length-1],last=dayStamp(L.t),sd=live.sess;
+  if(!last||!(sd>last))return null;
+  const t=Date.parse(sd+'T08:00:00Z');
+  if(!(t>L.t)||!(live.vol>0))return null;
+  const px=+live.price,pc=live.prev>0?+live.prev:L.c;
+  const h=Math.max(live.high>0?+live.high:px,px),l=Math.min(live.low>0?+live.low:px,px);
+  if(!(h>=l)||!(l>0))return null;
+  const nb=bars.concat([{t,o:Math.min(Math.max(pc,l),h),h,l,c:px,v:+live.vol,tv:true}]),meta=bars._historyMeta||{};
+  nb._historyMeta={...meta,source:(meta.source||'Yahoo')+' + TradingView',asOf:sd,tvBar:true,gapSessions:sessionsBetween(last,sd),openApprox:true};
+  return nb;
+}
 
 function annotateBars(d,meta={}){
   if(!Array.isArray(d))return d;
@@ -1006,6 +1021,7 @@ async function loadAll(asset,tf,custom,manualPrice=null){
     if(higher&&higher.length){const h=alignBarsToLive(higher,live);if(h.suspect)throw Error('بيانات الإطار الأكبر غير متوافقة مع السعر الحالي.');higher=h.bars}
     if(a.aligned)live={...live,aligned:true,alignFactor:+a.factor.toFixed(4)};
   }
+  if(asset.type==='egx'&&tf==='1d'&&live&&live.source==='TradingView'){const mb=mergeTvBar(bars,live);if(mb)bars=mb}
   if(asset.type==='egx'){
     const ss=egxSession(),now=Date.now(),F={'1h':36e5,'4h':144e5,'1d':864e5,'1w':6048e5};
     const mark=(a,f)=>{if(a&&a.length){const L=a[a.length-1];a._partialLast=ss.open&&now>=L.t&&now<L.t+f}};
@@ -1090,7 +1106,7 @@ function study(bars,livePrice=null){
   const histMeta=bars._historyMeta||{},asOf=histMeta.asOf||dayStamp(bars[bars.length-1]?.t);
   const ageDays=asOf?Math.max(0,(Date.now()-Date.parse(asOf+'T23:59:59Z'))/86400000):Infinity;
   const old=ageDays>MAX_HISTORY_AGE_DAYS,decisionReady=count>=FULL_DECISION_BARS&&!old;
-  const coverage={bars:count,required:FULL_DECISION_BARS,decisionReady,limited:!decisionReady,stale:old,ageDays,asOf,source:histMeta.source||'غير معروف',
+  const coverage={bars:count,required:FULL_DECISION_BARS,decisionReady,limited:!decisionReady,stale:old,ageDays,asOf,lagSessions:sessionLag(asOf)+(histMeta.gapSessions||0),gapSessions:histMeta.gapSessions||0,tvBar:!!histMeta.tvBar,source:histMeta.source||'غير معروف',
     periods:{emaFast:e20Period,emaSlow:e50Period,macdFast,macdSlow,macdSignal,rsi:rsiPeriod,atr:atrPeriod,swing:swingK},
     rawRecordCount:histMeta.rawRecordCount,rejectedInvalidOhlc:histMeta.rejectedInvalidOhlc||0,duplicateRowsRemoved:histMeta.duplicateRowsRemoved||0};
   return{b:bars,px,a,e20:e20[n],e50:e50[n],e200:e200?e200[n]:null,E20:e20,E50:e50,e20Period,e50Period,rsi:ra[n],mh:hist[n],mhp:n>0?hist[n-1]:hist[n],s,dir,st,lv,vr:volBase>0?volRecent/volBase:null,atrPct:a/px*100,live:livePrice>0,coverage};
@@ -1319,7 +1335,11 @@ function decide(x,h,cost){
 }
 function decideWithCoverage(x,h,cost){
   const d=decide(x,h,cost);
-  if(x.coverage?.decisionReady)return d;
+  if(x.coverage?.decisionReady){
+    const lg=x.coverage.lagSessions||0;
+    if(lg>=2&&d.v==='شراء')return{...d,v:'انتظار',reason:`المؤشرات محسوبة حتى إغلاق ${x.coverage.asOf} ولا تشمل آخر ${lg} جلسات تداول؛ لا تُصدَر إشارة شراء قبل تجدد الشموع.`,plan:null,conf:Math.min(35,d.conf),lagged:true};
+    return d;
+  }
   let reason=`بيانات محدودة: المتاح ${x.coverage?.bars||0} من ${FULL_DECISION_BARS} شمعة لازمة للإشارة الكاملة.`;
   if(x.coverage?.stale)reason=`الشموع التاريخية قديمة (آخر شمعة ${x.coverage.asOf||'غير معروف'}). المؤشرات للقراءة فقط حتى يتجدد التاريخ.`;
   return{...d,v:'انتظار',reason,plan:null,exitLvl:null,conf:Math.min(35,d.conf),limited:true};
@@ -1645,7 +1665,7 @@ function render(data){
   <canvas id="cv" role="img" tabindex="0" aria-label="رسم شموع مع المتوسطات والدعم والمقاومة"></canvas><p class="mu">التركوازي EMA${x.e20Period} • الأصفر EMA${x.e50Period} • الخطوط المتقطعة: دعم / مقاومة</p>
   ${plan?`<h2>خطة التداول</h2><div class="kv"><div>الدخول<b class="ltr">${fmt(plan.e)}</b></div><div>الوقف<b class="dn ltr">${fmt(plan.s)}</b></div><div>هدف 1<b class="up ltr">${fmt(plan.t[0])}</b></div><div>هدف 2<b class="up ltr">${fmt(plan.t[1])}</b></div><div>المخاطرة %<b>${plan.rkp.toFixed(2)}%</b></div><div>R:R<b>${plan.rr||'—'}</b></div></div>${size}`:''}
   ${box('الملاحظات الفنية',nr.notes,'')}${box('المخاطر التي يجب مراعاتها',nr.risks,'warning')}${box('التوصيات',nr.recs,'success')}
-  <p class="mu" style="margin-top:14px">البيانات التاريخية: ${x.b.length} شمعة • ${x.coverage?.source?`المصدر ${esc(x.coverage.source)} • آخر شمعة ${esc(x.coverage.asOf||'—')} • `:''}${x.live?'السعر من '+esc(live?.source||'المصدر')+' • آخر تحديث '+esc(new Date(live.time).toLocaleString(LOC)):'آخر إغلاق: '+esc(new Date(x.b[x.b.length-1].t).toLocaleDateString(LOC))}</p>`;
+  <p class="mu" style="margin-top:14px">البيانات التاريخية: ${x.b.length} شمعة • ${x.coverage?.source?`المصدر ${esc(x.coverage.source)} • آخر شمعة ${(()=>{const a=x.coverage.asOf;if(!a)return'—';const w=n=>n===1?'جلسة واحدة':n===2?'جلستان':n+' جلسات',g=x.coverage.gapSessions||0,n=(x.coverage.lagSessions||0)-g,t=[];if(n>0)t.push('متأخرة '+w(n));if(g>0)t.push('فجوة '+w(g)+' قبل شمعة TradingView');return`<span class="ltr">${esc(String(a).replace(/-/g,'/'))}</span>`+(t.length?` (${t.join('، ')})`:'')})()} • `:''}${x.live?'السعر من '+esc(live?.source||'المصدر')+' • آخر تحديث '+esc(new Date(live.time).toLocaleString(LOC)):'آخر إغلاق: '+esc(new Date(x.b[x.b.length-1].t).toLocaleDateString(LOC))}</p>`;
   bindFvActions($('out'),afterFvChange);
   draw(x,plan);
   const cvEl=$('cv');

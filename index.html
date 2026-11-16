@@ -2470,7 +2470,8 @@ function evaluate(r,ctx){
   /* أقرب مرشح: يُرتَّب بالتقييم + قرب الإشارة الفنية + مساحة التركّز + الاتجاه (حتى لو لم تكتمل الإشارة بعد) */
   const roomOK=room==null||room>=x.px,valOK=!fvGood||fx.prem<=10;
   const candScore=(fvGood?clamp((fx.mos+10)/50,0,1)*40:12)+clamp((d.t||0)/10,0,1)*35+(limF<1?clamp(1-wt/ctx.lim,0,1)*15:15)+(x.dir==='صاعد'?10:x.dir==='عرضي'?4:0);
-  out.cand={ok:cov.decisionReady===true&&roomOK&&valOK&&x.rsi<74&&d.v!=='بيع',score:Math.round(candScore)};
+  const cWhy=cov.decisionReady!==true?'بيانات فنية غير كافية أو قديمة':!roomOK?'لا مساحة تحت حد التركّز':!valOK?`أعلى من قيمته العادلة بنحو ${fx.prem.toFixed(0)}%`:x.rsi>=74?`تشبّع شرائي (RSI ${x.rsi.toFixed(0)})`:d.v==='بيع'?'الإشارة الفنية: بيع':'';
+  out.cand={ok:cWhy==='',why:cWhy,score:Math.round(candScore)};
   if(!p||blockers.length){
     out.blockers=blockers;out.checks=checks;out.score=null;out.eligible=false;
     out.why=blockers[0]||d.reason||'لا توجد أفضلية';
@@ -2564,8 +2565,11 @@ function paintBusy(d,n){
 
 const grade=s=>s>=75?'قوي':s>=60?'جيد':'ضعيف';
 const money=v=>v>=10000?Math.round(v/1000).toLocaleString('en-US')+' ألف':Math.round(v).toLocaleString('en-US');
-function candHtml(cands,data){
-  if(!cands.length)return`<div class="al">🎯 <b>لا يوجد مرشح قريب للشراء:</b> كل أسهمك إما مرتفعة عن قيمتها العادلة، أو بلا مساحة تحت حد التركّز، أو بياناتها ناقصة.</div>`;
+function candHtml(cands,data,rows){
+  if(!cands.length){
+    const why=(rows||[]).filter(r=>r.cand&&r.cand.why).map(r=>`<span class="ltr">${esc(r.sym)}</span>: ${esc(r.cand.why)}`).join('<br>');
+    return`<div class="al">🎯 <b>لا يوجد مرشح قريب للشراء.</b>${why?`<br><span class="mu">سبب استبعاد كل سهم:<br>${why}</span>`:''}</div>`;
+  }
   const c=cands[0],lim=data.lim;
   const lowest=cands.every(o=>o===c||o.mos==null||(c.mos!=null&&c.mos>=o.mos));
   let val;
@@ -2611,7 +2615,7 @@ function paintResult(data){
   }else{
     const near=top&&top.eligible?top:null;
     const cands=rows.filter(r=>r.cand&&r.cand.ok).sort((a,b)=>b.cand.score-a.cand.score);
-    h+=candHtml(cands,data);
+    h+=candHtml(cands,data,rows);
     h+=`<div class="al" style="border-right-color:var(--wn)">⏸ <b>لا شراء الآن في محفظتك.</b> ${near?`أفضل مرشح <span class="ltr">${esc(near.sym)}</span> درجته ${near.score}/100 أقل من حد 60؛ الأفضل الانتظار.`:'لا يوجد سهم اجتاز كل الفحوص الصارمة. الانتظار قرار سليم.'}</div>`;
   }
   if(rows.length){

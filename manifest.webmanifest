@@ -49,7 +49,7 @@
       ]
     },
     {
-      "name": "تحليل فني",
+      "name": "تحليل سهم",
       "short_name": "تحليل",
       "url": "./?source=pwa&tab=analyze",
       "icons": [
@@ -85,7 +85,7 @@
       ]
     },
     {
-      "name": "سجل التحليل",
+      "name": "سجل التحليلات",
       "short_name": "السجل",
       "url": "./?source=pwa&tab=history",
       "icons": [

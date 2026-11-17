@@ -618,7 +618,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.17.2';
+const APP_BUILD='2026.11.17.3';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -2059,6 +2059,7 @@ function shell(){
 </div>
 <div id="hOut"></div>
 
+<details class="history-disclosure" id="hManage"><summary><span class="summary-title">⚙️ إدارة المحفظة</span><span class="summary-count">5 أقسام</span><span class="summary-chevron" aria-hidden="true">⌄</span></summary><div class="disclosure-body" style="padding:0 10px 10px">
 <div class="section-card">
   <h3><span class="ico">⚖️</span> حد التركّز</h3>
   <div class="add-row" style="margin:0">
@@ -2115,6 +2116,7 @@ function shell(){
   </div>
   <p class="mu" style="margin:8px 0 0">يُستخدم إذا فشل الجلب أو كان أحدث.</p>
 </div>
+</div></details>
 
 <div class="section-card">
   <h3><span class="ico">🗂️</span> السجلات</h3>
@@ -2468,7 +2470,7 @@ const CK='u_best_buy_v1',FRESH_MS=30*60e3,AUTO_MAX=12;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const ld=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
 const holdList=()=>{const a=ld('u_hold_list_v3',[]);return Array.isArray(a)?a.filter(r=>Array.isArray(r)&&typeof r[0]==='string'&&r[0]).map(r=>({sym:r[0],name:r[1]||r[0],qty:Math.max(0,+r[2]||0)})):[]};
-let running=false,autoTried=false;
+let running=false,autoTried=false,bdOpen=false;
 const sigOf=l=>l.map(r=>r.sym+':'+r.qty).join('|');
 
 async function analyzeOne(item,tf,custom,cost){
@@ -2614,7 +2616,7 @@ function candHtml(cands,data,rows){
   else val=`سعره قريب من قيمته العادلة (${c.prem>=0?'أعلى':'أقل'} بنحو ${Math.abs(c.prem).toFixed(0)}%)`;
   const wTxt=c.w<lim/2?`مع وزن صغير (${c.w.toFixed(1)}%)`:`بوزن ${c.w.toFixed(1)}%`;
   const rTxt=c.room==null?'':`، فالمساحة تحت حد التركّز (${lim}%) ${c.room>=100000?'واسعة':'محدودة'} (حوالي ${money(c.room)} ج.م)`;
-  const need=c.why||c.techReason||'';
+  const need=(c.why||c.techReason||'').replace(/[.\s]+$/,'');
   const rest=cands.slice(1,3).map(o=>`<span class="ltr">${esc(o.sym)}</span>`).join('، ');
   return`<div class="al" style="border-right-color:var(--wn)">🎯 <b>أقرب مرشح للشراء: <span class="ltr">${esc(c.sym)}</span></b> — ${esc(c.name)}. ${val} ${wTxt}${rTxt}. وهو مرشح فقط حتى تؤكد الإشارة الفنية، فقد تمنعه.${need?`<br><span class="mu">ما ينقصه الآن: ${esc(need)}.</span>`:''}${rest?`<br><span class="mu">التالي في الترتيب: ${rest}.</span>`:''}</div>`;
 }
@@ -2624,17 +2626,20 @@ function paintResult(data){
   const age=Math.round((Date.now()-data.ts)/60000);
   if(st){st.textContent=age<=1?'محدّث الآن':`منذ ${age} د`;st.className='status-pill '+(age*60e3<=FRESH_MS?'live':'warn')}
   const rows=data.rows||[],top=rows[0];
-  let h='';
+  let h='',body='',sum='',tone='var(--wn)';
   const stale=Date.now()-data.ts>FRESH_MS,changed=data.sig!==sigOf(holdList());
   if(stale||changed)h+=`<div class="al">⏱ ${changed?'تغيّرت أسهمك أو كمياتها بعد هذا التحليل':'عمر هذا التحليل '+age+' د'}؛ أعد «تحليل القرار» قبل أي تنفيذ، فالأسعار والإشارات تتغير.</div>`;
   const attn=rows.filter(r=>r.act&&(r.act.v==='بيع / خفض'||r.act.v==='مراقبة خروج'));
-  if(attn.length)h+=`<div class="al" style="border-right-color:var(--dn)">🔔 <b>مراكز تحتاج انتباهاً:</b><br>${attn.map(r=>`<span class="ltr">${esc(r.sym)}</span>: <b>${esc(r.act.v)}</b> — ${esc(r.act.reason)}`).join('<br>')}</div>`;
+  let attnSum='';
+  if(attn.length){const g={};attn.forEach(r=>{(g[r.act.v]=g[r.act.v]||[]).push(`<span class="ltr">${esc(r.sym)}</span>`)});attnSum=Object.keys(g).map(k=>`🔔 ${esc(k)}: ${g[k].join('، ')}`).join(' • ')}
+  if(attn.length)body+=`<div class="al" style="border-right-color:var(--dn)">🔔 <b>مراكز تحتاج انتباهاً:</b><br>${attn.map(r=>`<span class="ltr">${esc(r.sym)}</span>: <b>${esc(r.act.v)}</b> — ${esc(r.act.reason)}`).join('<br>')}</div>`;
   if(!rows.length){
-    h+=`<div class="al">لم يكتمل تحليل أي سهم${data.fail&&data.fail.length?`: ${esc(data.fail[0].msg)}`:''}.</div>`;
+    body+=`<div class="al">لم يكتمل تحليل أي سهم${data.fail&&data.fail.length?`: ${esc(data.fail[0].msg)}`:''}.</div>`;
   }else if(top&&top.eligible&&top.score>=60){
     const q=top.plan;
-    h+=`<div class="al" style="border-right-color:var(--up)">✅ <b>اشترِ: <span class="ltr">${esc(top.sym)}</span></b> — ${esc(top.name)} • درجة ${top.score}/100 (${grade(top.score)})${top.owned?' • مركز قائم (تعزيز)':' • سهم غير مملوك'}</div>`;
-    h+=`<div class="kpi-grid">
+    tone='var(--up)';sum=`✅ <b>اشترِ <span class="ltr">${esc(top.sym)}</span></b> • درجة ${top.score}/100 (${grade(top.score)}) • دخول <span class="ltr">${fmt(q.e)}</span> • وقف <span class="ltr">${fmt(q.s)}</span> • كمية <span class="ltr">${top.qty.toLocaleString('en-US')}</span>`;
+    body+=`<div class="al" style="border-right-color:var(--up)">✅ <b>اشترِ: <span class="ltr">${esc(top.sym)}</span></b> — ${esc(top.name)} • درجة ${top.score}/100 (${grade(top.score)})${top.owned?' • مركز قائم (تعزيز)':' • سهم غير مملوك'}</div>`;
+    body+=`<div class="kpi-grid">
       <div class="kpi"><div class="label">الدخول</div><div class="val ltr">${fmt(q.e)}</div><div class="sub">سعر حي</div></div>
       <div class="kpi"><div class="label">وقف الخسارة</div><div class="val ltr dn">${fmt(q.s)}</div><div class="sub ltr">-${q.rkp.toFixed(1)}%</div></div>
       <div class="kpi"><div class="label">الهدف 1 / 2</div><div class="val ltr up" style="font-size:1.05rem">${fmt(q.t1)} / ${fmt(q.t2)}</div><div class="sub">بعد الهدف 1 انقل الوقف للدخول</div></div>
@@ -2642,27 +2647,33 @@ function paintResult(data){
       <div class="kpi"><div class="label">الخسارة عند الوقف</div><div class="val ltr dn">${fmt(top.riskAmt)}</div><div class="sub">${data.riskPct}% من ${fmt(data.capital)}</div></div>
       <div class="kpi"><div class="label">عائد/مخاطرة صافي</div><div class="val ltr">${top.netRR1.toFixed(2)}</div><div class="sub">للهدف 1 بعد تكلفة ${data.cost}%</div></div>
     </div>`;
-    h+=`<div class="nb"><h3>التحقق قبل القرار</h3><ul>${top.checks.map(c=>`<li>${c.ok?'✅':'❌'} ${esc(c.txt)}</li>`).join('')}</ul></div>`;
-    if(top.warns&&top.warns.length)h+=`<div class="nb"><h3>تحذيرات</h3><ul>${top.warns.map(w=>`<li>⚠️ ${esc(w)}</li>`).join('')}</ul></div>`;
-    h+=`<div class="nb"><h3>لماذا هذا السهم؟</h3><ul>
+    body+=`<div class="nb"><h3>التحقق قبل القرار</h3><ul>${top.checks.map(c=>`<li>${c.ok?'✅':'❌'} ${esc(c.txt)}</li>`).join('')}</ul></div>`;
+    if(top.warns&&top.warns.length)body+=`<div class="nb"><h3>تحذيرات</h3><ul>${top.warns.map(w=>`<li>⚠️ ${esc(w)}</li>`).join('')}</ul></div>`;
+    body+=`<div class="nb"><h3>لماذا هذا السهم؟</h3><ul>
       <li>الاتجاه ${esc(top.dir)}${top.hdir?` والإطار الأكبر ${esc(top.hdir)}`:''} على إطار ${esc(top.tf)}.</li>
       ${top.fvTxt?`<li>التقييم: ${esc(top.fvTxt)}.</li>`:''}
       <li>درجته ${top.score} مقابل ${rows[1]&&rows[1].score!=null?rows[1].score:'—'} للتالي في الترتيب.</li></ul></div>`;
   }else{
     const near=top&&top.eligible?top:null;
     const cands=rows.filter(r=>r.cand&&r.cand.ok).sort((a,b)=>b.cand.score-a.cand.score);
-    h+=candHtml(cands,data,rows);
-    h+=`<div class="al" style="border-right-color:var(--wn)">⏸ <b>لا شراء الآن في محفظتك.</b> ${near?`أعلى درجة في الفحص الصارم <span class="ltr">${esc(near.sym)}</span> (${near.score}/100) أقل من حد 60${near.prem>0?` وسعره فوق قيمته العادلة بنحو ${near.prem.toFixed(0)}%`:''}${cands[0]&&cands[0].sym!==near.sym?`. أما أقرب مرشح بالتقييم فهو <span class="ltr">${esc(cands[0].sym)}</span>`:''}؛ الأفضل الانتظار.`:'لا يوجد سهم اجتاز كل الفحوص الصارمة. الانتظار قرار سليم.'}</div>`;
+    const c0=cands[0],need0=c0?String(c0.why||c0.techReason||'').split(' — ')[0].replace(/[.\s]+$/,''):'';
+    sum=`⏸ <b>لا شراء الآن</b>${c0?` • الأقرب: <b class="ltr">${esc(c0.sym)}</b>${need0?` (ينقصه: ${esc(need0)})`:''}`:' • لا مرشح قريب'}`;
+    body+=candHtml(cands,data,rows);
+    body+=`<div class="al" style="border-right-color:var(--wn)">⏸ <b>لا شراء الآن في محفظتك.</b> ${near?`أعلى درجة في الفحص الصارم <span class="ltr">${esc(near.sym)}</span> (${near.score}/100) أقل من حد 60${near.prem>0?` وسعره فوق قيمته العادلة بنحو ${near.prem.toFixed(0)}%`:''}${cands[0]&&cands[0].sym!==near.sym?`. أما أقرب مرشح بالتقييم فهو <span class="ltr">${esc(cands[0].sym)}</span>`:''}؛ الأفضل الانتظار.`:'لا يوجد سهم اجتاز كل الفحوص الصارمة. الانتظار قرار سليم.'}</div>`;
   }
   if(rows.length){
-    h+=`<div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>القرار</th><th>الدرجة</th><th>السبب</th></tr></thead><tbody>`+
+    body+=`<div style="overflow-x:auto"><table class="ptable"><thead><tr><th>السهم</th><th>القرار</th><th>الدرجة</th><th>السبب</th></tr></thead><tbody>`+
       rows.map((r,i)=>{
         const dec=r.eligible?(i===0&&r.score>=60?'<b class="up">شراء ★</b>':r.score>=60?'<span class="up">شراء ثانوي</span>':'<span class="mu">مراقبة</span>'):'<span class="dn">لا شراء</span>';
         return`<tr><td class="nm"><b class="ltr">${esc(r.sym)}</b><div class="mu">${esc(r.name)}${r.owned?' • مملوك':''}</div></td><td>${dec}</td><td class="ltr">${r.score==null?'—':r.score}</td><td class="mu">${esc(r.eligible?(r.warns&&r.warns[0]||'اجتاز الفحوص'):r.why)}</td></tr>`}).join('')+`</tbody></table></div>`;
   }
-  if(data.fail&&data.fail.length)h+=`<div class="al">⚠️ تعذّر تحليل ${data.fail.length} من ${data.count}: ${data.fail.map(f=>esc(f.sym)).join('، ')}. لم تدخل في الترتيب، وحد التركّز محسوب على الأسهم المكتملة فقط.</div>`;
-  h+=`<p class="mu">يعتمد القرار على الشموع والسعر الحي والقيمة العادلة المتاحة في التطبيق، ولا يضمن ربحاً. هو أداة مساعدة وليست نصيحة استثمارية؛ راجع السيولة والأخبار قبل التنفيذ. تحليل ${new Date(data.ts).toLocaleTimeString('ar-EG')} • إطار ${esc(data.tf)}.</p>`;
+  if(data.fail&&data.fail.length)body+=`<div class="al">⚠️ تعذّر تحليل ${data.fail.length} من ${data.count}: ${data.fail.map(f=>esc(f.sym)).join('، ')}. لم تدخل في الترتيب، وحد التركّز محسوب على الأسهم المكتملة فقط.</div>`;
+  body+=`<p class="mu">يعتمد القرار على الشموع والسعر الحي والقيمة العادلة المتاحة في التطبيق، ولا يضمن ربحاً. هو أداة مساعدة وليست نصيحة استثمارية؛ راجع السيولة والأخبار قبل التنفيذ. تحليل ${new Date(data.ts).toLocaleTimeString('ar-EG')} • إطار ${esc(data.tf)}.</p>`;
+  if(sum){
+    h+=`<details class="history-disclosure" id="hBestDet"${bdOpen?' open':''} style="border-right:4px solid ${tone}"><summary><span class="summary-title" style="font-size:.9rem;line-height:1.7">${sum}${attnSum?`<br><span class="mu" style="font-weight:400">${attnSum}</span>`:''}</span><span class="summary-chevron" aria-hidden="true">⌄</span></summary><div class="disclosure-body" style="padding:0 12px 12px">${body}</div></details>`;
+  }else h+=body;
   o.innerHTML=h;
+  const dt=$('hBestDet');if(dt)dt.addEventListener('toggle',()=>{bdOpen=dt.open});
 }
 
 function mount(){
@@ -3117,6 +3128,31 @@ window.__bt={test,stat,verdict,RULES,H};
 <script id="nawa-errors">
 (()=>{let last=0;const show=e=>{const n=Date.now();if(n-last<5000)return;last=n;try{if(typeof toast==='function')toast('حدث خطأ غير متوقع — أعد المحاولة، وبياناتك محفوظة',true)}catch(_){}};
 addEventListener('unhandledrejection',show);addEventListener('error',show)})();
+</script>
+<script id="nawa-tab-order">
+/* ترتيب التبويبات: الاستخدام اليومي أولاً ثم الأدوات ثم الإعدادات */
+(()=>{'use strict';
+const ORDER=['holdings','analyze','portfolio','divs','history','bt','settings'];
+const NAMES={analyze:'تحليل سهم',history:'سجل التحليلات',bt:'اختبار المؤشرات'};
+let landed=false;
+function arrange(){
+  const tabs=document.querySelector('.tabs');if(!tabs)return;
+  const have=ORDER.map(k=>document.getElementById('tabbtn-'+k)).filter(Boolean);
+  const cur=[...tabs.children].filter(t=>have.includes(t));
+  if(cur.some((t,i)=>t!==have[i]))have.forEach(t=>tabs.appendChild(t));
+  ORDER.forEach(k=>{const t=document.getElementById('tabbtn-'+k);if(t&&NAMES[k]&&t.textContent!==NAMES[k])t.textContent=NAMES[k]});
+}
+function land(){
+  if(landed)return;landed=true;
+  if(/tab/i.test(location.search+location.hash))return;
+  const a=document.getElementById('tabbtn-analyze'),h=document.getElementById('tabbtn-holdings');
+  if(a&&h&&a.classList.contains('active'))h.click();
+}
+arrange();
+document.addEventListener('DOMContentLoaded',arrange);
+addEventListener('load',()=>{arrange();setTimeout(()=>{arrange();land()},450)});
+const t=document.querySelector('.tabs');if(t)new MutationObserver(arrange).observe(t,{childList:true});
+})();
 </script>
 </body>
 </html>

@@ -1927,6 +1927,11 @@ async function quote(sym,custom){
   return{err:'تعذّر جلب السعر'};
 }
 
+/* يوم انفصال التوزيع: يُخصم الكوبون من الإغلاق السابق حتى لا يظهر كخسارة يومية */
+const nextTradeDay=d=>{let t=Date.parse(d+'T12:00:00Z');do{t+=864e5}while(new Date(t).getUTCDay()>4);return new Date(t).toISOString().slice(0,10)};
+function exDivAdj(r){try{const q=r.q,ev=(window.__dv&&window.__dv.S&&window.__dv.S.ev)||[];if(!q||!q.sess||!(q.prev>0))return 0;
+ const e=ev.find(x=>x.sym===r.sym&&+x.dps>0&&/^\d{4}-\d{2}-\d{2}$/.test(x.cum||'')&&nextTradeDay(x.cum)===q.sess);
+ return e&&(q.prev-q.price)>=0.5*e.dps?+e.dps:0}catch(_){return 0}}
 function calc(rows){
   const ok=rows.filter(r=>r.q&&!r.q.err&&r.q.price>0);
   let tot=0,prevTot=0,chg=0,invested=0,unrealized=0,withChg=0;
@@ -1934,7 +1939,7 @@ function calc(rows){
     r.val=r.qty*r.q.price;tot+=r.val;
     if(r.avgCost>0){r.cost=r.qty*r.avgCost;r.upl=r.val-r.cost;r.uplPct=r.cost>0?(r.upl/r.cost)*100:null;invested+=r.cost;unrealized+=r.upl}
     else{r.cost=null;r.upl=null;r.uplPct=null}
-    if(r.q.prev>0){r.chg=r.qty*(r.q.price-r.q.prev);r.pct=(r.q.price/r.q.prev-1)*100;chg+=r.chg;prevTot+=r.qty*r.q.prev;withChg++}
+    if(r.q.prev>0){const ad=exDivAdj(r),pv=ad>0&&r.q.prev-ad>0?r.q.prev-ad:r.q.prev;r.exAdj=pv!==r.q.prev?ad:0;r.chg=r.qty*(r.q.price-pv);r.pct=(r.q.price/pv-1)*100;chg+=r.chg;prevTot+=r.qty*pv;withChg++}
     else if(r.q.chgPct!=null&&isFinite(r.q.chgPct)){r.pct=r.q.chgPct;r.chg=r.val*(r.q.chgPct/100);chg+=r.chg;prevTot+=r.val/(1+r.q.chgPct/100);withChg++}
     else{r.chg=null;r.pct=null}
   });
@@ -1942,7 +1947,7 @@ function calc(rows){
   const withPct=ok.filter(r=>r.pct!=null);
   const sorted=[...withPct].sort((a,b)=>b.pct-a.pct);
   const sec={};ok.forEach(r=>{sec[r.sector]=(sec[r.sector]||0)+r.w});
-  return{tot,prevTot,chg,pct:prevTot?chg/prevTot*100:null,invested,unrealized,unrealizedPct:invested>0?(unrealized/invested)*100:null,missing:rows.length-ok.length,noPrev:ok.length-withChg,complete:ok.length===rows.length&&rows.length>0,chgComplete:withChg===rows.length&&rows.length>0,best:sorted[0],worst:sorted[sorted.length-1],top:[...ok].sort((a,b)=>b.w-a.w)[0],sec,ok};
+  return{tot,prevTot,chg,pct:prevTot?chg/prevTot*100:null,invested,unrealized,unrealizedPct:invested>0?(unrealized/invested)*100:null,missing:rows.length-ok.length,noPrev:ok.length-withChg,complete:ok.length===rows.length&&rows.length>0,chgComplete:withChg===rows.length&&rows.length>0,exAdjSyms:ok.filter(r=>r.exAdj>0).map(r=>r.sym),best:sorted[0],worst:sorted[sorted.length-1],top:[...ok].sort((a,b)=>b.w-a.w)[0],sec,ok};
 }
 
 function merge(){
@@ -2320,7 +2325,7 @@ function paint(){
     if(c.top&&c.top.w>lim)h+=`<div class="al">⚠️ تركّز: <b>${esc(c.top.sym)}</b> يمثل ${c.top.w.toFixed(1)}% (الحد ${lim}%).</div>`;
     h+=`<div class="kpi-grid">
       <div class="kpi"><div class="label">القيمة السوقية${c.complete?'':' (جزئية)'}</div><div class="val ltr">${fmt(c.tot)}</div><div class="sub">ج.م</div></div>
-      <div class="kpi"><div class="label">التغير اليومي</div><div class="val ltr ${cl(c.chg)}">${sg(c.chg)}</div><div class="sub ltr ${cl(c.pct)}">${c.pct==null?'—':sg(+c.pct.toFixed(2))+'%'}${c.chgComplete?'':' (جزئي)'}</div></div>
+      <div class="kpi"><div class="label">التغير اليومي</div><div class="val ltr ${cl(c.chg)}">${sg(c.chg)}</div><div class="sub ltr ${cl(c.pct)}">${c.pct==null?'—':sg(+c.pct.toFixed(2))+'%'}${c.chgComplete?'':' (جزئي)'}</div>${c.exAdjSyms&&c.exAdjSyms.length?`<div class="sub">بعد تعديل توزيع ${esc(c.exAdjSyms.join('، '))}</div>`:''}</div>
       <div class="kpi"><div class="label">رأس المال المستثمر</div><div class="val ltr">${c.invested>0?fmt(c.invested):'—'}</div><div class="sub">متوسط التكلفة × الكمية</div></div>
       <div class="kpi"><div class="label">الربح/الخسارة غير المحققة</div><div class="val ltr ${cl(c.unrealized)}">${c.invested>0?sg(c.unrealized):'—'}</div><div class="sub ltr ${cl(c.unrealizedPct)}">${c.unrealizedPct!=null?sg(+c.unrealizedPct.toFixed(2))+'%':'أدخل متوسط التكلفة'}</div></div>
       <div class="kpi"><div class="label">عدد المراكز</div><div class="val">${rows.length}</div><div class="sub">سهم</div></div>
@@ -2340,7 +2345,7 @@ function paint(){
     const wBar=r.w?`<div class="weight-bar"><div style="width:${Math.min(100,r.w)}%"></div></div>`:'';
     const avgStr=r.avgCost>0?fmt(r.avgCost):'—';
     const uplStr=r.upl!=null?`<span class="${cl(r.upl)}">${sg(r.upl)}</span>`:'—';
-    h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('متوسط التكلفة','ltr',avgStr)}${cell('السعر','ltr',fmt(q.price))}${cell('التغير اليومي','ltr '+(hasP?cl(r.pct):''),hasP?sg(+r.pct.toFixed(2))+'%':'—')}${cell('القيمة','ltr',fmt(r.val))}${cell('ربح/خسارة','',uplStr)}${cell('نسبة الربح/الخسارة','ltr '+(r.uplPct!=null?cl(r.upl):''),r.uplPct!=null?sg(+r.uplPct.toFixed(2))+'%':'—')}${cell('الوزن','',r.w.toFixed(1)+'%'+wBar)}${cell('القيمة العادلة','ltr',_fi.fv)}${cell('إشارة الخروج','',_fi.sig)}</tr>`;
+    h+=`<tr tabindex="0" data-hs="${esc(r.sym)}">${head}${cell('الكمية','ltr',r.qty.toLocaleString('en-US'))}${cell('متوسط التكلفة','ltr',avgStr)}${cell('السعر','ltr',fmt(q.price))}${cell('التغير اليومي','ltr '+(hasP?cl(r.pct):''),hasP?sg(+r.pct.toFixed(2))+'%'+(r.exAdj>0?' ◷':''):'—')}${cell('القيمة','ltr',fmt(r.val))}${cell('ربح/خسارة','',uplStr)}${cell('نسبة الربح/الخسارة','ltr '+(r.uplPct!=null?cl(r.upl):''),r.uplPct!=null?sg(+r.uplPct.toFixed(2))+'%':'—')}${cell('الوزن','',r.w.toFixed(1)+'%'+wBar)}${cell('القيمة العادلة','ltr',_fi.fv)}${cell('إشارة الخروج','',_fi.sig)}</tr>`;
   });
   h+=`</tbody></table>`;
   if(zeroRows.length)h+=`<div class="al" style="margin-top:12px">⚠️ أسهم بكمية صفر: <b>${zeroRows.map(r=>esc(r.sym)).join('، ')}</b><br><button id="purgeZero" class="sec sm dn" style="margin-top:8px">حذف الأسهم ذات الكمية صفر</button></div>`;

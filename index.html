@@ -1863,8 +1863,8 @@ if($('fvPrem')){
   b.className='np-top';b.type='button';b.setAttribute('aria-label','للأعلى');b.textContent='↑';
   b.onclick=()=>scrollTo({top:0,behavior:'smooth'});
   document.body.appendChild(b);
-  let tk=0;
-  addEventListener('scroll',()=>{if(tk)return;tk=requestAnimationFrame(()=>{tk=0;b.classList.toggle('show',scrollY>700)})},{passive:true});
+  let tk=0,idle=0;
+  addEventListener('scroll',()=>{if(tk)return;tk=requestAnimationFrame(()=>{tk=0;const on=scrollY>700;b.classList.toggle('show',on);clearTimeout(idle);if(on)idle=setTimeout(()=>b.classList.remove('show'),2200)})},{passive:true});
 }
 
 /* ============ PWA ============ */
@@ -2992,6 +2992,77 @@ function watchMan(){try{return JSON.parse(localStorage.getItem('u_watch_man_v1')
   new MutationObserver(()=>setTimeout(reveal,30)).observe(tabs,{subtree:true,attributes:true,attributeFilter:['class']});
   window.addEventListener('load',()=>setTimeout(reveal,200));
   window.addEventListener('resize',()=>setTimeout(reveal,100));
+})();
+</script>
+<script id="nawa-backtest">
+(()=>{
+const H=[5,10,20],MINN=20,WARM=60;
+const RULES=[['فوق متوسط EMA50',(k,i)=>k.c[i]>k.e50[i]],
+['تقاطع EMA20 صعودًا فوق EMA50',(k,i)=>k.e20[i]>k.e50[i]&&k.e20[i-1]<=k.e50[i-1]],
+['RSI بين 50 و70',(k,i)=>k.r[i]>=50&&k.r[i]<=70],
+['RSI تحت 30 (تشبّع بيع)',(k,i)=>k.r[i]<30],
+['MACD موجب ومتزايد',(k,i)=>k.hi[i]>0&&k.hi[i]>k.hi[i-1]],
+['اختراق أعلى 20 جلسة',(k,i)=>{let m=-Infinity;for(let j=i-20;j<i;j++)m=Math.max(m,k.h[j]);return k.c[i]>m}],
+['المركّب: EMA50 + RSI 50–70 + MACD موجب',(k,i)=>k.c[i]>k.e50[i]&&k.r[i]>=50&&k.r[i]<=70&&k.hi[i]>0]];
+const BASE='كل الأيام (المرجع)';
+function kit(b){const c=b.map(x=>x.c),e12=ema(c,12),e26=ema(c,26),ml=e12.map((v,i)=>v-e26[i]),sg=ema(ml,9);
+ return{c,h:b.map(x=>x.h),o:b.map(x=>x.o),e20:ema(c,20),e50:ema(c,50),r:rsi(c,14),hi:ml.map((v,i)=>v-sg[i])}}
+function test(bars,cost){
+ const b=bars.filter(x=>x&&x.c>0&&x.o>0&&x.h>0&&x.l>0);if(b.length<WARM+30)return null;
+ const k=kit(b),n=b.length,out={};
+ [BASE,...RULES.map(r=>r[0])].forEach(nm=>{out[nm]={};H.forEach(h=>out[nm][h]=[])});
+ RULES.forEach(([nm,f])=>{H.forEach(h=>{let last=-1e9;
+  for(let i=WARM;i+h<n;i++){if(i-last<h)continue;let ok=false;try{ok=f(k,i)}catch(e){}
+   if(ok){last=i;out[nm][h].push((k.c[i+h]/k.o[i+1]-1)*100-cost)}}})});
+ H.forEach(h=>{for(let i=WARM;i+h<n;i++)out[BASE][h].push((k.c[i+h]/k.o[i+1]-1)*100-cost)});
+ return out}
+const stat=a=>{const n=a.length;if(!n)return{n:0};const s=[...a].sort((x,y)=>x-y);
+ return{n,win:100*a.filter(x=>x>0).length/n,avg:a.reduce((p,x)=>p+x,0)/n,med:n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2}};
+const verdict=(s,b)=>{if(s.n<MINN)return['عيّنة صغيرة','mu'];const e=s.avg-b.avg;
+ if(e>0.5&&s.win>b.win+3)return['ميزة محتملة','up'];if(e<-0.5||s.win<b.win-3)return['أضعف من المرجع','dn'];return['غير حاسم','mu']};
+const tabs=document.querySelector('.tabs'),sett=document.querySelector('#tab-settings');if(!tabs||!sett)return;
+const st=document.createElement('style');st.textContent='.tab[data-bt]::before{content:"▤"}#tab-bt .btw{overflow-x:auto}#tab-bt table{width:100%;border-collapse:collapse;font-size:.85rem}#tab-bt th,#tab-bt td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:center}#tab-bt td:first-child,#tab-bt th:first-child{text-align:right}#tab-bt .up{color:var(--up)}#tab-bt .dn{color:var(--dn)}#tab-bt .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}';document.head.appendChild(st);
+const tb=document.createElement('div');tb.className='tab';tb.dataset.bt='1';tb.textContent='اختبار تاريخي';tb.setAttribute('role','tab');tb.id='tabbtn-bt';tb.setAttribute('aria-controls','tab-bt');tb.setAttribute('aria-selected','false');tb.tabIndex=-1;
+tabs.insertBefore(tb,tabs.querySelector('[data-tab="settings"]'));
+const pn=document.createElement('div');pn.id='tab-bt';pn.setAttribute('role','tabpanel');pn.setAttribute('aria-labelledby','tabbtn-bt');pn.style.display='none';sett.parentNode.appendChild(pn);
+let per={},fails=[],busy=false,view='ALL',hz=10,note='';
+const syms=()=>{const s=new Set();try{(JSON.parse(localStorage.getItem('u_hold_list_v3'))||[]).forEach(r=>Array.isArray(r)&&typeof r[0]==='string'&&s.add(r[0]))}catch(e){}try{(MY_PORTFOLIO||[]).forEach(x=>typeof x==='string'&&s.add(x))}catch(e){}return[...s]};
+const pool=ks=>{const o={};[BASE,...RULES.map(r=>r[0])].forEach(nm=>{o[nm]={};H.forEach(h=>o[nm][h]=ks.flatMap(s=>per[s][nm][h]))});return o};
+function draw(){
+ const ks=Object.keys(per),have=ks.length>0,f=n=>Number.isFinite(n)?n.toFixed(1):'—';
+ let h='<div class="c"><h2>اختبار تاريخي للمؤشرات</h2><p class="mu">يفحص كل قاعدة على الشموع اليومية المخزنة: كم مرة ظهرت، وماذا حدث للسعر بعد 5 و10 و20 جلسة (دخول عند افتتاح اليوم التالي وبعد خصم التكلفة). الإشارات المتقاربة لا تُحسب مرتين.</p>';
+ h+='<div class="row"><button id="btRun" class="sm"'+(busy?' disabled':'')+'>'+(busy?'جارٍ الاختبار…':'تشغيل الاختبار على أسهمي')+'</button>';
+ if(have){h+='<select id="btView" aria-label="السهم"><option value="ALL">كل الأسهم (مجمّع)</option>'+ks.map(s=>'<option value="'+esc(s)+'"'+(view===s?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select><select id="btHz" aria-label="مدة الاحتفاظ">'+H.map(x=>'<option value="'+x+'"'+(hz===x?' selected':'')+'>بعد '+x+' جلسة</option>').join('')+'</select>'}
+ h+='</div>';if(note)h+='<p class="mu">'+esc(note)+'</p>';
+ if(have){const d=view==='ALL'||!per[view]?pool(ks):per[view],b=stat(d[BASE][hz]);
+  const rows=RULES.map(([nm])=>{const s=stat(d[nm][hz]),v=verdict(s,b);return{nm,s,v,e:s.n?s.avg-b.avg:-1e9}});
+  const best=rows.filter(r=>r.s.n>=MINN&&r.v[1]==='up').sort((x,y)=>y.e-x.e)[0];
+  h+='<p><b>'+(best?'أفضل قاعدة تاريخيًا هنا: '+esc(best.nm)+' (متوسط '+f(best.s.avg)+'% مقابل '+f(b.avg)+'% للمرجع)':'لا توجد قاعدة بميزة واضحة على هذه البيانات')+'</b></p>';
+  h+='<div class="btw"><table><thead><tr><th>القاعدة</th><th>مرات</th><th>نجاح %</th><th>متوسط %</th><th>الحكم</th></tr></thead><tbody>';
+  h+='<tr class="mu"><td>'+BASE+'</td><td>'+b.n+'</td><td>'+f(b.win)+'</td><td>'+f(b.avg)+'</td><td>—</td></tr>';
+  rows.forEach(r=>{h+='<tr><td>'+esc(r.nm)+'</td><td>'+r.s.n+'</td><td>'+f(r.s.win)+'</td><td>'+f(r.s.avg)+'</td><td class="'+r.v[1]+'">'+r.v[0]+'</td></tr>'});
+  h+='</tbody></table></div>';
+  if(fails.length)h+='<p class="mu">تعذّر جلب: '+esc(fails.join('، '))+'</p>'}
+ h+='<p class="mu" style="margin-top:12px">تنبيه: النتائج وصف للماضي لا ضمان للمستقبل. «ميزة محتملة» تعني أن القاعدة تفوّقت على المرجع بفارق ملموس مع 20 إشارة على الأقل، وقد يكون ذلك صدفة. العيّنة نحو سنتين ونصف فقط.</p></div>';
+ pn.innerHTML=h}
+async function run(){
+ if(busy)return;const L=syms();if(!L.length){note='لا توجد أسهم في محفظتك لاختبارها.';draw();return}
+ busy=true;per={};fails=[];note='';draw();
+ const custom=($('px')&&$('px').value.trim())||'',cost=Math.max(0,parseFloat($('cs')&&$('cs').value)||0.4);
+ for(let i=0;i<L.length;i++){note='جارٍ فحص '+L[i]+' ('+(i+1)+'/'+L.length+')';draw();
+  try{const R=await loadAll(detectAsset(L[i]),'1d',custom,null),o=test(R.bars,cost);if(o)per[L[i]]=o;else fails.push(L[i]+' (بيانات قليلة)')}catch(e){fails.push(L[i])}}
+ busy=false;note='';draw()}
+pn.addEventListener('click',e=>{if(e.target.id==='btRun')run()});
+pn.addEventListener('change',e=>{if(e.target.id==='btView'){view=e.target.value;draw()}if(e.target.id==='btHz'){hz=+e.target.value;draw()}});
+const panels=['analyze','portfolio','history','settings','holdings','divs'];
+function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});
+ tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;
+ panels.forEach(i=>{const el=document.getElementById('tab-'+i);if(el)el.style.display='none'});
+ pn.style.display='block';draw();tabs.scrollIntoView({block:'start'})}
+tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
+ if(t===tb)show();else{pn.style.display='none';if(tb.classList.contains('active')){tb.classList.remove('active');tb.setAttribute('aria-selected','false');tb.tabIndex=-1}}});
+tb.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show()}});
+window.__bt={test,stat,verdict,RULES,H};
 })();
 </script>
 <script id="nawa-errors">

@@ -529,6 +529,7 @@ body{padding-bottom:max(24px,env(safe-area-inset-bottom))}
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
 <button id="exportAll" class="sec sm">تصدير نسخة احتياطية</button>
 <button id="importAll" class="sec sm">استعادة نسخة احتياطية</button>
+<button id="undoRestore" class="sec sm" style="display:none">التراجع عن آخر استعادة</button>
 <input id="importFile" type="file" accept="application/json,.json" hidden>
 </div>
 <h2>حول هذا الملف</h2>
@@ -617,7 +618,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.16';
+const APP_BUILD='2026.11.17.2';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -1736,6 +1737,22 @@ if($('ch'))$('ch').onclick=async()=>{
 
 /* ============ SETTINGS ============ */
 if($('clearCache'))$('clearCache').onclick=()=>{freeLocalCache(true);toast('تم مسح بيانات الأسعار والكاش المحلي')};
+/* ============ BACKUP HELPERS ============ */
+const BK_PRE='u_pre_restore_v1',BK_MAX=5*1024*1024;
+const bkHash=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(16).padStart(8,'0')};
+function bkCheck(data){
+  const isO=v=>v&&typeof v==='object'&&!Array.isArray(v),dupe=a=>new Set(a).size!==a.length;
+  if(!isO(data)||!Array.isArray(data.portfolio)||!data.portfolio.every(x=>typeof x==='string')||!Array.isArray(data.history))throw Error('صيغة النسخة الاحتياطية غير معروفة');
+  if(data.portfolio.length>300||!data.portfolio.every(x=>/^[^\s<>"'`]{1,30}$/.test(x)))throw Error('قائمة المتابعة غير صالحة');
+  if(['holdings','flows','snaps','log'].some(k=>data[k]!=null&&!Array.isArray(data[k])))throw Error('بعض بيانات النسخة غير صالحة');
+  if(data.holdings){
+    if(!data.holdings.every(r=>Array.isArray(r)&&typeof r[0]==='string'&&/^[A-Za-z0-9\-.]{1,20}$/.test(r[0])&&Number.isFinite(+r[2])&&+r[2]>=0&&+r[2]<=1e9&&(r[4]==null||(Number.isFinite(+r[4])&&+r[4]>=0))))throw Error('بيانات المحفظة الفعلية غير صالحة');
+    if(dupe(data.holdings.map(r=>r[0])))throw Error('المحفظة الفعلية تحتوي رموزًا مكررة');
+  }
+  for(const [k,m] of [['manual','الأسعار اليدوية'],['quotes','الأسعار المخزنة'],['settings','الإعدادات'],['fairValues','القيمة العادلة']])if(data[k]!=null&&!isO(data[k]))throw Error('بيانات '+m+' غير صالحة');
+  if(data.lim!=null&&!(+data.lim>0&&+data.lim<=100))throw Error('حد التركز غير صالح');
+  return true;
+}
 if($('exportAll'))$('exportAll').onclick=()=>{
   try{
     const data={
@@ -1759,8 +1776,10 @@ if($('exportAll'))$('exportAll').onclick=()=>{
       appBuild:APP_BUILD,
       settings:{cap:localStorage.getItem('u_cap'),px:localStorage.getItem('u_px')}
     };
+    data.counts={holdings:data.holdings.length,watch:data.portfolio.length,snaps:data.snaps.length,events:(data.dividends&&Array.isArray(data.dividends.ev)?data.dividends.ev.length:0)};
+    data.checksum=bkHash(JSON.stringify(data));
     const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-    const a=document.createElement('a');a.href=url;a.download='my-portfolio-full-backup.json';document.body.appendChild(a);a.click();a.remove();
+    const a=document.createElement('a');a.href=url;a.download='my-portfolio-full-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1500);try{localStorage.setItem('u_last_backup',String(Date.now()))}catch(_){}toast('تم تصدير النسخة الاحتياطية');
   }catch(e){toast('تعذّر التصدير',true)}
 };
@@ -1768,15 +1787,18 @@ if($('importAll'))$('importAll').onclick=()=>$('importFile')?.click();
 if($('importFile'))$('importFile').onchange=async e=>{
   const file=e.target.files?.[0];if(!file)return;
   try{
-    const data=JSON.parse(await file.text());
-    if(!data||typeof data!=='object'||!Array.isArray(data.portfolio)||!data.portfolio.every(x=>typeof x==='string')||!Array.isArray(data.history))throw Error('صيغة النسخة الاحتياطية غير معروفة');
-    if(['holdings','flows','snaps','log'].some(k=>data[k]!=null&&!Array.isArray(data[k])))throw Error('بعض بيانات النسخة غير صالحة');
-    if(data.holdings&&!data.holdings.every(r=>Array.isArray(r)&&typeof r[0]==='string'&&/^[A-Za-z0-9\-.]{1,20}$/.test(r[0])&&Number.isFinite(+r[2])&&+r[2]>=0&&(r[4]==null||(Number.isFinite(+r[4])&&+r[4]>=0))))throw Error('بيانات المحفظة الفعلية غير صالحة');
-    if(data.manual!=null&&(typeof data.manual!=='object'||Array.isArray(data.manual)))throw Error('بيانات الأسعار اليدوية غير صالحة');
-    if(data.quotes!=null&&(typeof data.quotes!=='object'||Array.isArray(data.quotes)))throw Error('بيانات الأسعار المخزنة غير صالحة');
-    if(data.settings!=null&&(typeof data.settings!=='object'||Array.isArray(data.settings)))throw Error('الإعدادات غير صالحة');
-    if(data.fairValues!=null&&(typeof data.fairValues!=='object'||Array.isArray(data.fairValues)))throw Error('بيانات القيمة العادلة غير صالحة');
-    if(!await dlg({msg:'سيتم تحديث البيانات الموجودة في ملف النسخة فقط. نزّل نسخة حالية قبل المتابعة إذا لزم.',ok:'استعادة'}))return;
+    if(file.size>BK_MAX)throw Error('حجم الملف أكبر من 5 ميجابايت');
+    let data;try{data=JSON.parse(await file.text())}catch(_){throw Error('الملف ليس بصيغة JSON صالحة')}
+    bkCheck(data);
+    let intact=true;if(typeof data.checksum==='string'){const {checksum,...rest}=data;intact=bkHash(JSON.stringify(rest))===checksum}
+    const curN=(()=>{try{return JSON.parse(localStorage.getItem('u_hold_list_v3')||'[]').length}catch(_){return 0}})();
+    const when=data.exportedAt&&!isNaN(Date.parse(data.exportedAt))?new Date(data.exportedAt).toLocaleString(LOC):'غير معروف';
+    const lines=['تاريخ النسخة: '+when,'إصدار التطبيق: '+(data.appBuild||'غير معروف'),'المحفظة الفعلية: '+(data.holdings?data.holdings.length+' سهم (الحالي '+curN+')':'غير مضمّنة (تبقى الحالية)'),'قائمة المتابعة: '+data.portfolio.length+' سهم'];
+    if(data.holdings&&!data.holdings.length&&curN)lines.push('⚠️ النسخة بلا أسهم فعلية وستحل محل محفظتك الحالية.');
+    if(+data.schemaVersion>3)lines.push('⚠️ النسخة من إصدار أحدث من هذا التطبيق وقد تفقد بعض بياناتها.');
+    if(!intact)lines.push('⚠️ بصمة الملف لا تطابق محتواه: قد يكون عُدّل يدويًا أو تلف.');
+    lines.push('تُحفظ نسخة تلقائية من حالتك الحالية ويمكن التراجع من الإعدادات.');
+    if(!await dlg({title:'استعادة نسخة احتياطية',msg:lines.join('\n'),ok:'استعادة',danger:!intact}))return;
     const keys={portfolio:'u_portfolio_v4',history:'u_hist_v4',holdings:'u_hold_list_v3',flows:'u_hold_flow_v1',snaps:'u_hold_snap_v1',log:'u_hold_log_v1',manual:'u_hold_man_v1',lim:'u_hold_lim_v1',quotes:'u_market_quotes_v1',watchManual:'u_watch_man_v1',snapDel:'u_hold_snapdel_v1',snapMax:'u_hold_snapmax_v1'};
     const writes={};
     if(data.dividends!=null&&(typeof data.dividends!=='object'||Array.isArray(data.dividends)))throw Error('بيانات التوزيعات غير صالحة');
@@ -1813,15 +1835,33 @@ if($('importFile'))$('importFile').onchange=async e=>{
       writes.u_px=(px&&validProxy(String(px)))?String(px):null;
     }
     const previous=Object.fromEntries(Object.keys(writes).map(k=>[k,localStorage.getItem(k)]));
+    let undoOk=false;try{const sd={};Object.keys(previous).forEach(k=>{if(k!=='u_market_quotes_v1')sd[k]=previous[k]});localStorage.setItem(BK_PRE,JSON.stringify({ts:Date.now(),build:APP_BUILD,data:sd}));undoOk=true}catch(_){}
     try{for(const [key,value] of Object.entries(writes)){if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value)}}
     catch(storageError){
       for(const [key,value] of Object.entries(previous)){try{if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value)}catch(_){}}
       throw storageError;
     }
-    toast('تمت استعادة البيانات');setTimeout(()=>location.reload(),450);
+    toast(undoOk?'تمت استعادة البيانات — يمكنك التراجع من الإعدادات':'تمت استعادة البيانات (تعذّر حفظ نسخة التراجع)');setTimeout(()=>location.reload(),650);
   }catch(err){toast('تعذّرت الاستعادة: '+(err.message||'ملف غير صالح'),true)}
   finally{e.target.value=''}
 };
+
+/* ---- التراجع عن آخر استعادة ---- */
+{
+  const ub=$('undoRestore'),ALLOWED=new Set(['u_portfolio_v4','u_hist_v4','u_hold_list_v3','u_hold_flow_v1','u_hold_snap_v1','u_hold_log_v1','u_hold_man_v1','u_hold_lim_v1','u_watch_man_v1','u_hold_snapdel_v1','u_hold_snapmax_v1','u_fv_v1','u_div_v1','u_fv_prem_v1','u_cap','u_px']);
+  const readPre=()=>{try{const x=JSON.parse(localStorage.getItem(BK_PRE)||'null');return x&&typeof x==='object'&&x.data&&typeof x.data==='object'&&!Array.isArray(x.data)?x:null}catch(_){return null}};
+  const sync=()=>{if(!ub)return;const x=readPre();ub.style.display=x?'':'none';if(x)ub.textContent='التراجع عن آخر استعادة ('+new Date(x.ts).toLocaleDateString(LOC)+')'};
+  if(ub)ub.onclick=async()=>{
+    const x=readPre();if(!x)return sync();
+    if(!await dlg({title:'التراجع عن الاستعادة',msg:'ستعود بياناتك إلى حالتها قبل الاستعادة الأخيرة ('+new Date(x.ts).toLocaleString(LOC)+'). متابعة؟',ok:'تراجع'}))return;
+    const keys=Object.keys(x.data).filter(k=>ALLOWED.has(k)),cur=Object.fromEntries(keys.map(k=>[k,localStorage.getItem(k)]));
+    try{for(const k of keys){const v=x.data[k];if(v===null)localStorage.removeItem(k);else if(typeof v==='string')localStorage.setItem(k,v)}}
+    catch(_){for(const k of keys){try{cur[k]===null?localStorage.removeItem(k):localStorage.setItem(k,cur[k])}catch(__){}}toast('تعذّر التراجع',true);return}
+    try{localStorage.removeItem(BK_PRE)}catch(_){}
+    toast('تم التراجع عن الاستعادة');setTimeout(()=>location.reload(),650);
+  };
+  sync();
+}
 
 updatePortCount();rh();
 

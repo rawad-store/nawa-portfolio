@@ -854,6 +854,7 @@ const CACHE_STALE_MS={'1h':5*60000,'4h':15*60000,'1d':300000,'1w':3600000};
 const ck=(tk,tf)=>`u_y_${tk}_${tf}`;
 const dayStamp=t=>t?new Date(t).toISOString().slice(0,10):null; const sessionLag=a=>{if(!a)return 0;let n=0;for(let d=Date.parse(a+'T12:00:00Z')+864e5,e=Date.now();d<=e;d+=864e5){if(new Date(d).getUTCDay()<=4)n++}return n};
 /* TradingView هو المصدر الأساسي لأحدث جلسة: تُضاف شمعتها فوق تاريخ Yahoo إذا كان Yahoo متأخراً */
+const BRK=c=>`سجل الشموع يحتوي قفزة سعرية بنسبة ${c.scaleBreak.r}× بتاريخ ${c.scaleBreak.d} (احتمال أسهم مجانية أو تجزئة غير مُعدَّلة في المصدر). المؤشرات الطويلة مثل EMA50 وEMA200 وMACD غير موثوقة حتى يُصحَّح السجل.`;
 const sessionsBetween=(a,b)=>{let n=0;for(let d=Date.parse(a+'T12:00:00Z')+864e5,e=Date.parse(b+'T12:00:00Z');d<e;d+=864e5){if(new Date(d).getUTCDay()<=4)n++}return n};
 function mergeTvBar(bars,live){
   if(!bars||!bars.length||!live||!(live.price>0)||!/^\d{4}-\d{2}-\d{2}$/.test(live.sess||''))return null;
@@ -1105,8 +1106,9 @@ function study(bars,livePrice=null){
   const volBase=seg.length?seg.reduce((t,b)=>t+(+b.v||0),0)/seg.length:0,volRecent=recentVol.length?recentVol.reduce((t,b)=>t+(+b.v||0),0)/recentVol.length:0;
   const histMeta=bars._historyMeta||{},asOf=histMeta.asOf||dayStamp(bars[bars.length-1]?.t);
   const ageDays=asOf?Math.max(0,(Date.now()-Date.parse(asOf+'T23:59:59Z'))/86400000):Infinity;
-  const old=ageDays>MAX_HISTORY_AGE_DAYS,decisionReady=count>=FULL_DECISION_BARS&&!old;
-  const coverage={bars:count,required:FULL_DECISION_BARS,decisionReady,limited:!decisionReady,stale:old,ageDays,asOf,lagSessions:sessionLag(asOf)+(histMeta.gapSessions||0),gapSessions:histMeta.gapSessions||0,tvBar:!!histMeta.tvBar,source:histMeta.source||'غير معروف',
+  let scaleBreak=null;for(let i=1;i<cl.length;i++){const r=cl[i]/cl[i-1];if(r<0.6||r>1.67)scaleBreak={d:dayStamp(bars[i].t),r:+r.toFixed(2)}}
+   const old=ageDays>MAX_HISTORY_AGE_DAYS,decisionReady=count>=FULL_DECISION_BARS&&!old&&!scaleBreak;
+  const coverage={bars:count,required:FULL_DECISION_BARS,scaleBreak,decisionReady,limited:!decisionReady,stale:old,ageDays,asOf,lagSessions:sessionLag(asOf)+(histMeta.gapSessions||0),gapSessions:histMeta.gapSessions||0,tvBar:!!histMeta.tvBar,source:histMeta.source||'غير معروف',
     periods:{emaFast:e20Period,emaSlow:e50Period,macdFast,macdSlow,macdSignal,rsi:rsiPeriod,atr:atrPeriod,swing:swingK},
     rawRecordCount:histMeta.rawRecordCount,rejectedInvalidOhlc:histMeta.rejectedInvalidOhlc||0,duplicateRowsRemoved:histMeta.duplicateRowsRemoved||0};
   return{b:bars,px,a,e20:e20[n],e50:e50[n],e200:e200?e200[n]:null,E20:e20,E50:e50,e20Period,e50Period,rsi:ra[n],mh:hist[n],mhp:n>0?hist[n-1]:hist[n],s,dir,st,lv,vr:volBase>0?volRecent/volBase:null,atrPct:a/px*100,live:livePrice>0,coverage};
@@ -1335,6 +1337,7 @@ function decide(x,h,cost){
 }
 function decideWithCoverage(x,h,cost){
   const d=decide(x,h,cost);
+  if(x.coverage?.scaleBreak)return{...d,v:'انتظار',reason:BRK(x.coverage),plan:null,exitLvl:null,conf:Math.min(35,d.conf),limited:true};
   if(x.coverage?.decisionReady){
     const lg=x.coverage.lagSessions||0;
     if(lg>=2&&d.v==='شراء')return{...d,v:'انتظار',reason:`المؤشرات محسوبة حتى إغلاق ${x.coverage.asOf} ولا تشمل آخر ${lg} جلسات تداول؛ لا تُصدَر إشارة شراء قبل تجدد الشموع.`,plan:null,conf:Math.min(35,d.conf),lagged:true};
@@ -1349,7 +1352,7 @@ function decideWithCoverage(x,h,cost){
 function generateNotes(x,h,d){
   if(x.coverage&&!x.coverage.decisionReady){
     const p=x.coverage.periods;
-    const notes=[`قراءة أولية من ${x.coverage.bars} شمعة. خُفّضت مدد بعض المؤشرات لتناسب السجل المتاح: EMA${p.emaFast}/EMA${p.emaSlow}، RSI(${p.rsi})، MACD(${p.macdFast},${p.macdSlow},${p.macdSignal}).`];
+    const notes=x.coverage.scaleBreak?[BRK(x.coverage)]:[`قراءة أولية من ${x.coverage.bars} شمعة. خُفّضت مدد بعض المؤشرات لتناسب السجل المتاح: EMA${p.emaFast}/EMA${p.emaSlow}، RSI(${p.rsi})، MACD(${p.macdFast},${p.macdSlow},${p.macdSignal}).`];
     if(x.coverage.stale)notes.push(`آخر شمعة بتاريخ ${x.coverage.asOf}؛ البيانات أقدم من ${MAX_HISTORY_AGE_DAYS} أيام.`);
     if(x.coverage.rejectedInvalidOhlc)notes.push(`استُبعدت ${x.coverage.rejectedInvalidOhlc} سجلات OHLC غير متسقة من النسخة المصدرية.`);
     if(x.coverage.source)notes.push(`مصدر التاريخ: ${x.coverage.source}.`);
@@ -1651,7 +1654,8 @@ function render(data){
   const stale=(action?`<div class="al" style="border-right-color:${action.cls==='dn'?'var(--dn)':action.cls==='up'?'var(--up)':'var(--wn)'}"><b>إجراء المحفظة: ${esc(action.v)}</b><br><span class="mu">${esc(action.reason)}</span></div>`:'')
     +(frameNote?`<div class="al">ℹ️ ${esc(frameNote)}</div>`:'')
     +(live&&live.source==='ذاكرة محلية'?`<div class="al">◷ هذا آخر سعر محفوظ محليًا، وليس سعرًا حيًا. مصدره ${esc(live.originalSource||'مصدر سابق')} وآخر تحديث ${esc(new Date(live.time).toLocaleString(LOC))}.</div>`:'')
-    +(x.coverage&&!x.coverage.decisionReady?`<div class="al">⚠️ بيانات محدودة: ${x.coverage.bars} شمعة متاحة من ${FULL_DECISION_BARS} لازمة.</div>`:'')
+    +(x.coverage?.scaleBreak?`<div class="al">⚠️ ${esc(BRK(x.coverage))}</div>`:'')
+     +(x.coverage&&!x.coverage.decisionReady&&!x.coverage.scaleBreak?`<div class="al">⚠️ بيانات محدودة: ${x.coverage.bars} شمعة متاحة من ${FULL_DECISION_BARS} لازمة.</div>`:'')
     +(x.coverage?.stale?`<div class="al">⚠️ بيانات الشموع أقدم من ${MAX_HISTORY_AGE_DAYS} أيام.</div>`:'')
     +(x.coverage?.rejectedInvalidOhlc?`<div class="al">تنبيه جودة المصدر: استُبعدت ${x.coverage.rejectedInvalidOhlc} سجلات OHLC غير متسقة.</div>`:'')
     +(diverge&&!(live&&live.aligned)?`<div class="al">ℹ️ السعر المستخدم (${fmt(x.px)}) يختلف عن آخر إغلاق (${fmt(x.b[x.b.length-1].c)}).</div>`:'')

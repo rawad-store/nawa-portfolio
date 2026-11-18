@@ -1,5 +1,5 @@
 /* نواة PWA — كاش محلي للغلاف مع أولوية الشبكة ومهلة قصيرة، فلا ينتظر المستخدم على اتصال ضعيف. */
-const CACHE_NAME = 'nawa-pwa-shell-v40';
+const CACHE_NAME = 'nawa-pwa-shell-v42';
 const NET_TIMEOUT = 4500; // مللي ثانية قبل الرجوع إلى النسخة المحفوظة
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_URLS = ['./','./index.html','./manifest.webmanifest','./data/vlmra-egp-history.json','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png'].map(path => new URL(path, BASE_URL).href);
@@ -11,7 +11,7 @@ const isData = url => url.pathname.startsWith(BASE_URL.pathname + 'data/');
 // التثبيت لا يفشل كله إذا غاب ملف واحد.
 self.addEventListener('install', event => event.waitUntil((async()=>{
   const cache=await caches.open(CACHE_NAME);
-  await Promise.allSettled(SHELL_URLS.map(u=>cache.add(u)));
+  await Promise.allSettled(SHELL_URLS.map(u=>cache.add(new Request(u,{cache:'reload'}))));
   await self.skipWaiting();
 })()));
 
@@ -30,7 +30,7 @@ async function networkFirst(event, cache){
     const preload=await event.preloadResponse;
     const response=preload||await fetch(request,{cache:'no-store'});
     if(response&&response.status>=500){ bad=response; throw new Error('HTTP '+response.status); }
-    if(response&&response.ok) cache.put(request,response.clone()).catch(()=>{});
+    if(response&&response.ok&&!response.redirected){ const key=request.mode==='navigate'?INDEX_URL:request; cache.put(key,response.clone()).catch(()=>{}); }
     return response;
   })();
   // يُبقي العامل حيًا لإكمال التحديث في الخلفية حتى بعد تقديم النسخة المحفوظة عند المهلة.

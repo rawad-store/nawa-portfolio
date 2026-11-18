@@ -61,9 +61,9 @@
       ]
     },
     {
-      "name": "قائمة المتابعة",
-      "short_name": "المتابعة",
-      "url": "./?source=pwa&tab=portfolio",
+      "name": "حركة المستثمرين",
+      "short_name": "الحركة",
+      "url": "./?source=pwa&tab=flows",
       "icons": [
         {
           "src": "./icons/icon-192.png",
@@ -76,18 +76,6 @@
       "name": "توزيعات الأرباح",
       "short_name": "التوزيعات",
       "url": "./?source=pwa&tab=divs",
-      "icons": [
-        {
-          "src": "./icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "سجل التحليلات",
-      "short_name": "السجل",
-      "url": "./?source=pwa&tab=history",
       "icons": [
         {
           "src": "./icons/icon-192.png",

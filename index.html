@@ -618,7 +618,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.17.3';
+const APP_BUILD='2026.11.18.2';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -1817,7 +1817,7 @@ if($('importFile'))$('importFile').onchange=async e=>{
     }
     if(data.dividends!=null){
       const D=data.dividends,isD=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v),txt=(v,n)=>String(v==null?'':v).slice(0,n);
-      const ev=(Array.isArray(D.ev)?D.ev:[]).filter(e=>e&&typeof e.id==='string'&&/^[A-Za-z0-9_\-]{1,40}$/.test(e.id)&&typeof e.sym==='string'&&/^[A-Z0-9\-]{2,12}$/.test(e.sym)&&+e.dps>0&&isFinite(+e.dps)&&isD(e.cum)).map(e=>{const o={id:e.id,sym:e.sym,name:txt(e.name,80),dps:+e.dps,cum:e.cum,pay:isD(e.pay)?e.pay:'',cpn:(typeof e.cpn==='number'&&isFinite(e.cpn))?e.cpn:txt(e.cpn,20),src:txt(e.src,200),conf:e.conf==='official'?'official':'est',fol:!!e.fol};if(e.note)o.note=txt(e.note,300);return o});
+      const ev=(Array.isArray(D.ev)?D.ev:[]).filter(e=>e&&typeof e.id==='string'&&/^[A-Za-z0-9_\-]{1,40}$/.test(e.id)&&typeof e.sym==='string'&&/^[A-Z0-9\-]{2,12}$/.test(e.sym)&&+e.dps>0&&isFinite(+e.dps)&&isD(e.cum)).map(e=>{const o={id:e.id,sym:e.sym,name:txt(e.name,80),dps:+e.dps,cum:e.cum,pay:isD(e.pay)?e.pay:'',cpn:(typeof e.cpn==='number'&&isFinite(e.cpn))?e.cpn:txt(e.cpn,20),src:txt(e.src,200),conf:e.conf==='official'?'official':'est',fol:!!e.fol};if(+e.qty>0&&+e.qty<=1e9)o.qty=+e.qty;if(e.note)o.note=txt(e.note,300);return o});
       const del=(Array.isArray(D.del)?D.del:[]).filter(x=>typeof x==='string').slice(0,200).map(x=>txt(x,60));
       const ack={};if(D.ack&&typeof D.ack==='object'&&!Array.isArray(D.ack))for(const [k,v] of Object.entries(D.ack))if(typeof k==='string'&&k.length<=80&&Number.isFinite(+v)&&+v>0)ack[k]=+v;
       const auto={};if(D.auto&&typeof D.auto==='object'&&!Array.isArray(D.auto))for(const [k,v] of Object.entries(D.auto)){if(!/^[A-Z0-9\-]{2,12}$/.test(k)||!v||typeof v!=='object')continue;const L=(Array.isArray(v.L)?v.L:[]).filter(x=>x&&isD(x.d)&&+x.a>0&&isFinite(+x.a)).map(x=>({d:x.d,a:+x.a}));auto[k]={ts:Number.isFinite(+v.ts)?+v.ts:0,L,...(v.err?{err:1}:{})}}
@@ -1925,7 +1925,7 @@ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
 
 /* ============ URL TAB ============ */
 const q=new URLSearchParams(location.search).get('tab');
-if(q){const k=q.replace(/[^a-z]/g,'');setTimeout(()=>{const t=k==='holdings'?document.getElementById('tabbtn-holdings'):document.querySelector('.tabs [data-tab="'+k+'"]');if(t)t.click()},300)}
+if(q){const k=q.replace(/[^a-z]/g,'');setTimeout(()=>{const t=document.getElementById('tabbtn-'+k)||document.querySelector('.tabs [data-tab="'+k+'"]');if(t&&k!=='divs')t.click()},300)}
 
 /* ============ EXPORT GLOBALS ============ */
 window.__nawa={detectAsset,loadAll,fvKey,EGX,study,decide,decideWithCoverage,fvExit,fvValue,fvEnsure,portfolioSignal,sanity,saveMarketQuote,getCachedMarketQuote,getEgxMarketQuote,tvQuote,dayEG,fmt,esc,dlg,toast};
@@ -2669,6 +2669,12 @@ function paintResult(data){
   }
   if(data.fail&&data.fail.length)body+=`<div class="al">⚠️ تعذّر تحليل ${data.fail.length} من ${data.count}: ${data.fail.map(f=>esc(f.sym)).join('، ')}. لم تدخل في الترتيب، وحد التركّز محسوب على الأسهم المكتملة فقط.</div>`;
   body+=`<p class="mu">يعتمد القرار على الشموع والسعر الحي والقيمة العادلة المتاحة في التطبيق، ولا يضمن ربحاً. هو أداة مساعدة وليست نصيحة استثمارية؛ راجع السيولة والأخبار قبل التنفيذ. تحليل ${new Date(data.ts).toLocaleTimeString('ar-EG')} • إطار ${esc(data.tf)}.</p>`;
+  try{const fl=window.__flows&&window.__flows.summary();
+    if(sum&&fl&&fl.ok){const c=fl.cls==='up'?'var(--up)':fl.cls==='dn'?'var(--dn)':'var(--wn)';
+      sum+=` • تدفق المستثمرين: <b style="color:${c}">${esc(fl.label)}</b>${fl.stale?' (قديم)':''}`;
+      if(fl.idx<=-35&&!fl.stale)body=`<div class="al" style="border-right-color:var(--dn)">⇅ <b>تدفق الأموال الذكية سلبي</b> (المؤشر ${fl.idx}): الأجانب والعرب والمؤسسات يبيعون صافيًا. هذا لا يمنع الشراء لكنه يدعو لتشديد الحذر وتصغير الحجم. التفاصيل في تبويب «حركة المستثمرين».</div>`+body;
+      else if(fl.idx>=35&&!fl.stale)body=`<div class="al" style="border-right-color:var(--up)">⇅ تدفق الأموال الذكية إيجابي (المؤشر +${fl.idx}) وهو داعم للقرار لا بديل عن فحوصه.</div>`+body}
+  }catch(e){}
   if(sum){
     h+=`<details class="history-disclosure" id="hBestDet"${bdOpen?' open':''} style="border-right:4px solid ${tone}"><summary><span class="summary-title" style="font-size:.9rem;line-height:1.7">${sum}${attnSum?`<br><span class="mu" style="font-weight:400">${attnSum}</span>`:''}</span><span class="summary-chevron" aria-hidden="true">⌄</span></summary><div class="disclosure-body" style="padding:0 12px 12px">${body}</div></details>`;
   }else h+=body;
@@ -2723,7 +2729,7 @@ const nm=s=>{const h=EGX.find(e=>e[0]===s);return h?h[1]:s};
 const jl=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
 const owned=()=>{const m={};(jl('u_hold_list_v3')||[]).forEach(r=>{if(Array.isArray(r)&&r[0])m[nz(r[0])]=+r[2]||0});return m};
 const watched=()=>(jl('u_portfolio_v4')||[]).map(nz);
-const relevant=e=>{const s=e&&e.sym;return !!s&&((owned()[s]||0)>0||watched().includes(s))};
+const relevant=e=>{const s=e&&e.sym;return !!s&&((owned()[s]||0)>0||(e.qty>0&&P(e.pay)>=today())||watched().includes(s))};
 const r2=n=>Math.round((n+Number.EPSILON)*100)/100;
 const hname=s=>{const h=(jl('u_hold_list_v3')||[]).find(r=>Array.isArray(r)&&r[0]&&nz(r[0])===s);return(h&&h[1])||nm(s)};
 const money=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2746,7 +2752,7 @@ const ok=e=>e.conf==='official'&&!check(e).er.length;
 
 function advise(e){
   const T=today(),c=P(e.cum),d=Math.round((c-T)/DAY),q=px(e.sym),tax=S.cfg.tax/100,cost=+(g('cs')&&g('cs').value)||0.4;
-  const gy=q?e.dps/q.price*100:null,ny=gy==null?null:gy*(1-tax),own=owned()[e.sym]||0;
+  const gy=q?e.dps/q.price*100:null,ny=gy==null?null:gy*(1-tax),own=e.qty>0?+e.qty:(owned()[e.sym]||0);
   const o={d,gy,ny,own,gross:r2(own*e.dps),tx:r2(own*e.dps*tax),cash:r2(r2(own*e.dps)-r2(own*e.dps*tax)),lv:'nt',t:''};
   if(isNaN(d))o.t='تاريخ غير صالح';
   else if(d<0){o.lv='mu';o.t='انتهى الحق؛ الشراء الآن لا يمنح هذا الكوبون.'+(P(e.pay)>=T?' الكوبون بانتظار الصرف في '+dfmt(P(e.pay))+'.':'')}
@@ -2757,6 +2763,7 @@ function advise(e){
     if(own>0)o.t='تملك السهم: احتفظ به حتى نهاية جلسة '+dfmt(c)+' لتستحق الكوبون (≈ '+money(o.cash)+' ج صافي).';
     o.t+=' تذكّر: ينخفض سعر السهم غالبًا بقدر الكوبون بعد نهاية الحق.';
   }
+  if(d<0&&own>0&&!(e.qty>0)&&P(e.pay)>=T)o.t+=' ⚠ المبلغ محسوب على كميتك الحالية؛ إن تغيّرت بعد يوم الأحقية فراجع كشف وسيطك.';
   return o;
 }
 
@@ -2814,7 +2821,9 @@ async function notify(){
 
 const ban=document.createElement('div');ban.id='dvBanner';ban.className='c';
 const hd=document.querySelector('.w>header');if(hd)hd.after(ban);
+function freezeQty(){const T=today();let ch=false;S.ev.forEach(e=>{if(P(e.cum)===T){const q=owned()[e.sym]||0;if(q>0&&e.qty!==q){e.qty=q;ch=true}}});if(ch)save()}
 function banner(){
+  freezeQty();
   const ow=owned(),L=due().filter(e=>!((ow[e.sym]||0)>0));
   if(!L.length){ban.style.display='none';ban.innerHTML='';return}
   ban.style.display='block';
@@ -2829,7 +2838,7 @@ const pn=document.createElement('div');pn.id='tab-divs';pn.setAttribute('role','
 function show(){
   document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});
   tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;
-  ['analyze','portfolio','history','settings','holdings'].forEach(i=>{const el=g('tab-'+i);if(el)el.style.display='none'});
+  document.querySelectorAll('[role="tabpanel"]').forEach(p=>{if(p!==pn)p.style.display='none'});
   pn.style.display='block';render();
   tabs.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});
   banner();
@@ -2867,15 +2876,17 @@ function render(){
   const ids=['dvS','dvA','dvC','dvP','dvN2','dvT','dvR'],keep=ids.map(i=>g(i)&&g(i).value),op=[...pn.querySelectorAll('details')].map(x=>x.open);
   const es=est(),T=today(),all=S.ev.filter(relevant).sort((a,b)=>P(a.cum)-P(b.cum));
   const up=all.filter(e=>P(e.cum)>=T||P(e.pay)>=T);
-  const mineTot=(m=>({...m,v:r2(m.v)}))(up.filter(e=>ok(e)&&owned()[e.sym]>0).reduce((m,e)=>{const a=advise(e);return{g:m.g+a.gross,t:m.t+a.tx,v:m.v+a.cash,n:m.n+1}},{g:0,t:0,v:0,n:0}));
+  const mineTot=(m=>({...m,v:r2(m.v)}))(up.filter(e=>ok(e)&&advise(e).own>0).reduce((m,e)=>{const a=advise(e);return{g:m.g+a.gross,t:m.t+a.tx,v:m.v+a.cash,n:m.n+1}},{g:0,t:0,v:0,n:0}));
   const ps=all.filter(e=>!(P(e.cum)>=T||P(e.pay)>=T));
   const ow=owned(),busy=new Set(up.map(e=>e.sym));
   const idle=[...new Set([...Object.keys(ow).filter(x=>ow[x]>0),...watched()])].filter(x=>!busy.has(x));
+  const ttmHtml=(()=>{let inc=0,val=0,n=0;const cut=T-365*DAY;Object.entries(ow).forEach(([s,q])=>{if(!(q>0))return;const L=(S.auto[s]&&S.auto[s].L)||[],a=L.filter(x=>P(x.d)>cut&&P(x.d)<=T).reduce((m,x)=>m+x.a,0),p=px(s);if(a>0){inc+=q*a*(1-S.cfg.tax/100);n++}if(p)val+=q*p.price});return n?'<div class="dvhero"><div class="dvstat net"><small>دخل توزيعات آخر 12 شهرًا (صافي، تقديري بكمياتك الحالية)</small><b>'+money(inc)+' ج</b></div>'+(val>0?'<div class="dvstat"><small>العائد الصافي على القيمة السوقية</small><b>'+(inc/val*100).toFixed(2)+'%</b></div>':'')+'<div class="dvstat"><small>أسهم موزِّعة</small><b>'+n+'</b></div></div>':''})();
   const idleHtml=idle.length?'<details class="fvbox"><summary>أسهم بلا توزيع قادم معلن ('+idle.length+')</summary>'+idle.map(x=>{const L=(S.auto[x]&&S.auto[x].L)||[],l=L[L.length-1];return'<div class="dvi"><b class="dvs">'+esc(x)+'</b><span>'+esc(hname(x))+'</span><span class="mu">'+(l?'آخر كوبون '+money(l.a)+' ج ('+esc(l.d)+')':'لا بيانات سابقة')+'</span></div>'}).join('')+'</details>':'';
   pn.innerHTML='<h2 style="margin:0">📅 توزيعات الأرباح</h2>'
     +'<details class="fvbox"><summary>كيف تعمل التنبيهات؟</summary><p class="mu" style="margin:4px 0">التنبيه لا يعمل إلا للتوزيعات المؤكدة التي اجتازت التحقق وللأسهم التي تملكها أو في قائمة متابعتك فقط.</p></details>'
     +'<div class="dvt"><div><label for="dvTax">ضريبة %</label><input id="dvTax" type="number" min="0" max="50" step="0.5" value="'+S.cfg.tax+'"></div><button id="dvN" class="sec sm">'+(S.cfg.notif&&typeof Notification!=='undefined'&&Notification.permission==='granted'?'🔔 الإشعارات مفعّلة':'🔔 تفعيل الإشعارات')+'</button><button id="dvI" class="sec sm">📆 تصدير للتقويم</button><button id="dvQ" class="sec sm">⟳ تحديث الأسعار</button><button id="dvF" class="sec sm">🔎 جلب تلقائي</button></div>'
     +(mineTot.n?'<div class="dvhero"><div class="dvstat net"><small>صافي التدفق المتوقع</small><b>'+money(mineTot.v)+' ج</b></div><div class="dvstat"><small>إجمالي قبل الضريبة</small><b>'+money(r2(mineTot.g))+'</b></div><div class="dvstat"><small>الضريبة '+S.cfg.tax+'%</small><b>− '+money(r2(mineTot.t))+'</b></div><div class="dvstat"><small>توزيعات</small><b>'+mineTot.n+'</b></div></div>':'<div class="al">لا توجد توزيعات مؤكدة قادمة.</div>')
+    +ttmHtml
     +(up.length?up.map(card).join(''):'<p class="mu">لا توجد توزيعات قادمة مسجّلة.</p>')
     +idleHtml
     +(es.length?'<h2>📈 توقعات تقديرية</h2>'+es.map(ecard).join(''):'')
@@ -2892,7 +2903,7 @@ pn.addEventListener('click',async e=>{
   else if(b.dataset.act==='edit'&&ev){editId=ev.id;render();[['dvS',ev.sym],['dvA',ev.dps],['dvC',ev.cum],['dvP',ev.pay||''],['dvN2',ev.cpn||''],['dvT',ev.conf],['dvR',ev.src||'']].forEach(([i,v])=>{g(i).value=v});const dt=pn.querySelectorAll('details'),f=dt[dt.length-1];f.open=true;f.scrollIntoView({behavior:'smooth',block:'center'});toast('وضع التعديل')}
   else if(b.dataset.act==='conf'){editId=null;render();[['dvS',b.dataset.sym],['dvA',b.dataset.dps],['dvC',b.dataset.cum],['dvP',''],['dvT','official'],['dvR','']].forEach(([i,v])=>{g(i).value=v});const dt=pn.querySelectorAll('details'),f=dt[dt.length-1];f.open=true;f.scrollIntoView({behavior:'smooth',block:'center'});toast('أدخل المصدر الرسمي')}
   else if(b.id==='dvF'){b.disabled=true;const n=await fetchDiv(true);render();toast(n?'تم جلب '+n+' سهم':'لم يُعثر على بيانات تلقائية',!n)}
-  else if(b.id==='dvAdd'){const old=editId&&S.ev.find(x=>x.id===editId);if(old)S.ev=S.ev.filter(x=>x!==old);const sym=nz(g('dvS').value),o={id:editId||'u-'+Date.now().toString(36),sym,name:nm(sym),dps:+g('dvA').value,cum:g('dvC').value,pay:g('dvP').value,cpn:g('dvN2').value.trim(),src:g('dvR').value.trim(),conf:g('dvT').value,fol:old?old.fol:true},k=check(o);if(k.er.length){if(old)S.ev.push(old);toast(k.er[0],true);return}editId=null;S.ev.push(o);save();render();banner();toast('تمت الإضافة'+(k.wn.length?' مع تحذيرات':''))}
+  else if(b.id==='dvAdd'){const old=editId&&S.ev.find(x=>x.id===editId);if(old)S.ev=S.ev.filter(x=>x!==old);const sym=nz(g('dvS').value),o={id:editId||'u-'+Date.now().toString(36),sym,name:nm(sym),dps:+g('dvA').value,cum:g('dvC').value,pay:g('dvP').value,cpn:g('dvN2').value.trim(),src:g('dvR').value.trim(),conf:g('dvT').value,fol:old?old.fol:true,qty:old?old.qty:undefined},k=check(o);if(k.er.length){if(old)S.ev.push(old);toast(k.er[0],true);return}editId=null;S.ev.push(o);save();render();banner();toast('تمت الإضافة'+(k.wn.length?' مع تحذيرات':''))}
   else if(b.id==='dvN'){if(typeof Notification==='undefined'){toast('المتصفح لا يدعم الإشعارات',true);return}const p=Notification.permission==='granted'?'granted':await Notification.requestPermission();S.cfg.notif=p==='granted';save();toast(S.cfg.notif?'فُعّلت':'لم يُمنح',!S.cfg.notif);render();notify()}
   else if(b.id==='dvI')exp();
   else if(b.id==='dvQ'){b.disabled=true;const ss=[...new Set(S.ev.filter(x=>P(x.cum)>=today()).map(x=>x.sym))];if(typeof getEgxMarketQuote==='function')await Promise.all(ss.map(s=>getEgxMarketQuote(s,g('px')&&g('px').value).catch(()=>null)));render();banner();toast('اكتمل')}
@@ -3127,12 +3138,170 @@ window.__bt={test,stat,verdict,RULES,H};
 </script>
 <script id="nawa-errors">
 (()=>{let last=0;const show=e=>{const n=Date.now();if(n-last<5000)return;last=n;try{if(typeof toast==='function')toast('حدث خطأ غير متوقع — أعد المحاولة، وبياناتك محفوظة',true)}catch(_){}};
-addEventListener('unhandledrejection',show);addEventListener('error',show)})();
+addEventListener('unhandledrejection',e=>{try{console.error('[nawa]',e.reason)}catch(_){}show(e)});addEventListener('error',e=>{try{console.error('[nawa]',e.error||e.message)}catch(_){}show(e)})})();
+</script>
+<script id="nawa-flows">
+(()=>{'use strict';
+/* حركة المستثمرين: صافي/إجمالي شراء وبيع المصريين والعرب والأجانب (أفراد/مؤسسات) في البورصة المصرية.
+   البيانات تُحفظ محليًا (تُدخل أو تُلصق أو تُجلب من رابط) وتُحلَّل على آخر جلسة مسجّلة. */
+const KEY='u_flows_v1',URLK='u_flows_url_v1';
+const NAT=[['eg','مصريون'],['ar','عرب'],['fo','أجانب']],CLS=[['I','أفراد'],['O','مؤسسات']];
+const CELLS=[];NAT.forEach(([n,nn])=>CLS.forEach(([c,cn])=>CELLS.push([n+c,nn+' — '+cn])));
+const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const AD='٠١٢٣٤٥٦٧٨٩';
+const num=x=>{if(x==null||x==='')return null;const n=parseFloat(String(x).replace(/[٠-٩]/g,d=>AD.indexOf(d)).replace(/[,\s٬]/g,''));return Number.isFinite(n)?n:null};
+const todayIso=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const validRow=r=>r&&typeof r.d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(r.d)&&r.v&&typeof r.v==='object';
+let rows=[];
+try{const j=JSON.parse(localStorage.getItem(KEY));if(j&&Array.isArray(j.rows))rows=j.rows.filter(validRow)}catch(e){}
+const save=()=>{rows.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);rows=rows.slice(-260);try{localStorage.setItem(KEY,JSON.stringify({v:1,rows}));return true}catch(e){return false}};
+function mergeRow(d,v){let r=rows.find(x=>x.d===d);if(!r){r={d,v:{}};rows.push(r)}Object.keys(v).forEach(k=>{r.v[k]=v[k]});return r}
+
+/* ---------- تحليل ---------- */
+const netOf=l=>!l?null:(l.n!=null?l.n:(l.b!=null&&l.s!=null?l.b-l.s:null));
+function natNet(v,n){const t=netOf(v[n+'T']);if(t!=null)return t;const i=netOf(v[n+'I']),o=netOf(v[n+'O']);return i==null&&o==null?null:(i||0)+(o||0)}
+function natBS(v,n){const t=v[n+'T'];if(t&&t.b!=null&&t.s!=null)return[t.b,t.s];const i=v[n+'I'],o=v[n+'O'];if(i&&o&&i.b!=null&&i.s!=null&&o.b!=null&&o.s!=null)return[i.b+o.b,i.s+o.s];return null}
+function series(r){const v=r.v,eg=natNet(v,'eg'),ar=natNet(v,'ar'),fo=natNet(v,'fo');
+ const o=['egO','arO','foO'].map(k=>netOf(v[k])),i=['egI','arI','foI'].map(k=>netOf(v[k]));
+ const sum=a=>a.every(x=>x!=null)?a.reduce((p,x)=>p+x,0):null;
+ return{eg,ar,fo,smart:fo==null&&ar==null?null:(fo||0)+(ar||0)+(o[0]||0),inst:sum(o),indiv:sum(i)}}
+const sd=a=>{const n=a.length;if(n<2)return 0;const m=a.reduce((p,x)=>p+x,0)/n;return Math.sqrt(a.reduce((p,x)=>p+(x-m)*(x-m),0)/(n-1))};
+function stat(name){const pts=rows.map(r=>({d:r.d,x:series(r)[name]})).filter(p=>p.x!=null);if(!pts.length)return null;
+ const xs=pts.map(p=>p.x),n=xs.length,last=xs[n-1],cum=k=>xs.slice(-k).reduce((p,x)=>p+x,0);
+ let st=0;const sg=Math.sign(last);if(sg)for(let i=n-1;i>=0&&Math.sign(xs[i])===sg;i--)st++;
+ const s20=sd(xs.slice(-20));
+ return{pts,n,last,date:pts[n-1].d,c5:cum(5),c10:cum(10),c20:cum(20),streak:st*sg,z1:s20>0?last/s20:0,s20}}
+function flowIndex(){const s=stat('smart');if(!s||s.n<5)return null;const k=Math.min(5,s.n);
+ const z5=s.s20>0?s.c5/(s.s20*Math.sqrt(k)):0;
+ const idx=Math.round(100*Math.tanh((0.4*s.z1+0.6*z5)/1.5));
+ return{idx,label:idx>=35?'تدفق إيجابي':idx<=-35?'تدفق سلبي':'تدفق متوازن',cls:idx>=35?'up':idx<=-35?'dn':'nt'}}
+function summary(){if(!rows.length)return{ok:false,n:0};const last=rows[rows.length-1].d;
+ const age=Math.floor((Date.parse(todayIso())-Date.parse(last))/864e5);const fi=flowIndex();
+ return fi?{ok:true,n:rows.length,asof:last,age,stale:age>4,...fi}:{ok:false,n:rows.length,asof:last,age}}
+
+/* ---------- قراءة نص ملصوق (أخبار أو جدول) ---------- */
+function parseText(t){
+ let s=String(t||'').replace(/البورصة المصرية/g,' ').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[إأآ]/g,'ا').replace(/[٠-٩]/g,d=>AD.indexOf(d)).replace(/٬/g,'').replace(/(\d),(?=\d{3}(?!\d))/g,'$1');
+ const v={};let hits=0,skipped=0;
+ s.split(/\n|[؛;،]|\.(?!\d)|\bبينما\b|\bفيما\b|\bفي حين\b/).forEach(c=>{
+  const nats=[];if(/مصري/.test(c))nats.push('eg');if(/عرب/.test(c))nats.push('ar');if(/اجانب|اجنب/.test(c))nats.push('fo');
+  if(!nats.length)return;
+  const hasNum=/\d/.test(c);if(!hasNum)return;
+  if(nats.length>1){skipped++;return}
+  const cls=/فرد|افراد/.test(c)?'I':/مؤسس/.test(c)?'O':'T';const key=nats[0]+cls;
+  const m=c.match(/صافي\s*(شراء|مشتريات|بيع|مبيعات)/);
+  const unit=u=>u==='مليار'?1000:u==='الف'?0.001:1;
+  if(m){const after=c.slice(m.index+m[0].length).match(/(\d+(?:\.\d+)?)\s*(مليار|مليون|الف)?/);if(!after)return;
+   const val=parseFloat(after[1])*unit(after[2]);v[key]={n:/شراء|مشتريات/.test(m[1])?val:-val};hits++;return}
+  const ns=[...c.matchAll(/(\d+(?:\.\d+)?)\s*(مليار|مليون|الف)?/g)];
+  if(ns.length>=2){v[key]={b:parseFloat(ns[0][1])*unit(ns[0][2]),s:parseFloat(ns[1][1])*unit(ns[1][2])};hits++}
+ });
+ return{v,hits,skipped}}
+
+/* ---------- واجهة ---------- */
+const tabs=document.querySelector('.tabs'),sett=document.querySelector('#tab-settings');
+const api={summary,parseText,stat,flowIndex,series,mergeRow,_rows:()=>rows};
+window.__flows=api;
+if(!tabs||!sett)return;
+const st=document.createElement('style');
+st.textContent='.tab[data-flows]::before{content:"⇅"}#tab-flows .fw{overflow-x:auto}#tab-flows .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}#tab-flows .row>*{width:auto;flex:0 1 auto}#tab-flows table{width:100%;border-collapse:collapse;font-size:.84rem}#tab-flows th,#tab-flows td{padding:7px 5px;border-bottom:1px solid var(--line);text-align:center}#tab-flows td:first-child,#tab-flows th:first-child{text-align:right}#tab-flows .ent td input{min-width:84px;padding:6px 8px}#tab-flows textarea{width:100%;min-height:90px;padding:9px 11px;border-radius:10px;border:1px solid var(--bd);background:var(--in);color:var(--tx);font:inherit}#tab-flows .idx{font-size:1.9rem;font-weight:800}';
+document.head.appendChild(st);
+const tb=document.createElement('div');tb.className='tab';tb.dataset.flows='1';tb.textContent='حركة المستثمرين';tb.setAttribute('role','tab');tb.id='tabbtn-flows';tb.setAttribute('aria-controls','tab-flows');tb.setAttribute('aria-selected','false');tb.tabIndex=-1;
+tabs.insertBefore(tb,tabs.querySelector('[data-tab="settings"]'));
+const pn=document.createElement('div');pn.id='tab-flows';pn.setAttribute('role','tabpanel');pn.setAttribute('aria-labelledby','tabbtn-flows');pn.style.display='none';sett.parentNode.appendChild(pn);
+let view='smart',msg='',busy=false,entOpen=false;
+const f1=n=>n==null||!Number.isFinite(n)?'—':n.toLocaleString('en-US',{maximumFractionDigits:1});
+const sg=n=>n==null||!Number.isFinite(n)?'—':(n>0?'+':n<0?'−':'')+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:1});
+const cl=n=>n==null?'':n>0?'up':n<0?'dn':'';
+const SER=[['smart','الأموال الذكية (أجانب + عرب + مؤسسات مصرية)'],['fo','الأجانب'],['ar','العرب'],['eg','المصريون'],['inst','المؤسسات (الكل)'],['indiv','الأفراد (الكل)']];
+function chart(name){const s=stat(name);if(!s||s.n<2)return'<p class="mu">يلزم يومان على الأقل لرسم المخطط.</p>';
+ const p=s.pts.slice(-20),W=320,H=130,mid=H/2-4,mx=Math.max(1,...p.map(q=>Math.abs(q.x))),bw=W/p.length;
+ let cum=0;const cs=p.map(q=>cum+=q.x),cm=Math.max(1,...cs.map(Math.abs));
+ const bars=p.map((q,i)=>{const h=Math.abs(q.x)/mx*(mid-8);return`<rect x="${(i*bw+bw*.15).toFixed(1)}" y="${(q.x>=0?mid-h:mid).toFixed(1)}" width="${(bw*.7).toFixed(1)}" height="${Math.max(1,h).toFixed(1)}" fill="${q.x>=0?'var(--up)':'var(--dn)'}" opacity=".85"/>`}).join('');
+ const line=cs.map((c,i)=>`${(i*bw+bw/2).toFixed(1)},${(mid-c/cm*(mid-8)).toFixed(1)}`).join(' ');
+ return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;direction:ltr;background:var(--in);border-radius:10px" role="img" aria-label="صافي التدفق اليومي"><line x1="0" x2="${W}" y1="${mid}" y2="${mid}" stroke="var(--bd)"/>${bars}<polyline points="${line}" fill="none" stroke="var(--ac)" stroke-width="1.6"/><text x="4" y="${H-3}" fill="var(--mu)" font-size="9">${E(p[0].d)}</text><text x="${W-4}" y="${H-3}" fill="var(--mu)" font-size="9" text-anchor="end">${E(p[p.length-1].d)}</text></svg><p class="mu">الأعمدة: الصافي اليومي (مليون جنيه) • الخط: التراكمي. آخر ${p.length} جلسة.</p>`}
+function insights(){const o=[],fo=stat('fo'),eg=stat('eg'),ar=stat('ar'),inst=stat('inst'),ind=stat('indiv'),sm=stat('smart');
+ const side=(n,x)=>x>0?'صافي شراء':'صافي بيع';
+ if(fo)o.push(`الأجانب: ${side('',fo.last)} ${f1(Math.abs(fo.last))} مليون في آخر جلسة${Math.abs(fo.streak)>=2?` (${Math.abs(fo.streak)} جلسات متتالية)`:''}، وخلال 5 جلسات: ${sg(fo.c5)}.`);
+ if(fo&&eg&&fo.last!==0&&eg.last!==0&&Math.sign(fo.last)!==Math.sign(eg.last))o.push(fo.last>0?'الأجانب يشترون والمصريون يبيعون: غالبًا شراء من جهة أكبر مقابل جني أرباح محلي.':'الأجانب يبيعون والمصريون يشترون: ضغط خروج أجنبي يمتصه المحليون.');
+ if(inst&&ind&&inst.last!==0&&Math.sign(inst.last)!==Math.sign(ind.last))o.push(inst.last>0?'المؤسسات تشتري والأفراد يبيعون: نمط تجميع مؤسسي.':'المؤسسات تبيع والأفراد يشترون: نمط تصريف محتمل، يستحق الحذر.');
+ if(ar&&Math.abs(ar.z1)>=2)o.push(`تدفق العرب غير معتاد (${sg(ar.last)} مليون، ${f1(Math.abs(ar.z1))} انحرافًا عن المتوسط).`);
+ if(fo&&Math.abs(fo.z1)>=2)o.push(`تدفق الأجانب غير معتاد (${f1(Math.abs(fo.z1))} انحرافًا عن المتوسط).`);
+ if(sm&&sm.n>=10&&Math.sign(sm.c5)!==Math.sign(sm.c20)&&sm.c5!==0&&sm.c20!==0)o.push('اتجاه آخر 5 جلسات يخالف اتجاه 20 جلسة: تغيّر محتمل في المزاج، يحتاج تأكيدًا.');
+ if(!o.length)o.push('لا توجد دلالات بارزة بعد؛ أضف المزيد من الجلسات.');return o}
+function lastTable(){const r=rows[rows.length-1];if(!r)return'';const v=r.v;
+ const line=(lb,l)=>{const b=l&&l.b!=null?l.b:null,s=l&&l.s!=null?l.s:null,n=netOf(l);return`<tr><td>${lb}</td><td>${f1(b)}</td><td>${f1(s)}</td><td class="${cl(n)}">${sg(n)}</td></tr>`};
+ let h=`<div class="fw"><table class="ptable"><thead><tr><th>الفئة</th><th>شراء</th><th>بيع</th><th>الصافي</th></tr></thead><tbody>`;
+ CELLS.forEach(([k,lb])=>{if(v[k])h+=line(lb,v[k])});
+ NAT.forEach(([n,nn])=>{const t=v[n+'T'],bs=natBS(v,n),net=natNet(v,n);if(net!=null||bs)h+=`<tr style="font-weight:700"><td>إجمالي ${nn}</td><td>${f1(t&&t.b!=null?t.b:bs?bs[0]:null)}</td><td>${f1(t&&t.s!=null?t.s:bs?bs[1]:null)}</td><td class="${cl(net)}">${sg(net)}</td></tr>`});
+ return h+`</tbody></table></div><p class="mu">القيم بملايين الجنيهات • جلسة ${E(r.d)}.</p>`}
+function entryForm(){let h=`<details class="history-disclosure" id="flEnt"${entOpen?' open':''}><summary><span class="summary-title">➕ إضافة / تحديث البيانات</span><span class="summary-chevron" aria-hidden="true">⌄</span></summary><div class="disclosure-body" style="padding:0 12px 12px">`;
+ h+=`<p class="mu">تنشر البورصة هذه الأرقام بعد إغلاق كل جلسة، لذا «اللحظي» هنا يعني آخر جلسة مسجّلة. اختر التاريخ ثم أدخل الأرقام بملايين الجنيهات.</p><div class="row"><label for="flDate" style="margin:0">التاريخ</label><input type="date" id="flDate" value="${todayIso()}" style="max-width:170px"></div>`;
+ h+=`<div class="fw"><table class="ent"><thead><tr><th>الفئة</th><th>شراء</th><th>بيع</th></tr></thead><tbody>`;
+ CELLS.forEach(([k,lb])=>{h+=`<tr><td>${lb}</td><td><input inputmode="decimal" data-k="${k}" data-f="b" aria-label="${lb} شراء"></td><td><input inputmode="decimal" data-k="${k}" data-f="s" aria-label="${lb} بيع"></td></tr>`});
+ h+=`</tbody></table></div><p class="mu" style="margin-top:8px">أو أدخل الصافي فقط حسب الجنسية (موجب = شراء، سالب = بيع):</p><div class="kpi-grid">`;
+ NAT.forEach(([n,nn])=>{h+=`<div><label for="flN${n}">صافي ${nn}</label><input inputmode="decimal" id="flN${n}" data-n="${n}"></div>`});
+ h+=`</div><div class="row"><button class="sm" data-act="saveForm">حفظ الجلسة</button></div>`;
+ h+=`<h2>لصق نص الأخبار أو الجدول</h2><textarea id="flPaste" placeholder="الصق هنا فقرة مثل: سجلت تعاملات المستثمرين المصريين صافي بيع بقيمة 464.6 مليون جنيه، بينما سجلت تعاملات الأجانب صافي بيع بقيمة 701.5 مليون جنيه، والعرب صافي شراء بقيمة 236.9 مليون جنيه"></textarea><div class="row"><button class="sm" data-act="parse">قراءة وحفظ للتاريخ أعلاه</button></div>`;
+ h+=`<h2>جلب من رابط</h2><p class="mu">رابط يعيد JSON بصيغة ملف التصدير أو نصًا يقرؤه المحلل أعلاه (مثلاً عبر Worker الخاص بك). قد يمنعه المتصفح إن لم يسمح الموقع بالوصول.</p><div class="row"><input id="flUrl" type="url" inputmode="url" placeholder="https://…" value="${E(localStorage.getItem(URLK)||'')}" style="flex:1 1 220px;direction:ltr"><button class="sm" data-act="fetch"${busy?' disabled':''}>${busy?'جارٍ الجلب…':'جلب الآن'}</button></div>`;
+ h+=`<h2>السجل</h2>`+(rows.length?`<div class="fw"><table><tbody>${rows.slice(-10).reverse().map(r=>`<tr><td>${E(r.d)}</td><td>${Object.keys(r.v).length} خانة</td><td><button class="sm dn" data-act="del" data-d="${E(r.d)}">حذف</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="mu">لا توجد جلسات.</p>');
+ h+=`<div class="row"><button class="sm" data-act="export">تصدير JSON</button><button class="sm" data-act="import">استيراد JSON</button><input type="file" id="flFile" accept="application/json,.json" style="display:none"></div></div></details>`;return h}
+function draw(){const sm=summary(),fi=flowIndex();
+ let h=`<div class="c"><h2>حركة المستثمرين في البورصة المصرية</h2>`;
+ if(!rows.length)h+=`<p class="mu">لا توجد بيانات بعد. أضف أول جلسة من القسم أدناه، وسيحسب التطبيق الاتجاه والتراكم والتتابع والتحليلات تلقائيًا.</p>`;
+ else{h+=`<div class="kpi-grid"><div class="kpi"><div class="mu">مؤشر تدفق الأموال الذكية</div>${fi?`<div class="idx ${fi.cls}">${fi.idx>0?'+':''}${fi.idx}</div><div class="${fi.cls}">${fi.label}</div>`:`<div class="mu">يلزم 5 جلسات (لديك ${stat('smart')?stat('smart').n:0})</div>`}</div><div class="kpi"><div class="mu">آخر جلسة مسجّلة</div><div class="idx ltr" style="font-size:1.3rem">${E(sm.asof||rows[rows.length-1].d)}</div><div class="mu">${rows.length} جلسة محفوظة</div></div></div>`;
+  if(sm.age>3)h+=`<div class="al">⏱ آخر بيانات عمرها ${sm.age} أيام؛ حدّثها قبل الاعتماد على المؤشر.</div>`;
+  h+=`<div class="fw"><table class="ptable"><thead><tr><th>الفئة</th><th>آخر جلسة</th><th>5 جلسات</th><th>10</th><th>20</th><th>التتابع</th></tr></thead><tbody>`+
+  SER.map(([k,lb])=>{const s=stat(k);const nm=lb.split(' (')[0];return s?`<tr><td>${E(nm)}</td><td class="${cl(s.last)}">${sg(s.last)}</td><td class="${cl(s.c5)}">${sg(s.c5)}</td><td class="${cl(s.c10)}">${sg(s.c10)}</td><td class="${cl(s.c20)}">${sg(s.c20)}</td><td class="${cl(s.streak)}">${s.streak?sg(s.streak):'—'}</td></tr>`:`<tr><td>${E(nm)}</td><td colspan="5" class="mu">لا بيانات</td></tr>`}).join('')+`</tbody></table></div><p class="mu">بملايين الجنيهات؛ موجب = صافي شراء. التتابع = عدد الجلسات المتتالية باتجاه واحد.</p>`;
+  h+=`<h2>الخلاصة</h2>`+insights().map(t=>`<div class="al">${E(t)}</div>`).join('');
+  h+=`<h2>المخطط</h2><div class="row"><select id="flView" aria-label="الفئة">${SER.map(([k,lb])=>`<option value="${k}"${view===k?' selected':''}>${E(lb)}</option>`).join('')}</select></div>${chart(view)}`;
+  h+=`<h2>تفاصيل آخر جلسة</h2>`+lastTable();
+ }
+ if(msg)h+=`<div class="al">${E(msg)}</div>`;
+ h+=`</div><div class="c">${entryForm()}<p class="mu" style="margin-top:10px">معلومات للمتابعة وليست نصيحة استثمارية. تدفق المستثمرين مؤشر مساعد لا يضمن اتجاه الأسعار.</p></div>`;
+ pn.innerHTML=h;const d=pn.querySelector('#flEnt');if(d)d.addEventListener('toggle',()=>{entOpen=d.open})}
+function readForm(){const v={};let any=false;
+ CELLS.forEach(([k])=>{const b=num((pn.querySelector(`[data-k="${k}"][data-f="b"]`)||{}).value),s=num((pn.querySelector(`[data-k="${k}"][data-f="s"]`)||{}).value);
+  if(b!=null||s!=null){if(b!=null&&s!=null&&b>=0&&s>=0){v[k]={b,s};any=true}else{any=null;v.__bad=true}}});
+ NAT.forEach(([n])=>{const x=num((pn.querySelector(`#flN${n}`)||{}).value);if(x!=null){v[n+'T']={n:x};any=any===null?null:true}});
+ return v}
+function commit(d,v,label){if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){msg='التاريخ غير صالح.';return false}
+ if(v.__bad){msg='لكل فئة تُدخل: أدخل الشراء والبيع معًا وبقيم موجبة.';return false}
+ delete v.__bad;if(!Object.keys(v).length){msg='لم تُدخل أي أرقام.';return false}
+ mergeRow(d,v);msg=save()?`تم حفظ ${Object.keys(v).length} خانة لجلسة ${d}${label?' ('+label+')':''}.`:'تعذّر الحفظ في المتصفح.';return true}
+async function doFetch(u,d){busy=true;draw();const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);
+ try{if(!/^https:\/\//i.test(u))throw Error('الرابط يجب أن يبدأ بـ https://');
+  const r=await fetch(u,{signal:ctl.signal,cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const t=await r.text();
+  let j=null;try{j=JSON.parse(t)}catch(e){}
+  if(j&&Array.isArray(j.rows)){let n=0;j.rows.filter(validRow).forEach(x=>{mergeRow(x.d,x.v);n++});save();msg=`تم استيراد ${n} جلسة من الرابط.`}
+  else if(j&&typeof j==='object'&&!Array.isArray(j)){const {date,...rest}=j;const v={};Object.keys(rest).forEach(k=>{if(/^(eg|ar|fo)[TIO]$/.test(k)&&rest[k]&&typeof rest[k]==='object'){const o={};['b','s','n'].forEach(f=>{const x=num(rest[k][f]);if(x!=null)o[f]=x});if(Object.keys(o).length)v[k]=o}});commit(/^\d{4}-\d{2}-\d{2}$/.test(date||'')?date:d,v,'من الرابط')}
+  else{const p=parseText(t);if(!p.hits)throw Error('لم أجد أرقامًا مفهومة في الرد.');commit(d,p.v,'من الرابط')}
+  localStorage.setItem(URLK,u)}catch(e){msg='تعذّر الجلب: '+(e.name==='AbortError'?'انتهت المهلة':e.message)+'. إن كان السبب منع المتصفح فاستخدم Worker يضيف ترويسة CORS أو الصق النص يدويًا.'}
+ finally{clearTimeout(to);busy=false;draw()}}
+pn.addEventListener('change',e=>{if(e.target.id==='flView'){view=e.target.value;entOpen=!!(pn.querySelector('#flEnt')||{}).open;draw()}
+ if(e.target.id==='flFile'&&e.target.files[0]){const fr=new FileReader();fr.onload=()=>{try{const j=JSON.parse(fr.result);if(!j||!Array.isArray(j.rows))throw 0;let n=0;j.rows.filter(validRow).forEach(x=>{mergeRow(x.d,x.v);n++});save();msg=`تم استيراد ${n} جلسة.`}catch(_){msg='ملف غير صالح.'}draw()};fr.readAsText(e.target.files[0])}});
+pn.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act,date=(pn.querySelector('#flDate')||{}).value||todayIso();entOpen=true;
+ if(act==='saveForm'){commit(date,readForm());draw()}
+ else if(act==='parse'){const p=parseText((pn.querySelector('#flPaste')||{}).value);if(!p.hits){msg='لم أجد أرقامًا مفهومة. اكتب اسم الفئة (مصريين/عرب/أجانب) بجانب «صافي شراء/بيع» والرقم.';draw()}else{commit(date,p.v,'من النص'+(p.skipped?`، تجاهلت ${p.skipped} جملة ملتبسة`:''));draw()}}
+ else if(act==='fetch')doFetch((pn.querySelector('#flUrl')||{}).value.trim(),date);
+ else if(act==='del'){rows=rows.filter(r=>r.d!==b.dataset.d);save();msg='تم حذف الجلسة.';draw()}
+ else if(act==='export'){const u=URL.createObjectURL(new Blob([JSON.stringify({v:1,rows},null,2)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='nawa-investor-flows-'+todayIso()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
+ else if(act==='import'){const f=pn.querySelector('#flFile');if(f)f.click()}});
+const panels=['analyze','portfolio','history','settings','holdings','divs','bt'];
+function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});
+ tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;
+ panels.forEach(i=>{const el=document.getElementById('tab-'+i);if(el)el.style.display='none'});
+ pn.style.display='block';draw();tabs.scrollIntoView({block:'start'});
+ const u=localStorage.getItem(URLK);if(u&&!busy&&(!api._last||Date.now()-api._last>18e5)){api._last=Date.now();doFetch(u,todayIso())}}
+tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
+ if(t===tb)show();else{pn.style.display='none';if(tb.classList.contains('active')){tb.classList.remove('active');tb.setAttribute('aria-selected','false');tb.tabIndex=-1}}});
+tb.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show()}});
+})();
 </script>
 <script id="nawa-tab-order">
 /* ترتيب التبويبات: الاستخدام اليومي أولاً ثم الأدوات ثم الإعدادات */
 (()=>{'use strict';
-const ORDER=['holdings','analyze','portfolio','divs','history','bt','settings'];
+const ORDER=['holdings','analyze','portfolio','flows','divs','history','bt','settings'];
 const NAMES={analyze:'تحليل سهم',history:'سجل التحليلات',bt:'اختبار المؤشرات'};
 let landed=false;
 function arrange(){

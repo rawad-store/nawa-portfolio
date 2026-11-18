@@ -618,7 +618,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.18.3';
+const APP_BUILD='2026.11.18.4';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -3234,7 +3234,7 @@ document.head.appendChild(st);
 const tb=document.createElement('div');tb.className='tab';tb.dataset.flows='1';tb.textContent='حركة المستثمرين';tb.setAttribute('role','tab');tb.id='tabbtn-flows';tb.setAttribute('aria-controls','tab-flows');tb.setAttribute('aria-selected','false');tb.tabIndex=-1;
 tabs.insertBefore(tb,tabs.querySelector('[data-tab="settings"]'));
 const pn=document.createElement('div');pn.id='tab-flows';pn.setAttribute('role','tabpanel');pn.setAttribute('aria-labelledby','tabbtn-flows');pn.style.display='none';sett.parentNode.appendChild(pn);
-let view='smart',msg='',busy=false,entOpen=false;
+let view='smart',msg='',busy=false,entOpen=false,lastRaw='';
 const f1=n=>n==null||!Number.isFinite(n)?'—':n.toLocaleString('en-US',{maximumFractionDigits:1});
 const sg=n=>n==null||!Number.isFinite(n)?'—':(n>0?'+':n<0?'−':'')+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:1});
 const cl=n=>n==null?'':n>0?'up':n<0?'dn':'';
@@ -3283,6 +3283,7 @@ function draw(){const sm=summary(),fi=flowIndex();
   h+=`<h2>تفاصيل آخر جلسة</h2>`+lastTable();
  }
  {const a=getAuto();if(a.ts)h+=`<p class="mu">التحديث التلقائي: آخر محاولة ${E(new Date(a.ts).toLocaleString('ar-EG-u-nu-latn'))} — ${a.ok?'نجحت':'فشلت'+(a.err?' ('+E(a.err)+')':'')}.</p>`}
+  if(lastRaw)h+=`<details class="fvbox"><summary>ما الذي جُلب من الصفحة؟ (للتشخيص)</summary><p class="mu" style="direction:rtl;word-break:break-word;font-size:.78rem">${E(lastRaw.slice(0,1800))}</p></details>`;
   if(msg)h+=`<div class="al">${E(msg)}</div>`;
  h+=`</div><div class="c">${entryForm()}<p class="mu" style="margin-top:10px">معلومات للمتابعة وليست نصيحة استثمارية. تدفق المستثمرين مؤشر مساعد لا يضمن اتجاه الأسعار.</p></div>`;
  pn.innerHTML=h;const d=pn.querySelector('#flEnt');if(d)d.addEventListener('toggle',()=>{entOpen=d.open})}
@@ -3301,7 +3302,7 @@ async function doFetch(u,d){busy=true;if(pn.style.display!=='none')draw();const 
   let j=null;try{j=JSON.parse(t)}catch(e){}
   if(j&&Array.isArray(j.rows)){let n=0;j.rows.filter(validRow).forEach(x=>{mergeRow(x.d,x.v);n++});save();msg=`تم استيراد ${n} جلسة من الرابط.`}
   else if(j&&typeof j==='object'&&!Array.isArray(j)){const {date,...rest}=j;const v={};Object.keys(rest).forEach(k=>{if(/^(eg|ar|fo)[TIO]$/.test(k)&&rest[k]&&typeof rest[k]==='object'){const o={};['b','s','n'].forEach(f=>{const x=num(rest[k][f]);if(x!=null)o[f]=x});if(Object.keys(o).length)v[k]=o}});commit(/^\d{4}-\d{2}-\d{2}$/.test(date||'')?date:d,v,'من الرابط')}
-  else{const c=htmlToText(t),p=parseText(c.text);if(!p.hits)throw Error('لم أجد أرقام شراء وبيع مفهومة في الصفحة');
+  else{const c=htmlToText(t);lastRaw=c.text.replace(/\s+/g,' ').trim();const p=parseText(c.text);if(!p.hits)throw Error('لم أجد أرقام شراء وبيع مفهومة في الصفحة');
    const vals=Object.values(p.v).flatMap(x=>[x.b,x.s,x.n]).filter(x=>x!=null);
    if(/%|٪/.test(c.text)&&vals.length&&vals.every(x=>Math.abs(x)<=100)&&!/مليون|مليار/.test(c.text))throw Error('الصفحة تعرض نسبًا مئوية لا قيم شراء وبيع بالمليون، فلم تُحفظ');
    commit(c.date||d,p.v,'تلقائي')}

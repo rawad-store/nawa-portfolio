@@ -445,6 +445,43 @@ body{padding-bottom:max(24px,env(safe-area-inset-bottom))}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 /* ---- لمس: بلا لون تحديد مزعج ولا تأخير ---- */
 @media(hover:none){a,button,.tab,summary,tr[data-sym],tr[data-hs]{-webkit-tap-highlight-color:transparent}}
+
+/* ===== نواة: طبقة صقل بصري وإتاحة (v2) ===== */
+body{font-family:"IBM Plex Sans Arabic","Noto Sans Arabic","SF Arabic","Geeza Pro","Dubai","Segoe UI",Tahoma,system-ui,sans-serif;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));text-rendering:optimizeLegibility}
+h1,h2,.vd,.idx{letter-spacing:0;line-height:1.35}
+p,.mu,.al{line-height:1.85;text-wrap:pretty}
+.c{box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 34px -22px rgba(0,0,0,.7)}
+button,.tab,summary,select,input{touch-action:manipulation}
+button{min-height:44px}button.sm{min-height:40px}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:10px}
+.tabs{scroll-snap-type:x proximity;scroll-padding-inline:16px;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 18px,#000 calc(100% - 18px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 18px,#000 calc(100% - 18px),transparent 100%)}
+.tab{scroll-snap-align:center}
+.tab.active{box-shadow:0 0 0 3px var(--glow),0 8px 20px -10px var(--ac)}
+/* تبويب حركة المستثمرين */
+#tab-flows>.c+.c{margin-top:16px}
+#tab-flows .c{padding:18px 18px 16px}
+#tab-flows h2{font-size:1.12rem;margin:2px 0 10px}
+#tab-flows .history-disclosure{border:1px solid var(--bd);border-radius:14px;background:rgba(8,17,31,.45);overflow:hidden;margin:0 0 6px}
+#tab-flows .history-disclosure summary{list-style:none;display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;min-height:52px;user-select:none}
+#tab-flows .history-disclosure summary::-webkit-details-marker{display:none}
+#tab-flows .history-disclosure summary::marker{content:""}
+#tab-flows .summary-title{font-weight:700}
+#tab-flows .summary-chevron{margin-inline-start:auto;width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--bd);border-radius:50%;color:var(--ac);font-size:0;transition:transform .2s var(--ease),background .2s}
+#tab-flows .summary-chevron::before{content:"";width:7px;height:7px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+#tab-flows .history-disclosure[open] .summary-chevron{transform:rotate(180deg);background:var(--glow)}
+#tab-flows .disclosure-body{animation:nwOpen .22s var(--ease)}
+@keyframes nwOpen{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#tab-flows .kpi{background:linear-gradient(160deg,rgba(94,234,212,.08),rgba(129,140,248,.05));border:1px solid var(--line);border-radius:14px;padding:14px}
+#tab-flows .nw-empty{display:grid;gap:12px;justify-items:start;padding:4px 0}
+#tab-flows .nw-empty ol{margin:0;padding-inline-start:20px;color:var(--mu);font-size:.9rem;line-height:1.9}
+#tab-flows .nw-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--bd);border-radius:99px;background:var(--in);font-size:.8rem;color:var(--mu)}
+#tab-flows .nw-chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--wn)}
+#tab-flows .nw-chip.ok::before{background:var(--up)}
+#tab-flows .ptable{border-radius:12px;overflow:hidden;border-style:hidden;box-shadow:0 0 0 1px var(--bd)}
+#tab-flows .ptable td,#tab-flows .ptable th{border-color:var(--line);font-variant-numeric:tabular-nums}
+#tab-flows .fvbox{margin:10px 0;border:1px dashed var(--bd);border-radius:12px;padding:8px 12px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media (min-width:760px){.tabs{-webkit-mask-image:none;mask-image:none;flex-wrap:wrap}}
 </style>
 </head>
 <body>
@@ -3211,6 +3248,14 @@ function summary(){if(!rows.length)return{ok:false,n:0};const last=rows[rows.len
 function parseText(t){
  let s=String(t||'').replace(/البورصة المصرية/g,' ').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[إأآ]/g,'ا').replace(/[٠-٩]/g,d=>AD.indexOf(d)).replace(/٬/g,'').replace(/(\d),(?=\d{3}(?!\d))/g,'$1');
  const v={};let hits=0,skipped=0;
+ /* جداول الملخص اليومي (مباشر/البورصة): صف = فئة + 3 أرقام (بيع، شراء، صافي بأي ترتيب). يُحسم الاتجاه بمطابقة الصافي، والقسم من عنوان الجدول */
+ {let sec='T';s=s.split('\n').map(L=>{
+  if(/قيمة البيع/.test(L)&&/قيمة الشراء/.test(L)){sec=/فراد/.test(L)?'I':/مؤسس/.test(L)?'O':'T';return ''}
+  const m=L.trim().match(/^(مصريين|مصريون|عرب|اجانب)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/);
+  if(!m)return L;
+  const nat=m[1][0]==='م'?'eg':m[1][0]==='ع'?'ar':'fo',x=+m[2],y=+m[3],net=+m[4],tol=Math.max(2,Math.abs(net)*1e-6);
+  let b,sl;if(Math.abs(x-y-net)<=tol){b=x;sl=y}else if(Math.abs(y-x-net)<=tol){b=y;sl=x}else return L;
+  v[nat+sec]={b,s:sl};hits++;return ''}).join('\n')}
  s.split(/\n|[؛;،]|\.(?!\d)|\bبينما\b|\bفيما\b|\bفي حين\b/).forEach(c=>{
   const nats=[];if(/مصري/.test(c))nats.push('eg');if(/عرب/.test(c))nats.push('ar');if(/اجانب|اجنب/.test(c))nats.push('fo');
   if(!nats.length)return;
@@ -3276,7 +3321,7 @@ function entryForm(){let h=`<details class="history-disclosure" id="flEnt"${entO
  h+=`<div class="row"><button class="sm" data-act="export">تصدير JSON</button><button class="sm" data-act="import">استيراد JSON</button><input type="file" id="flFile" accept="application/json,.json" style="display:none"></div></div></details>`;return h}
 function draw(){const sm=summary(),fi=flowIndex();
  let h=`<div class="c"><h2>حركة المستثمرين في البورصة المصرية</h2>`;
- if(!rows.length)h+=`<p class="mu">لا توجد بيانات بعد. أضف أول جلسة من القسم أدناه، وسيحسب التطبيق الاتجاه والتراكم والتتابع والتحليلات تلقائيًا.</p>`;
+ if(!rows.length)h+=`<div class="nw-empty"><p class="mu" style="margin:0">لم تُسجَّل أي جلسة بعد. أدخل أول جلسة وسيحسب التطبيق الاتجاه والتراكم والتتابع تلقائيًا.</p><ol><li>افتح قسم «إضافة / تحديث البيانات» أدناه.</li><li>الصق نص الخبر أو أدخل أرقام الشراء والبيع بالمليون.</li><li>اضغط «قراءة وحفظ» أو «حفظ الجلسة».</li></ol><button class="sm" data-act="openEnt">ابدأ بإضافة جلسة</button></div>`;
  else{h+=`<div class="kpi-grid"><div class="kpi"><div class="mu">مؤشر تدفق الأموال الذكية</div>${fi?`<div class="idx ${fi.cls}">${fi.idx>0?'+':''}${fi.idx}</div><div class="${fi.cls}">${fi.label}</div>`:`<div class="mu">يلزم 5 جلسات (لديك ${stat('smart')?stat('smart').n:0})</div>`}</div><div class="kpi"><div class="mu">آخر جلسة مسجّلة</div><div class="idx ltr" style="font-size:1.3rem">${E(sm.asof||rows[rows.length-1].d)}</div><div class="mu">${rows.length} جلسة محفوظة</div></div></div>`;
   if(sm.age>3)h+=`<div class="al">⏱ آخر بيانات عمرها ${sm.age} أيام؛ حدّثها قبل الاعتماد على المؤشر.</div>`;
   h+=`<div class="fw"><table class="ptable"><thead><tr><th>الفئة</th><th>آخر جلسة</th><th>5 جلسات</th><th>10</th><th>20</th><th>التتابع</th></tr></thead><tbody>`+
@@ -3285,7 +3330,7 @@ function draw(){const sm=summary(),fi=flowIndex();
   h+=`<h2>المخطط</h2><div class="row"><select id="flView" aria-label="الفئة">${SER.map(([k,lb])=>`<option value="${k}"${view===k?' selected':''}>${E(lb)}</option>`).join('')}</select></div>${chart(view)}`;
   h+=`<h2>تفاصيل آخر جلسة</h2>`+lastTable();
  }
- {const a=getAuto();if(a.ts)h+=`<p class="mu">التحديث التلقائي: آخر محاولة ${E(new Date(a.ts).toLocaleString('ar-EG-u-nu-latn'))} — ${a.ok?'نجحت':'فشلت'+(a.err?' ('+E(a.err)+')':'')}.</p>`}
+ {const a=getAuto();if(a.ts)h+=`<p style="margin:10px 0"><span class="nw-chip${a.ok?' ok':''}">${a.ok?'تحديث تلقائي ناجح':'التحديث التلقائي غير متاح لهذا المصدر'} • ${E(new Date(a.ts).toLocaleString('ar-EG-u-nu-latn',{dateStyle:'short',timeStyle:'short'}))}</span></p>${a.ok?'':'<p class="mu">صفحة البورصة لا تعرض الأرقام كنص قابل للقراءة؛ الصق نص الخبر يدويًا أو اربط رابط Worker خاصًا بك.</p>'}`}
   if(lastRaw)h+=`<details class="fvbox"><summary>ما الذي جُلب من الصفحة؟ (للتشخيص)</summary><p class="mu" style="direction:rtl;word-break:break-word;font-size:.78rem">${E(lastRaw.slice(0,1800))}</p></details>`;
   if(msg)h+=`<div class="al">${E(msg)}</div>`;
  h+=`</div><div class="c">${entryForm()}<p class="mu" style="margin-top:10px">معلومات للمتابعة وليست نصيحة استثمارية. تدفق المستثمرين مؤشر مساعد لا يضمن اتجاه الأسعار.</p></div>`;
@@ -3309,13 +3354,14 @@ async function doFetch(u,d){busy=true;if(pn.style.display!=='none')draw();const 
    const vals=Object.values(p.v).flatMap(x=>[x.b,x.s,x.n]).filter(x=>x!=null);
    if(/%|٪/.test(c.text)&&vals.length&&vals.every(x=>Math.abs(x)<=100)&&!/مليون|مليار/.test(c.text))throw Error('الصفحة تعرض نسبًا مئوية لا قيم شراء وبيع بالمليون، فلم تُحفظ');
    commit(c.date||d,p.v,'تلقائي')}
-  if(u!==DEF_URL)localStorage.setItem(URLK,u);setAuto({ts:Date.now(),ok:true})}catch(e){setAuto({ts:Date.now(),ok:false,err:e.message});msg='تعذّر الجلب: '+(e.name==='AbortError'?'انتهت المهلة':e.message)+'. إن كان السبب منع المتصفح فاستخدم Worker يضيف ترويسة CORS أو الصق النص يدويًا.'}
+  if(u!==DEF_URL){try{localStorage.setItem(URLK,u)}catch(_){}}setAuto({ts:Date.now(),ok:true})}catch(e){setAuto({ts:Date.now(),ok:false,err:e.message});msg='تعذّر الجلب: '+(e.name==='AbortError'?'انتهت المهلة':e.message)+'. إن كان السبب منع المتصفح فاستخدم Worker يضيف ترويسة CORS أو الصق النص يدويًا.'}
  finally{clearTimeout(to);busy=false;if(pn.style.display!=='none')draw()}}
 pn.addEventListener('change',e=>{if(e.target.id==='flView'){view=e.target.value;entOpen=!!(pn.querySelector('#flEnt')||{}).open;draw()}
  if(e.target.id==='flFile'&&e.target.files[0]){const fr=new FileReader();fr.onload=()=>{try{const j=JSON.parse(fr.result);if(!j||!Array.isArray(j.rows))throw 0;let n=0;j.rows.filter(validRow).forEach(x=>{mergeRow(x.d,x.v);n++});save();msg=`تم استيراد ${n} جلسة.`}catch(_){msg='ملف غير صالح.'}draw()};fr.readAsText(e.target.files[0])}});
 pn.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act,date=(pn.querySelector('#flDate')||{}).value||todayIso();entOpen=true;
  if(act==='saveForm'){commit(date,readForm());draw()}
  else if(act==='parse'){const p=parseText((pn.querySelector('#flPaste')||{}).value);if(!p.hits){msg='لم أجد أرقامًا مفهومة. اكتب اسم الفئة (مصريين/عرب/أجانب) بجانب «صافي شراء/بيع» والرقم.';draw()}else{commit(date,p.v,'من النص'+(p.skipped?`، تجاهلت ${p.skipped} جملة ملتبسة`:''));draw()}}
+ else if(act==='openEnt'){entOpen=true;draw();const d=pn.querySelector('#flEnt');if(d)d.scrollIntoView({behavior:'smooth',block:'start'})}
  else if(act==='fetch')doFetch((pn.querySelector('#flUrl')||{}).value.trim(),date);
  else if(act==='del'){rows=rows.filter(r=>r.d!==b.dataset.d);save();msg='تم حذف الجلسة.';draw()}
  else if(act==='export'){const u=URL.createObjectURL(new Blob([JSON.stringify({v:1,rows},null,2)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='nawa-investor-flows-'+todayIso()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
@@ -3324,9 +3370,9 @@ const panels=['analyze','portfolio','history','settings','holdings','divs','bt']
 function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});
  tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;
  panels.forEach(i=>{const el=document.getElementById('tab-'+i);if(el)el.style.display='none'});
- pn.style.display='block';draw();tabs.scrollIntoView({block:'start'});
+ pn.style.display='block';draw();tabs.scrollIntoView({block:'start'});try{tb.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}catch(_){}
  autoRun(false)}
-function autoRun(bg){const u=srcUrl(),a=getAuto();if(!u||busy||navigator.onLine===false)return;const gap=bg?6*36e5:18e5;if(Date.now()-(a.ts||0)<gap)return;const last=rows.length?rows[rows.length-1].d:'';if(bg&&last===todayIso())return;doFetch(u,todayIso())}
+function autoRun(bg){const u=srcUrl(),a=getAuto();if(!u||busy||navigator.onLine===false)return;const gap=(bg||a.ok===false)?6*36e5:18e5;if(Date.now()-(a.ts||0)<gap)return;const last=rows.length?rows[rows.length-1].d:'';if(bg&&last===todayIso())return;doFetch(u,todayIso())}
 setTimeout(()=>autoRun(true),6000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoRun(true)});
 tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
  if(t===tb)show();else{pn.style.display='none';if(tb.classList.contains('active')){tb.classList.remove('active');tb.setAttribute('aria-selected','false');tb.tabIndex=-1}}});

@@ -618,7 +618,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.18.4';
+const APP_BUILD='2026.11.18.5';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -3180,7 +3180,10 @@ const validRow=r=>r&&typeof r.d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(r.d)&&r.v
 let rows=[];
 try{const j=JSON.parse(localStorage.getItem(KEY));if(j&&Array.isArray(j.rows))rows=j.rows.filter(validRow)}catch(e){}
 const save=()=>{rows.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);rows=rows.slice(-260);try{localStorage.setItem(KEY,JSON.stringify({v:1,rows}));return true}catch(e){return false}};
-function mergeRow(d,v){let r=rows.find(x=>x.d===d);if(!r){r={d,v:{}};rows.push(r)}Object.keys(v).forEach(k=>{r.v[k]=v[k]});return r}
+/* البورصة تنشر الأرقام بالجنيه الكامل؛ التطبيق يخزّن بالملايين. أي قيمة تتجاوز مليون «مليون» (تريليون) تُعدّ جنيهات وتُقسم على مليون */
+function normCell(o){if(!o||typeof o!=='object')return o;const ks=['b','s','n'].filter(f=>o[f]!=null);if(!ks.some(f=>Math.abs(o[f])>1e6))return o;const r={};ks.forEach(f=>{r[f]=o[f]/1e6});return r}
+function mergeRow(d,v){let r=rows.find(x=>x.d===d);if(!r){r={d,v:{}};rows.push(r)}Object.keys(v).forEach(k=>{r.v[k]=normCell(v[k])});return r}
+{let ch=false;rows.forEach(r=>Object.keys(r.v).forEach(k=>{const n=normCell(r.v[k]);if(n!==r.v[k]){r.v[k]=n;ch=true}}));if(ch)save()}
 
 /* ---------- تحليل ---------- */
 const netOf=l=>!l?null:(l.n!=null?l.n:(l.b!=null&&l.s!=null?l.b-l.s:null));

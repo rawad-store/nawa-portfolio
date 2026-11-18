@@ -618,7 +618,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.18.2';
+const APP_BUILD='2026.11.18.3';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -3144,7 +3144,32 @@ addEventListener('unhandledrejection',e=>{try{console.error('[nawa]',e.reason)}c
 (()=>{'use strict';
 /* حركة المستثمرين: صافي/إجمالي شراء وبيع المصريين والعرب والأجانب (أفراد/مؤسسات) في البورصة المصرية.
    البيانات تُحفظ محليًا (تُدخل أو تُلصق أو تُجلب من رابط) وتُحلَّل على آخر جلسة مسجّلة. */
-const KEY='u_flows_v1',URLK='u_flows_url_v1';
+const KEY='u_flows_v1',URLK='u_flows_url_v1',AUTOK='u_flows_auto_v1',DEF_URL='https://www.egx.com.eg/ar/InvestorsTypePieChart.aspx';
+const srcUrl=()=>{try{return localStorage.getItem(URLK)||DEF_URL}catch(e){return DEF_URL}};
+const getAuto=()=>{try{return JSON.parse(localStorage.getItem(AUTOK))||{}}catch(e){return{}}};
+const setAuto=o=>{try{localStorage.setItem(AUTOK,JSON.stringify(Object.assign(getAuto(),o)))}catch(e){}};
+/* جلب نص الرابط: مباشرة ثم عبر وسيطك (CORS) */
+async function getText(u,signal){
+  const tries=[];const base=(()=>{try{return (localStorage.getItem('u_px')||(typeof DEFAULT_PROXY!=='undefined'?DEFAULT_PROXY:'')).replace(/\/+$/,'')}catch(e){return ''}})();
+  tries.push(u);if(base)tries.push(base+'/?url='+encodeURIComponent(u));
+  let last='';
+  for(const t of tries){try{const r=await fetch(t,{signal,cache:'no-store'});if(r.ok){const x=await r.text();if(x&&x.trim())return x}last='HTTP '+r.status}catch(e){if(e.name==='AbortError')throw e;last='تعذّر الاتصال'}}
+  throw Error(last||'تعذّر الجلب');
+}
+/* HTML → نص بصفّ لكل سطر جدول، مع استخراج تاريخ الصفحة إن وُجد */
+function htmlToText(t){
+  if(!/<\/?(html|body|table|tr|div|span|script)\b/i.test(t))return{text:t,date:null};
+  let doc;try{doc=new DOMParser().parseFromString(t,'text/html')}catch(e){return{text:t,date:null}}
+  const scripts=[...doc.querySelectorAll('script')].map(s=>s.textContent).join('\n');
+  doc.querySelectorAll('script,style,noscript').forEach(n=>n.remove());
+  doc.querySelectorAll('tr').forEach(tr=>{tr.textContent='\n'+[...tr.children].map(c=>c.textContent.replace(/\s+/g,' ').trim()).join(' ')+'\n'});
+  const text=(doc.body?doc.body.textContent:'')+'\n'+scripts;
+  let date=null,m=text.match(/(20\d{2})-(\d{2})-(\d{2})/);
+  if(m)date=m[0];else{m=text.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})\b/);if(m)date=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0')}
+  if(date&&Number.isNaN(Date.parse(date)))date=null;
+  return{text,date};
+}
+
 const NAT=[['eg','مصريون'],['ar','عرب'],['fo','أجانب']],CLS=[['I','أفراد'],['O','مؤسسات']];
 const CELLS=[];NAT.forEach(([n,nn])=>CLS.forEach(([c,cn])=>CELLS.push([n+c,nn+' — '+cn])));
 const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -3243,7 +3268,7 @@ function entryForm(){let h=`<details class="history-disclosure" id="flEnt"${entO
  NAT.forEach(([n,nn])=>{h+=`<div><label for="flN${n}">صافي ${nn}</label><input inputmode="decimal" id="flN${n}" data-n="${n}"></div>`});
  h+=`</div><div class="row"><button class="sm" data-act="saveForm">حفظ الجلسة</button></div>`;
  h+=`<h2>لصق نص الأخبار أو الجدول</h2><textarea id="flPaste" placeholder="الصق هنا فقرة مثل: سجلت تعاملات المستثمرين المصريين صافي بيع بقيمة 464.6 مليون جنيه، بينما سجلت تعاملات الأجانب صافي بيع بقيمة 701.5 مليون جنيه، والعرب صافي شراء بقيمة 236.9 مليون جنيه"></textarea><div class="row"><button class="sm" data-act="parse">قراءة وحفظ للتاريخ أعلاه</button></div>`;
- h+=`<h2>جلب من رابط</h2><p class="mu">رابط يعيد JSON بصيغة ملف التصدير أو نصًا يقرؤه المحلل أعلاه (مثلاً عبر Worker الخاص بك). قد يمنعه المتصفح إن لم يسمح الموقع بالوصول.</p><div class="row"><input id="flUrl" type="url" inputmode="url" placeholder="https://…" value="${E(localStorage.getItem(URLK)||'')}" style="flex:1 1 220px;direction:ltr"><button class="sm" data-act="fetch"${busy?' disabled':''}>${busy?'جارٍ الجلب…':'جلب الآن'}</button></div>`;
+ h+=`<h2>جلب من رابط</h2><p class="mu">رابط يعيد JSON بصيغة ملف التصدير أو نصًا يقرؤه المحلل أعلاه (مثلاً عبر Worker الخاص بك). قد يمنعه المتصفح إن لم يسمح الموقع بالوصول.</p><div class="row"><input id="flUrl" type="url" inputmode="url" placeholder="https://…" value="${E(srcUrl())}" style="flex:1 1 220px;direction:ltr"><button class="sm" data-act="fetch"${busy?' disabled':''}>${busy?'جارٍ الجلب…':'جلب الآن'}</button></div>`;
  h+=`<h2>السجل</h2>`+(rows.length?`<div class="fw"><table><tbody>${rows.slice(-10).reverse().map(r=>`<tr><td>${E(r.d)}</td><td>${Object.keys(r.v).length} خانة</td><td><button class="sm dn" data-act="del" data-d="${E(r.d)}">حذف</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="mu">لا توجد جلسات.</p>');
  h+=`<div class="row"><button class="sm" data-act="export">تصدير JSON</button><button class="sm" data-act="import">استيراد JSON</button><input type="file" id="flFile" accept="application/json,.json" style="display:none"></div></div></details>`;return h}
 function draw(){const sm=summary(),fi=flowIndex();
@@ -3257,7 +3282,8 @@ function draw(){const sm=summary(),fi=flowIndex();
   h+=`<h2>المخطط</h2><div class="row"><select id="flView" aria-label="الفئة">${SER.map(([k,lb])=>`<option value="${k}"${view===k?' selected':''}>${E(lb)}</option>`).join('')}</select></div>${chart(view)}`;
   h+=`<h2>تفاصيل آخر جلسة</h2>`+lastTable();
  }
- if(msg)h+=`<div class="al">${E(msg)}</div>`;
+ {const a=getAuto();if(a.ts)h+=`<p class="mu">التحديث التلقائي: آخر محاولة ${E(new Date(a.ts).toLocaleString('ar-EG-u-nu-latn'))} — ${a.ok?'نجحت':'فشلت'+(a.err?' ('+E(a.err)+')':'')}.</p>`}
+  if(msg)h+=`<div class="al">${E(msg)}</div>`;
  h+=`</div><div class="c">${entryForm()}<p class="mu" style="margin-top:10px">معلومات للمتابعة وليست نصيحة استثمارية. تدفق المستثمرين مؤشر مساعد لا يضمن اتجاه الأسعار.</p></div>`;
  pn.innerHTML=h;const d=pn.querySelector('#flEnt');if(d)d.addEventListener('toggle',()=>{entOpen=d.open})}
 function readForm(){const v={};let any=false;
@@ -3269,15 +3295,18 @@ function commit(d,v,label){if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){msg='التاري�
  if(v.__bad){msg='لكل فئة تُدخل: أدخل الشراء والبيع معًا وبقيم موجبة.';return false}
  delete v.__bad;if(!Object.keys(v).length){msg='لم تُدخل أي أرقام.';return false}
  mergeRow(d,v);msg=save()?`تم حفظ ${Object.keys(v).length} خانة لجلسة ${d}${label?' ('+label+')':''}.`:'تعذّر الحفظ في المتصفح.';return true}
-async function doFetch(u,d){busy=true;draw();const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);
+async function doFetch(u,d){busy=true;if(pn.style.display!=='none')draw();const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);
  try{if(!/^https:\/\//i.test(u))throw Error('الرابط يجب أن يبدأ بـ https://');
-  const r=await fetch(u,{signal:ctl.signal,cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const t=await r.text();
+  const t=await getText(u,ctl.signal);
   let j=null;try{j=JSON.parse(t)}catch(e){}
   if(j&&Array.isArray(j.rows)){let n=0;j.rows.filter(validRow).forEach(x=>{mergeRow(x.d,x.v);n++});save();msg=`تم استيراد ${n} جلسة من الرابط.`}
   else if(j&&typeof j==='object'&&!Array.isArray(j)){const {date,...rest}=j;const v={};Object.keys(rest).forEach(k=>{if(/^(eg|ar|fo)[TIO]$/.test(k)&&rest[k]&&typeof rest[k]==='object'){const o={};['b','s','n'].forEach(f=>{const x=num(rest[k][f]);if(x!=null)o[f]=x});if(Object.keys(o).length)v[k]=o}});commit(/^\d{4}-\d{2}-\d{2}$/.test(date||'')?date:d,v,'من الرابط')}
-  else{const p=parseText(t);if(!p.hits)throw Error('لم أجد أرقامًا مفهومة في الرد.');commit(d,p.v,'من الرابط')}
-  localStorage.setItem(URLK,u)}catch(e){msg='تعذّر الجلب: '+(e.name==='AbortError'?'انتهت المهلة':e.message)+'. إن كان السبب منع المتصفح فاستخدم Worker يضيف ترويسة CORS أو الصق النص يدويًا.'}
- finally{clearTimeout(to);busy=false;draw()}}
+  else{const c=htmlToText(t),p=parseText(c.text);if(!p.hits)throw Error('لم أجد أرقام شراء وبيع مفهومة في الصفحة');
+   const vals=Object.values(p.v).flatMap(x=>[x.b,x.s,x.n]).filter(x=>x!=null);
+   if(/%|٪/.test(c.text)&&vals.length&&vals.every(x=>Math.abs(x)<=100)&&!/مليون|مليار/.test(c.text))throw Error('الصفحة تعرض نسبًا مئوية لا قيم شراء وبيع بالمليون، فلم تُحفظ');
+   commit(c.date||d,p.v,'تلقائي')}
+  if(u!==DEF_URL)localStorage.setItem(URLK,u);setAuto({ts:Date.now(),ok:true})}catch(e){setAuto({ts:Date.now(),ok:false,err:e.message});msg='تعذّر الجلب: '+(e.name==='AbortError'?'انتهت المهلة':e.message)+'. إن كان السبب منع المتصفح فاستخدم Worker يضيف ترويسة CORS أو الصق النص يدويًا.'}
+ finally{clearTimeout(to);busy=false;if(pn.style.display!=='none')draw()}}
 pn.addEventListener('change',e=>{if(e.target.id==='flView'){view=e.target.value;entOpen=!!(pn.querySelector('#flEnt')||{}).open;draw()}
  if(e.target.id==='flFile'&&e.target.files[0]){const fr=new FileReader();fr.onload=()=>{try{const j=JSON.parse(fr.result);if(!j||!Array.isArray(j.rows))throw 0;let n=0;j.rows.filter(validRow).forEach(x=>{mergeRow(x.d,x.v);n++});save();msg=`تم استيراد ${n} جلسة.`}catch(_){msg='ملف غير صالح.'}draw()};fr.readAsText(e.target.files[0])}});
 pn.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act,date=(pn.querySelector('#flDate')||{}).value||todayIso();entOpen=true;
@@ -3292,7 +3321,9 @@ function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove
  tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;
  panels.forEach(i=>{const el=document.getElementById('tab-'+i);if(el)el.style.display='none'});
  pn.style.display='block';draw();tabs.scrollIntoView({block:'start'});
- const u=localStorage.getItem(URLK);if(u&&!busy&&(!api._last||Date.now()-api._last>18e5)){api._last=Date.now();doFetch(u,todayIso())}}
+ autoRun(false)}
+function autoRun(bg){const u=srcUrl(),a=getAuto();if(!u||busy||navigator.onLine===false)return;const gap=bg?6*36e5:18e5;if(Date.now()-(a.ts||0)<gap)return;const last=rows.length?rows[rows.length-1].d:'';if(bg&&last===todayIso())return;doFetch(u,todayIso())}
+setTimeout(()=>autoRun(true),6000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoRun(true)});
 tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
  if(t===tb)show();else{pn.style.display='none';if(tb.classList.contains('active')){tb.classList.remove('active');tb.setAttribute('aria-selected','false');tb.tabIndex=-1}}});
 tb.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show()}});

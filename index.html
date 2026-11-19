@@ -3335,7 +3335,7 @@ function draw(){const sm=summary(),fi=flowIndex();
   h+=`<h2>المخطط</h2><div class="row"><select id="flView" aria-label="الفئة">${SER.map(([k,lb])=>`<option value="${k}"${view===k?' selected':''}>${E(lb)}</option>`).join('')}</select></div>${chart(view)}`;
   h+=`<h2>تفاصيل آخر جلسة</h2>`+lastTable();
  }
- {const a=getAuto();if(a.ts)h+=`<p style="margin:10px 0"><span class="nw-chip${a.ok?' ok':''}">${a.ok?'تحديث تلقائي ناجح':'التحديث التلقائي غير متاح لهذا المصدر'} • ${E(new Date(a.ts).toLocaleString('ar-EG-u-nu-latn',{dateStyle:'short',timeStyle:'short'}))}</span></p>${a.ok?'':'<p class="mu">صفحة البورصة لا تعرض الأرقام كنص قابل للقراءة؛ الصق نص الخبر يدويًا أو اربط رابط Worker خاصًا بك.</p>'}`}
+ {const a=getAuto();if(a.ts)h+=`<p style="margin:10px 0"><span class="nw-chip${a.ok?' ok':''}">${a.ok?'تحديث تلقائي ناجح'+(a.src?' • '+E(a.src):''):'التحديث التلقائي تعذّر'} • ${E(new Date(a.ts).toLocaleString('ar-EG-u-nu-latn',{dateStyle:'short',timeStyle:'short'}))}</span></p>${a.ok?'':'<p class="mu">السبب: '+E(a.err||'غير معروف')+'. التحديث التلقائي يقرأ خبر «أخبار البورصة اليوم» من اليوم السابع عبر الـWorker؛ إن كان المتصفح يمنع الوصول فانشر ملف worker.js المرفق وضع رابطه في الإعدادات، أو ارفع PDF يدويًا.</p>'}`}
   if(lastRaw)h+=`<details class="fvbox"><summary>ما الذي جُلب من الصفحة؟ (للتشخيص)</summary><p class="mu" style="direction:rtl;word-break:break-word;font-size:.78rem">${E(lastRaw.slice(0,1800))}</p></details>`;
   if(msg)h+=`<div class="al">${E(msg)}</div>`;
  h+=`</div><div class="c">${entryForm()}<p class="mu" style="margin-top:10px">معلومات للمتابعة وليست نصيحة استثمارية. تدفق المستثمرين مؤشر مساعد لا يضمن اتجاه الأسعار.</p></div>`;
@@ -3361,6 +3361,49 @@ async function doFetch(u,d){busy=true;if(pn.style.display!=='none')draw();const 
    commit(c.date||d,p.v,'تلقائي')}
   if(u!==DEF_URL){try{localStorage.setItem(URLK,u)}catch(_){}}setAuto({ts:Date.now(),ok:true})}catch(e){setAuto({ts:Date.now(),ok:false,err:e.message});msg='تعذّر الجلب: '+(e.name==='AbortError'?'انتهت المهلة':e.message)+'. إن كان السبب منع المتصفح فاستخدم Worker يضيف ترويسة CORS أو الصق النص يدويًا.'}
  finally{clearTimeout(to);busy=false;if(pn.style.display!=='none')draw()}}
+/* ---------- التحديث التلقائي من خبر «أخبار البورصة اليوم» (اليوم السابع) ----------
+   الخبر اليومي يذكر صافي الخانات الست (أفراد/مؤسسات × مصريون/عرب/أجانب) للأسهم المقيدة بصيغة ثابتة: «...للبيع بقيمة a، b على الترتيب، فيما ... للشراء بقيمة ...». يُحفظ الصافي فقط؛ وأي جلسة فيها شراء وبيع من PDF لا تُستبدل. */
+const NEWS_TAG='https://www.youm7.com/Tags/Index?id=148040&tag='+encodeURIComponent('البورصة اليوم');
+const nrmAr=t=>String(t||'').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[إأآ]/g,'ا').replace(/[٠-٩]/g,d=>AD.indexOf(d)).replace(/[\u200b-\u200f\u202a-\u202e\u00a0]/g,' ');
+function parseNews(text){const t=nrmAr(text).replace(/\s+/g,' ');
+ const NAT='(?:المصريين|المصريون|المصرية|المصريه|العربية|العربيه|العرب|الاجنبية|الاجنبيه|الاجانب)(?![\\u0621-\\u064a])';
+ const re=new RegExp('و?(الافراد|المؤسسات)((?:\\s+و?'+NAT+')+)|(للبيع|للشراء)|(\\d+(?:\\.\\d+)?)\\s*(مليار|مليون)?\\s*جنيه','g');
+ const natKey=w=>/^و?المصري/.test(w)?'eg':/^و?العرب/.test(w)?'ar':'fo';
+ const groups=[];let pend=[],cur=null,m;
+ while((m=re.exec(t))){
+  if(m[1]){if(cur&&cur.vals.length){cur=null;pend=[]}
+   const cls=m[1]==='الافراد'?'I':'O';(m[2].match(new RegExp('و?'+NAT,'g'))||[]).forEach(w=>pend.push(natKey(w)+cls))}
+  else if(m[3]){cur={ents:pend,dir:m[3]==='للبيع'?-1:1,vals:[]};groups.push(cur);pend=[]}
+  else if(cur&&m[4]){cur.vals.push(parseFloat(m[4])*(m[5]==='مليار'?1000:1))}}
+ const v={};let hits=0;
+ for(const g of groups){if(!g.ents.length||g.ents.length!==g.vals.length)continue;g.ents.forEach((k,i)=>{if(v[k]==null){v[k]={n:g.dir*g.vals[i]};hits++}})}
+ const keys=['egI','egO','arI','arO','foI','foO'];
+ if(!keys.every(k=>v[k]))return{v:{},hits:0};
+ const sum=keys.reduce((p,k)=>p+v[k].n,0);
+ if(Math.abs(sum)>1.5)return{v:{},hits:0,err:'مجموع الصافي لا يساوي صفرًا ('+sum.toFixed(1)+')'};
+ ['eg','ar','fo'].forEach(n=>{v[n+'T']={n:v[n+'I'].n+v[n+'O'].n};hits++});
+ return{v,hits}}
+const hasBS=r=>!!r&&Object.values(r.v).some(c=>c&&c.b!=null&&c.s!=null);
+async function autoNews(){
+ const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),20000);let done=0,seen=0,err='';
+ try{
+  const html=await getText(NEWS_TAG,ctl.signal);let doc;try{doc=new DOMParser().parseFromString(html,'text/html')}catch(e){throw Error('تعذّر قراءة صفحة الأخبار')}
+  const found=new Map();
+  doc.querySelectorAll('a[href]').forEach(a=>{const tx=nrmAr(a.textContent).replace(/\s+/g,' ').trim();
+   if(!/اخبار البورصة اليوم/.test(tx))return;const dm=tx.match(/(\d{1,2})-(\d{1,2})-(20\d{2})/);if(!dm)return;
+   const d=dm[3]+'-'+dm[2].padStart(2,'0')+'-'+dm[1].padStart(2,'0');let href;try{href=new URL(a.getAttribute('href'),'https://www.youm7.com').href}catch(e){return}
+   if(/youm7\.com\/story\//.test(href)&&!found.has(d))found.set(d,href)});
+  seen=found.size;if(!seen)throw Error('لم أجد خبر «أخبار البورصة اليوم» في الصفحة');
+  const todo=[...found.entries()].sort((a,b)=>a[0]<b[0]?1:-1).filter(([d])=>!hasBS(rows.find(r=>r.d===d))).slice(0,6);
+  for(const [d,u] of todo){try{const h=await getText(u,ctl.signal),c=htmlToText(h),p=parseNews(c.text);
+    if(!p.hits){err=p.err||'صيغة الخبر مختلفة';continue}
+    mergeRow(d,p.v);done++}catch(e){if(e.name==='AbortError')throw e;err=e.message}}
+  if(done)save();
+  setAuto({ts:Date.now(),ok:done>0||(seen>0&&!todo.length),err:done||!todo.length?'':err,n:done,src:'اليوم السابع'});
+  if(done){msg=`تحديث تلقائي: أُضيفت ${done} جلسة من «اليوم السابع» (الصافي فقط).`}
+ }catch(e){setAuto({ts:Date.now(),ok:false,err:e.name==='AbortError'?'انتهت المهلة':e.message})}
+ finally{clearTimeout(to)}
+ return done}
 /* ---------- قراءة PDF محليًا (pdf.js من cdnjs، تُحمَّل عند أول استخدام فقط) ---------- */
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';let pdfLib=null;
 function loadPdfJs(){if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);if(pdfLib)return pdfLib;
@@ -3456,7 +3499,7 @@ function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove
  panels.forEach(i=>{const el=document.getElementById('tab-'+i);if(el)el.style.display='none'});
  pn.style.display='block';draw();tabs.scrollIntoView({block:'start'});try{tb.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}catch(_){}
  autoRun(false)}
-function autoRun(bg){const u=srcUrl(),a=getAuto();if(!u||busy||navigator.onLine===false)return;const gap=(bg||a.ok===false)?6*36e5:18e5;if(Date.now()-(a.ts||0)<gap)return;const last=rows.length?rows[rows.length-1].d:'';if(bg&&last===todayIso())return;doFetch(u,todayIso())}
+function autoRun(bg){const u=srcUrl(),a=getAuto();if(!u||busy||navigator.onLine===false)return;const gap=(bg||a.ok===false)?6*36e5:18e5;if(Date.now()-(a.ts||0)<gap)return;const last=rows.length?rows[rows.length-1].d:'';if(bg&&last===todayIso())return;busy=true;autoNews().then(n=>{if(u!==DEF_URL)return doFetch(u,todayIso())}).catch(()=>{}).finally(()=>{busy=false;if(pn.style.display!=='none')draw()})}
 setTimeout(()=>autoRun(true),6000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoRun(true)});
 tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
  if(t===tb)show();else{pn.style.display='none';if(tb.classList.contains('active')){tb.classList.remove('active');tb.setAttribute('aria-selected','false');tb.tabIndex=-1}}});

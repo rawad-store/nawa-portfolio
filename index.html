@@ -3385,21 +3385,31 @@ function streamText(items){const t=fixMinus(items.map(i=>i.s).join(' ')).replace
  return out.join('\n')}
 /* تقرير البورصة المصرية اليومي: «الأسهم المقيدة بدون صفقات» أفراد ثم مؤسسات؛ كل مجموعة: شراء، بيع، شراء+بيع، صافي (بالمليون، والسالب بين قوسين) */
 function parseEgx(text){const L=text.split('\n').map(s=>s.replace(/[أإآ]/g,'ا').replace(/\(\s*(\d[\d.,]*)\s*\)?/g,'-$1').replace(/(\d)\)/g,'$1').replace(/\s+/g,' ').trim());
- const find=(re)=>{let on=false,ord='bs';const rows={};
-  for(const l of L){if(!on){if(re.test(l))on=true;continue}
-   if(/شراء/.test(l)&&/بيع/.test(l)&&!/^(مصريون|مصريين|عرب|اجانب)/.test(l)){ord=l.indexOf('شراء')<l.indexOf('بيع')?'bs':'sb';continue}
-   const m=l.match(/^(مصريون|مصريين|عرب|اجانب)((?:\s+-?\d[\d,]*(?:\.\d+)?){8})$/);if(!m)continue;
-   const n=m[1][0]==='م'?'eg':m[1]==='عرب'?'ar':'fo';if(rows[n])continue;rows[n]={ord,v:m[2].trim().split(/\s+/).map(x=>+x.replace(/,/g,''))};
-   if(Object.keys(rows).length===3)break}
-  return rows};
- let rows=find(/^الاسهم المقيدة بدون صفقات$/),src='بدون صفقات';if(Object.keys(rows).length<3){rows=find(/^الاسهم المقيدة شاملة الصفقات$/);src='شاملة الصفقات'}
- const v={};let hits=0,skipped=0;
- for(const n of Object.keys(rows)){const {ord,v:a}=rows[n],cells={};let ok=true;
-  [[0,'I'],[4,'O']].forEach(([o,k])=>{const x=a.slice(o,o+4),b=ord==='bs'?x[0]:x[1],s=ord==='bs'?x[1]:x[0];
-   if(Math.abs(x[2]-(b+s))>0.25||Math.abs(Math.abs(x[3])-Math.abs(b-s))>0.25)ok=false;cells[k]={b,s}});
-  if(!ok){skipped++;continue}
-  v[n+'I']=cells.I;v[n+'O']=cells.O;v[n+'T']={b:cells.I.b+cells.O.b,s:cells.I.s+cells.O.s};hits+=3}
- return{v,hits,skipped,src}}
+ /* ترتيب الأسطر في PDF يخلط الجداول (الأسهم والسندات وخارج المقصورة والإجمالي)، فلا يُعتمد على ترتيب العناوين: تُجمع كل الصفوف المرشحة (فئة + 8 أرقام) ثم يُختار الثلاثي (مصريون وعرب وأجانب) الذي يتوازن شراؤه مع بيعه، والأصغر قيمةً هو جدول الأسهم لا جدول الإجمالي مع السندات */
+ const cand={eg:[],ar:[],fo:[]};let ord='bs';
+ for(const l of L){
+  if(/شراء/.test(l)&&/بيع/.test(l)&&!/(?:^|\s)(?:ال)?(?:مصريون|مصريين|عرب|اجانب)(?:\s+-?\d)/.test(l)){ord=l.indexOf('شراء')<l.indexOf('بيع')?'bs':'sb';continue}
+  const m=l.match(/(?:^|\s)(?:ال)?(مصريون|مصريين|عرب|اجانب)((?:\s+-?\d[\d,]*(?:\.\d+)?){8})\s*$/);if(!m)continue;
+  const n=m[1][0]==='م'?'eg':m[1]==='عرب'?'ar':'fo';cand[n].push({ord,v:m[2].trim().split(/\s+/).map(x=>+x.replace(/,/g,''))})}
+ /* فك الصف إلى {أفراد، مؤسسات}؛ اتجاه الأعمدة يُحسم من إشارة الصافي أولًا ثم من عنوان الجدول */
+ const split=r=>{const cells={};let ok=true;
+  [[0,'I'],[4,'O']].forEach(([o,k])=>{const x=r.v.slice(o,o+4),net=x[3];let b,s;
+   if(Math.abs(x[2]-(x[0]+x[1]))>0.25){ok=false;return}
+   if(Math.abs(x[0]-x[1]-net)<=0.25&&Math.abs(x[1]-x[0]-net)>0.25){b=x[0];s=x[1]}
+   else if(Math.abs(x[1]-x[0]-net)<=0.25&&Math.abs(x[0]-x[1]-net)>0.25){b=x[1];s=x[0]}
+   else if(Math.abs(Math.abs(net)-Math.abs(x[0]-x[1]))<=0.25){b=r.ord==='bs'?x[0]:x[1];s=r.ord==='bs'?x[1]:x[0]}
+   else{ok=false;return}
+   cells[k]={b,s}});
+  return ok?cells:null};
+ const sp={};for(const n of ['eg','ar','fo'])sp[n]=cand[n].map(split).filter(Boolean);
+ let best=null;
+ for(const e of sp.eg)for(const a of sp.ar)for(const f of sp.fo){
+  const all=[e,a,f],B=all.reduce((p,c)=>p+c.I.b+c.O.b,0),S=all.reduce((p,c)=>p+c.I.s+c.O.s,0);
+  if(Math.abs(B-S)>Math.max(0.5,0.002*Math.max(B,S)))continue;/* الشراء لا يساوي البيع = خلط جداول */
+  if(!best||B<best.B)best={B,all}}
+ const v={};let hits=0;
+ if(best){['eg','ar','fo'].forEach((n,i)=>{const c=best.all[i];v[n+'I']=c.I;v[n+'O']=c.O;v[n+'T']={b:c.I.b+c.O.b,s:c.I.s+c.O.s};hits+=3})}
+ return{v,hits,skipped:best?0:1,src:'الأسهم المقيدة'}}
 function sessionDate(pages){const c={};pages.flat().forEach(i=>{const m=String(i.s).match(/(?:^|\D)(20\d\d)\/(\d\d)\/(\d\d)(?!\d)/);if(m){const k=m[1]+'-'+m[2]+'-'+m[3];if(!Number.isNaN(Date.parse(k)))c[k]=(c[k]||0)+1}});
  const ks=Object.keys(c).sort((x,y)=>c[y]-c[x]);return ks.length&&c[ks[0]]>=2?ks[0]:null}
 /* نصفا الصفحة بشكل مستقل حتى لا تختلط جداول اليمين واليسار في سطر واحد */
@@ -3410,7 +3420,8 @@ async function pdfItems(buf,lib){const doc=await lib.getDocument({data:buf}).pro
  return pages}
 /* بعض ملفات PDF تخزّن الحروف العربية بترتيب بصري معكوس؛ نجرّب الصيغتين والاستراتيجيتين ونقبل الأولى المتسقة */
 const revAr=s=>/[\u0600-\u06FF]/.test(s)?[...s].reverse().join(''):s;
-function consistency(v){for(const n of ['eg','ar','fo']){const T=v[n+'T'],I=v[n+'I'],O=v[n+'O'];if(T&&I&&O&&T.b!=null&&I.b!=null&&O.b!=null)for(const k of ['b','s'])if(Math.abs(I[k]+O[k]-T[k])>Math.max(2,T[k]*0.002))return 'الأرقام غير متسقة (الأفراد + المؤسسات لا يساوي الإجمالي)، لم تُحفظ حمايةً للبيانات'}return ''}
+function balanced(v){let B=0,S=0,k=0;for(const n of ['eg','ar','fo']){const I=v[n+'I'],O=v[n+'O'],T=v[n+'T'];const c=I&&O&&I.b!=null&&O.b!=null&&I.s!=null&&O.s!=null?[I.b+O.b,I.s+O.s]:T&&T.b!=null&&T.s!=null?[T.b,T.s]:null;if(c){B+=c[0];S+=c[1];k++}}return k<3||Math.abs(B-S)<=Math.max(0.5,0.002*Math.max(B,S))}
+function consistency(v){if(!balanced(v))return 'إجمالي الشراء لا يساوي إجمالي البيع (غالبًا اختلطت جداول الأسهم بجداول السندات)، لم تُحفظ حمايةً للبيانات';for(const n of ['eg','ar','fo']){const T=v[n+'T'],I=v[n+'I'],O=v[n+'O'];if(T&&I&&O&&T.b!=null&&I.b!=null&&O.b!=null)for(const k of ['b','s'])if(Math.abs(I[k]+O[k]-T[k])>Math.max(2,T[k]*0.002))return 'الأرقام غير متسقة (الأفراد + المؤسسات لا يساوي الإجمالي)، لم تُحفظ حمايةً للبيانات'}return ''}
 function parsePages(pages){let raw='',err='',log=[];
  const strat=[['أ',x=>x,linesFromItems,0],['أ-معكوس',revAr,linesFromItems,0],['نصفان',x=>x,halvesText,1],['نصفان-معكوس',revAr,halvesText,1],['ب',x=>x,streamText,0],['ب-معكوس',revAr,streamText,0]];
  for(const [nm,tr,fn,egx] of strat){const tp=pages.map(p=>{const q=p.map(i=>Object.assign({},i,{s:tr(i.s)}));q.W=p.W;return q});

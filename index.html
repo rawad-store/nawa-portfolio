@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; manifest-src 'self'; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050b17">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -655,7 +655,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.18.5';
+const APP_BUILD='2026.11.19.2';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -2611,7 +2611,7 @@ async function run(){
   running=true;paintBusy(0,list.length);
   try{
     const tf=($('tf')&&$('tf').value)||'1d',custom=($('px')&&$('px').value.trim())||'';
-    const cost=Math.max(0,parseFloat($('cs')&&$('cs').value)||0.4);
+    const cost=(v=>Number.isFinite(v)?Math.min(3,Math.max(0,v)):0.4)(parseFloat($('cs')&&$('cs').value));
     const capital=Math.max(0,+($('ac')&&$('ac').value)||0);
     const riskPct=clamp(+($('rk')&&$('rk').value)||1,0.1,5);
     const lim=+ld('u_hold_lim_v1',30)||30;
@@ -2788,7 +2788,7 @@ function check(e){
 const ok=e=>e.conf==='official'&&!check(e).er.length;
 
 function advise(e){
-  const T=today(),c=P(e.cum),d=Math.round((c-T)/DAY),q=px(e.sym),tax=S.cfg.tax/100,cost=+(g('cs')&&g('cs').value)||0.4;
+  const T=today(),c=P(e.cum),d=Math.round((c-T)/DAY),q=px(e.sym),tax=S.cfg.tax/100,cost=(v=>Number.isFinite(v)?Math.min(3,Math.max(0,v)):0.4)(parseFloat(g('cs')&&g('cs').value));
   const gy=q?e.dps/q.price*100:null,ny=gy==null?null:gy*(1-tax),own=e.qty>0?+e.qty:(owned()[e.sym]||0);
   const o={d,gy,ny,own,gross:r2(own*e.dps),tx:r2(own*e.dps*tax),cash:r2(r2(own*e.dps)-r2(own*e.dps*tax)),lv:'nt',t:''};
   if(isNaN(d))o.t='تاريخ غير صالح';
@@ -3011,8 +3011,9 @@ function build(){
   const prevT=t=>{do t-=D;while(!V.trade(t));return t},nextT=t=>{do t+=D;while(!V.trade(t));return t};
   const add=(id,lv,t,x,o)=>A.push(Object.assign({id,lv,t,x,dv:0},o||{}));
   V.S.ev.forEach(e=>{
-    const h=own[e.sym];if(!h||e.conf!=='official'||V.check(e).er.length)return;
-    const c=V.P(e.cum),d=Math.round((c-T)/D),cash=h.q*e.dps*(1-tax),p=V.P(e.pay);
+    if(e.conf!=='official'||V.check(e).er.length)return;
+    const c=V.P(e.cum),d=Math.round((c-T)/D),h=own[e.sym],q=(d<0&&e.qty>0)?e.qty:(h?h.q:0);if(!(q>0))return;
+    const cash=q*e.dps*(1-tax),p=V.P(e.pay);
     if(d>=0&&d<=14){const by=Math.max(prevT(c),T);add('h|'+e.id,d<=1?'dn':d<=3?'nt':'up',e.sym+': '+(d===0?'اليوم آخر يوم للأحقية':'الأحقية بعد '+d+' يوم ('+dt(c)+')'),(d===0?'احتفظ بأسهمك حتى نهاية الجلسة لتستحق ':'البيع قبل ذلك يُفقدك ')+'كوبون ≈ '+F(cash)+' ج صافي. آخر موعد للشراء بغرض الكوبون '+dt(c)+' (نهاية الجلسة)؛ والأنسب التنفيذ حتى '+dt(by)+'.',{dv:1,nk:d>=8?'h|'+e.id+'|14':d>=4?'h|'+e.id+'|5':null})}
     if(nextT(c)===T)add('x|'+e.id,'nt',e.sym+': أول جلسة بدون الكوبون','هبوط السعر بقدر الكوبون ('+F(e.dps)+' ج) متوقع ولا يعني ضعف السهم.',{dv:1,nk:'x|'+e.id});
     if(!isNaN(p)&&(p-T===0||p-T===D))add('p|'+e.id,'up',e.sym+': صرف الكوبون '+(p===T?'اليوم':'غدًا'),'≈ '+F(cash)+' ج صافي لأسهمك.',{dv:1,nk:'p|'+e.id+'|'+(p-T)});
@@ -3124,10 +3125,11 @@ function test(bars,cost){
    if(ok){last=i;out[nm][h].push((k.c[i+h]/k.o[i+1]-1)*100-cost)}}})});
  H.forEach(h=>{for(let i=WARM;i+h<n;i++)out[BASE][h].push((k.c[i+h]/k.o[i+1]-1)*100-cost)});
  return out}
-const stat=a=>{const n=a.length;if(!n)return{n:0};const s=[...a].sort((x,y)=>x-y);
- return{n,win:100*a.filter(x=>x>0).length/n,avg:a.reduce((p,x)=>p+x,0)/n,med:n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2}};
-const verdict=(s,b)=>{if(s.n<MINN)return['عيّنة صغيرة','mu'];const e=s.avg-b.avg;
- if(e>0.5&&s.win>b.win+3)return['ميزة محتملة','up'];if(e<-0.5||s.win<b.win-3)return['أضعف من المرجع','dn'];return['غير حاسم','mu']};
+const stat=a=>{const n=a.length;if(!n)return{n:0};const s=[...a].sort((x,y)=>x-y),avg=a.reduce((p,x)=>p+x,0)/n;
+ return{n,win:100*a.filter(x=>x>0).length/n,avg,sd:n>1?Math.sqrt(a.reduce((p,x)=>p+(x-avg)*(x-avg),0)/(n-1)):0,med:n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2}};
+/* t تقريبي؛ عوائد المرجع متداخلة فيُقسم حجم عيّنتها على مدة الاحتفاظ لتفادي المبالغة في الثقة */
+const verdict=(s,b,h)=>{if(s.n<MINN)return['عيّنة صغيرة','mu'];const e=s.avg-b.avg,se=Math.sqrt((s.sd||0)**2/s.n+(b.sd||0)**2/Math.max(1,b.n/(h||1))),t=se>0?e/se:0;
+ if(e>0.5&&s.win>b.win+3)return t>=1.65?['ميزة محتملة','up']:['فارق غير مؤكّد إحصائيًا','mu'];if(e<-0.5||s.win<b.win-3)return['أضعف من المرجع','dn'];return['غير حاسم','mu']};
 const tabs=document.querySelector('.tabs'),sett=document.querySelector('#tab-settings');if(!tabs||!sett)return;
 const st=document.createElement('style');st.textContent='.tab[data-bt]::before{content:"▤"}#tab-bt .btw{overflow-x:auto}#tab-bt table{width:100%;border-collapse:collapse;font-size:.85rem}#tab-bt th,#tab-bt td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:center}#tab-bt td:first-child,#tab-bt th:first-child{text-align:right}#tab-bt .up{color:var(--up)}#tab-bt .dn{color:var(--dn)}#tab-bt .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}';document.head.appendChild(st);
 const tb=document.createElement('div');tb.className='tab';tb.dataset.bt='1';tb.textContent='اختبار تاريخي';tb.setAttribute('role','tab');tb.id='tabbtn-bt';tb.setAttribute('aria-controls','tab-bt');tb.setAttribute('aria-selected','false');tb.tabIndex=-1;
@@ -3143,7 +3145,7 @@ function draw(){
  if(have){h+='<select id="btView" aria-label="السهم"><option value="ALL">كل الأسهم (مجمّع)</option>'+ks.map(s=>'<option value="'+esc(s)+'"'+(view===s?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select><select id="btHz" aria-label="مدة الاحتفاظ">'+H.map(x=>'<option value="'+x+'"'+(hz===x?' selected':'')+'>بعد '+x+' جلسة</option>').join('')+'</select>'}
  h+='</div>';if(note)h+='<p class="mu">'+esc(note)+'</p>';
  if(have){const d=view==='ALL'||!per[view]?pool(ks):per[view],b=stat(d[BASE][hz]);
-  const rows=RULES.map(([nm])=>{const s=stat(d[nm][hz]),v=verdict(s,b);return{nm,s,v,e:s.n?s.avg-b.avg:-1e9}});
+  const rows=RULES.map(([nm])=>{const s=stat(d[nm][hz]),v=verdict(s,b,hz);return{nm,s,v,e:s.n?s.avg-b.avg:-1e9}});
   const best=rows.filter(r=>r.s.n>=MINN&&r.v[1]==='up').sort((x,y)=>y.e-x.e)[0];
   h+='<p><b>'+(best?'أفضل قاعدة تاريخيًا هنا: '+esc(best.nm)+' (متوسط '+f(best.s.avg)+'% مقابل '+f(b.avg)+'% للمرجع)':'لا توجد قاعدة بميزة واضحة على هذه البيانات')+'</b></p>';
   h+='<div class="btw"><table><thead><tr><th>القاعدة</th><th>مرات</th><th>نجاح %</th><th>متوسط %</th><th>الحكم</th></tr></thead><tbody>';
@@ -3151,18 +3153,18 @@ function draw(){
   rows.forEach(r=>{h+='<tr><td>'+esc(r.nm)+'</td><td>'+r.s.n+'</td><td>'+f(r.s.win)+'</td><td>'+f(r.s.avg)+'</td><td class="'+r.v[1]+'">'+r.v[0]+'</td></tr>'});
   h+='</tbody></table></div>';
   if(fails.length)h+='<p class="mu">تعذّر جلب: '+esc(fails.join('، '))+'</p>'}
- h+='<p class="mu" style="margin-top:12px">تنبيه: النتائج وصف للماضي لا ضمان للمستقبل. «ميزة محتملة» تعني أن القاعدة تفوّقت على المرجع بفارق ملموس مع 20 إشارة على الأقل، وقد يكون ذلك صدفة. العيّنة نحو سنتين ونصف فقط.</p></div>';
+ h+='<p class="mu" style="margin-top:12px">تنبيه: النتائج وصف للماضي لا ضمان للمستقبل. «ميزة محتملة» تعني أن القاعدة تفوّقت على المرجع بفارق ملموس مع 20 إشارة على الأقل ودلالة إحصائية تقريبية (t ≥ 1.65)، وقد يكون ذلك صدفة. العيّنة نحو سنتين ونصف فقط.</p></div>';
  pn.innerHTML=h}
 async function run(){
  if(busy)return;const L=syms();if(!L.length){note='لا توجد أسهم في محفظتك لاختبارها.';draw();return}
  busy=true;per={};fails=[];note='';draw();
- const custom=($('px')&&$('px').value.trim())||'',cost=Math.max(0,parseFloat($('cs')&&$('cs').value)||0.4);
+ const custom=($('px')&&$('px').value.trim())||'',cost=(v=>Number.isFinite(v)?Math.min(3,Math.max(0,v)):0.4)(parseFloat($('cs')&&$('cs').value));
  for(let i=0;i<L.length;i++){note='جارٍ فحص '+L[i]+' ('+(i+1)+'/'+L.length+')';draw();
   try{const R=await loadAll(detectAsset(L[i]),'1d',custom,null),o=test(R.bars,cost);if(o)per[L[i]]=o;else fails.push(L[i]+' (بيانات قليلة)')}catch(e){fails.push(L[i])}}
  busy=false;note='';draw()}
 pn.addEventListener('click',e=>{if(e.target.id==='btRun')run()});
 pn.addEventListener('change',e=>{if(e.target.id==='btView'){view=e.target.value;draw()}if(e.target.id==='btHz'){hz=+e.target.value;draw()}});
-const panels=['analyze','portfolio','history','settings','holdings','divs'];
+const panels=['analyze','portfolio','history','settings','holdings','divs','flows'];
 function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});
  tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;
  panels.forEach(i=>{const el=document.getElementById('tab-'+i);if(el)el.style.display='none'});
@@ -3315,6 +3317,7 @@ function entryForm(){let h=`<details class="history-disclosure" id="flEnt"${entO
  h+=`</tbody></table></div><p class="mu" style="margin-top:8px">أو أدخل الصافي فقط حسب الجنسية (موجب = شراء، سالب = بيع):</p><div class="kpi-grid">`;
  NAT.forEach(([n,nn])=>{h+=`<div><label for="flN${n}">صافي ${nn}</label><input inputmode="decimal" id="flN${n}" data-n="${n}"></div>`});
  h+=`</div><div class="row"><button class="sm" data-act="saveForm">حفظ الجلسة</button></div>`;
+ h+=`<h2>رفع تقرير PDF</h2><p class="mu">ارفع «الملخص اليومي لجلسة التداول» (مباشر أو البورصة). يُقرأ الملف داخل جهازك ويُحفظ كل جدول: الجنسية والأفراد والمؤسسات. التاريخ يُؤخذ من اسم الملف إن وُجد، وإلا من حقل التاريخ أعلاه.</p><div class="row"><button class="sm" data-act="pdf">رفع PDF وقراءته</button><input type="file" id="flPdf" accept="application/pdf,.pdf" style="display:none"></div>`;
  h+=`<h2>لصق نص الأخبار أو الجدول</h2><textarea id="flPaste" placeholder="الصق هنا فقرة مثل: سجلت تعاملات المستثمرين المصريين صافي بيع بقيمة 464.6 مليون جنيه، بينما سجلت تعاملات الأجانب صافي بيع بقيمة 701.5 مليون جنيه، والعرب صافي شراء بقيمة 236.9 مليون جنيه"></textarea><div class="row"><button class="sm" data-act="parse">قراءة وحفظ للتاريخ أعلاه</button></div>`;
  h+=`<h2>جلب من رابط</h2><p class="mu">رابط يعيد JSON بصيغة ملف التصدير أو نصًا يقرؤه المحلل أعلاه (مثلاً عبر Worker الخاص بك). قد يمنعه المتصفح إن لم يسمح الموقع بالوصول.</p><div class="row"><input id="flUrl" type="url" inputmode="url" placeholder="https://…" value="${E(srcUrl())}" style="flex:1 1 220px;direction:ltr"><button class="sm" data-act="fetch"${busy?' disabled':''}>${busy?'جارٍ الجلب…':'جلب الآن'}</button></div>`;
  h+=`<h2>السجل</h2>`+(rows.length?`<div class="fw"><table><tbody>${rows.slice(-10).reverse().map(r=>`<tr><td>${E(r.d)}</td><td>${Object.keys(r.v).length} خانة</td><td><button class="sm dn" data-act="del" data-d="${E(r.d)}">حذف</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="mu">لا توجد جلسات.</p>');
@@ -3356,7 +3359,35 @@ async function doFetch(u,d){busy=true;if(pn.style.display!=='none')draw();const 
    commit(c.date||d,p.v,'تلقائي')}
   if(u!==DEF_URL){try{localStorage.setItem(URLK,u)}catch(_){}}setAuto({ts:Date.now(),ok:true})}catch(e){setAuto({ts:Date.now(),ok:false,err:e.message});msg='تعذّر الجلب: '+(e.name==='AbortError'?'انتهت المهلة':e.message)+'. إن كان السبب منع المتصفح فاستخدم Worker يضيف ترويسة CORS أو الصق النص يدويًا.'}
  finally{clearTimeout(to);busy=false;if(pn.style.display!=='none')draw()}}
-pn.addEventListener('change',e=>{if(e.target.id==='flView'){view=e.target.value;entOpen=!!(pn.querySelector('#flEnt')||{}).open;draw()}
+/* ---------- قراءة PDF محليًا (pdf.js من cdnjs، تُحمَّل عند أول استخدام فقط) ---------- */
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';let pdfLib=null;
+function loadPdfJs(){if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);if(pdfLib)return pdfLib;
+ pdfLib=new Promise((res,rej)=>{const s=document.createElement('script');s.src=PDFJS+'pdf.min.js';
+  s.onload=()=>{if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js';res(window.pdfjsLib)}else{pdfLib=null;rej(Error('تعذّر تحميل مكتبة قراءة PDF'))}};
+  s.onerror=()=>{pdfLib=null;rej(Error('تعذّر تحميل مكتبة قراءة PDF (يلزم اتصال بالإنترنت لأول مرة)'))};document.head.appendChild(s)});return pdfLib}
+/* تجميع عناصر الصفحة في أسطر (الصف بنفس الارتفاع، من اليمين لليسار)، ثم ربط عنوان «الأفراد/المؤسسات» بأقرب جدول عموديًا لأن موضعه يختلف عن سطر الأعمدة */
+function linesFromItems(items){const lines=[];items.slice().sort((a,b)=>b.y-a.y).forEach(it=>{const L=lines.find(l=>Math.abs(l.y-it.y)<=3);if(L)L.a.push(it);else lines.push({y:it.y,a:[it]})});
+ lines.sort((a,b)=>b.y-a.y);
+ const rowRe=/(?:مصريين|مصريون|عرب|[أا]جانب)\s+-?[\d.,]+\s+-?[\d.,]+\s+-?[\d.,]+/;
+ const txt=lines.map(l=>{let t=l.a.sort((a,b)=>(b.x+b.w)-(a.x+a.w)).map(i=>i.s).join(' ').replace(/(\d[\d.,]*)-(?=\s|$)/g,'-$1');const m=t.match(rowRe);if(m)t=m[0];return{y:l.y,t}});
+ const secOf=t=>{const n=t.replace(/[أإآ]/g,'ا').trim();return /^ا{1,2}ل?ا?فراد$/.test(n)?'الافراد':/^المؤسسات$/.test(n)?'المؤسسات':''};
+ txt.forEach(l=>{if(/قيمة البيع/.test(l.t)&&/قيمة الشراء/.test(l.t)&&!/فراد|مؤسس/.test(l.t)){let best=null;txt.forEach(m=>{const s=secOf(m.t),d=Math.abs(m.y-l.y);if(s&&d<=24&&(!best||d<best.d))best={d,s}});if(best)l.t=best.s+' '+l.t}});
+ return txt.map(l=>l.t).join('\n')}
+async function pdfToText(buf){const lib=await loadPdfJs();const doc=await lib.getDocument({data:buf}).promise;const out=[];
+ for(let p=1;p<=doc.numPages;p++){const pg=await doc.getPage(p),tc=await pg.getTextContent();
+  out.push(linesFromItems(tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:i.str.trim(),x:i.transform[4],y:i.transform[5],w:i.width||0}))))}
+ return out.join('\n')}
+function dateFromName(n){const m=String(n||'').match(/(\d{1,2})[_\-.\/](\d{1,2})[_\-.\/](20\d{2})/);if(!m)return null;const d=+m[1],mo=+m[2];if(d<1||d>31||mo<1||mo>12)return null;return m[3]+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
+async function handlePdf(f){entOpen=true;const formDate=(pn.querySelector('#flDate')||{}).value||todayIso();msg='جارٍ قراءة ملف PDF…';draw();
+ try{if(f.size>25e6)throw Error('الملف أكبر من 25 ميجابايت');
+  const text=await pdfToText(await f.arrayBuffer()),p=parseText(text);
+  if(!p.hits)throw Error('لم أجد جداول شراء وبيع للمستثمرين في هذا الملف');
+  /* فحص اتساق: الأفراد + المؤسسات = الإجمالي لكل جنسية، وإلا فالأقسام اختلطت */
+  for(const n of ['eg','ar','fo']){const T=p.v[n+'T'],I=p.v[n+'I'],O=p.v[n+'O'];if(T&&I&&O&&T.b!=null&&I.b!=null&&O.b!=null){for(const k of ['b','s']){if(Math.abs(I[k]+O[k]-T[k])>Math.max(2,T[k]*0.002))throw Error('الأرقام غير متسقة (الأفراد + المؤسسات لا يساوي الإجمالي)، لم تُحفظ حمايةً للبيانات')}}}
+  const d=dateFromName(f.name)||formDate;commit(d,p.v,'من PDF'+(dateFromName(f.name)?'، التاريخ من اسم الملف':'، التاريخ من الحقل أعلاه')+(p.skipped?`، تجاهلت ${p.skipped} جملة ملتبسة`:''))}
+ catch(e){msg='تعذّرت قراءة الملف: '+e.message}draw()}
+pn.addEventListener('change',e=>{if(e.target.id==='flPdf'&&e.target.files[0]){const f=e.target.files[0];e.target.value='';handlePdf(f);return}
+ if(e.target.id==='flView'){view=e.target.value;entOpen=!!(pn.querySelector('#flEnt')||{}).open;draw()}
  if(e.target.id==='flFile'&&e.target.files[0]){const fr=new FileReader();fr.onload=()=>{try{const j=JSON.parse(fr.result);if(!j||!Array.isArray(j.rows))throw 0;let n=0;j.rows.filter(validRow).forEach(x=>{mergeRow(x.d,x.v);n++});save();msg=`تم استيراد ${n} جلسة.`}catch(_){msg='ملف غير صالح.'}draw()};fr.readAsText(e.target.files[0])}});
 pn.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act,date=(pn.querySelector('#flDate')||{}).value||todayIso();entOpen=true;
  if(act==='saveForm'){commit(date,readForm());draw()}
@@ -3365,7 +3396,8 @@ pn.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)ret
  else if(act==='fetch')doFetch((pn.querySelector('#flUrl')||{}).value.trim(),date);
  else if(act==='del'){rows=rows.filter(r=>r.d!==b.dataset.d);save();msg='تم حذف الجلسة.';draw()}
  else if(act==='export'){const u=URL.createObjectURL(new Blob([JSON.stringify({v:1,rows},null,2)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='nawa-investor-flows-'+todayIso()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
- else if(act==='import'){const f=pn.querySelector('#flFile');if(f)f.click()}});
+ else if(act==='import'){const f=pn.querySelector('#flFile');if(f)f.click()}
+ else if(act==='pdf'){const f=pn.querySelector('#flPdf');if(f)f.click()}});
 const panels=['analyze','portfolio','history','settings','holdings','divs','bt'];
 function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});
  tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;

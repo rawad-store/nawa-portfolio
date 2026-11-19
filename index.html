@@ -655,7 +655,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.19.4';
+const APP_BUILD='2026.11.19.5';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -2977,92 +2977,6 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden){banner();
 })();
 </script>
 
-<script id="nawa-div-auto">
-(()=>{'use strict';
-/* التقاط تلقائي لإفصاحات «نهاية الحق في التوزيع النقدي» لأسهم المحفظة وقائمة المتابعة فقط، ولأي سهم يُضاف لاحقًا.
-   المصدر: نص أخبار الإفصاح لكل سهم (مباشر) عبر وسيطك؛ يُستخرج: آخر يوم للأحقية، قيمة الكوبون، تاريخ الصرف، رقم الكوبون.
-   لا يُضاف شيء إلا إذا اكتملت الحقول واجتازت فحص الوحدة الأم (check) وتطابق اسم الشركة مع نص الخبر. */
-const AK='u_divauto_v1',MS=864e5,AD='٠١٢٣٤٥٦٧٨٩';
-const MON={يناير:1,فبراير:2,مارس:3,ابريل:4,مايو:5,يونيو:6,يوليو:7,اغسطس:8,سبتمبر:9,اكتوبر:10,نوفمبر:11,ديسمبر:12};
-const MR='(يناير|فبراير|مارس|ابريل|مايو|يونيو|يوليو|اغسطس|سبتمبر|اكتوبر|نوفمبر|ديسمبر)';
-const nrm=t=>String(t||'').replace(/[\u200e\u200f\u202a-\u202e\u00a0]/g,' ').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[إأآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[٠-٩]/g,d=>AD.indexOf(d)).replace(/(\d),(?=\d{3}(?!\d))/g,'$1').replace(/\s+/g,' ');
-const pad=n=>String(n).padStart(2,'0');
-/* تاريخ من نص: d/m/y أو «15 نوفمبر [2026|الجاري]»؛ السنة الناقصة تُستنتج بأقرب سنة إلى «الآن» */
-function dateAt(s,from,now){const r=new RegExp('(\\d{1,2})\\s*[/\\-.]\\s*(\\d{1,2})\\s*[/\\-.]\\s*(20\\d{2})|(\\d{1,2})\\s+'+MR+'(?:\\s+(20\\d{2}))?','g');r.lastIndex=from;const m=r.exec(s);if(!m)return null;
- let d,mo,y;if(m[1]){d=+m[1];mo=+m[2];y=+m[3]}else{d=+m[4];mo=MON[m[5]];y=m[6]?+m[6]:null}
- if(!(d>=1&&d<=31&&mo>=1&&mo<=12))return null;
- if(!y){let best=null;[-1,0,1].forEach(k=>{const yy=new Date(now).getUTCFullYear()+k,t=Date.UTC(yy,mo-1,d);if(best===null||Math.abs(t-now)<Math.abs(best-now))best=t});y=new Date(best).getUTCFullYear()}
- const t=Date.UTC(y,mo-1,d);if(new Date(t).getUTCDate()!==d)return null;
- return{iso:y+'-'+pad(mo)+'-'+pad(d),at:m.index,end:m.index+m[0].length}}
-function dpsAt(s,from,to){const w=s.slice(from,to);let m=w.match(/(?:بواقع|بقيمه|بقيمة|قدره|بمبلغ)\s*(\d+(?:\.\d+)?)\s*(جنيه|جنيها|قرش|قرشا|قروش)?/);
- if(m){let x=+m[1];if(/قرش/.test(m[2]||''))x/=100;return x}
- m=w.match(/(\d+(?:\.\d+)?)\s*قرش/);if(m)return+m[1]/100;if(/قرشين/.test(w))return .02;return null}
-/* names: قائمة أسماء السهم (بعد التطبيع) للمطابقة */
-function parseDisclosures(text,names,now){const s=nrm(text),out=[],seen=new Set();
- const nm=(names||[]).map(nrm).map(x=>x.replace(/^شركه\s+/,'').trim()).filter(x=>x.length>=3);
- const re=/(?:حتي\s+)?(?:نهايه|باغلاق|اغلاق)\s+جلسه(?:\s+تداول)?/g;
- for(let m;(m=re.exec(s));){
-  const ctx=s.slice(Math.max(0,m.index-420),m.index+520);
-  if(!/(الحق|توزيع|كوبون)/.test(ctx))continue;
-  if(nm.length&&!nm.some(n=>ctx.includes(n)))continue;
-  const cum=dateAt(s,m.index+m[0].length,now);if(!cum||cum.at-(m.index+m[0].length)>60)continue;
-  const lo=Math.max(0,m.index-420),hi=m.index+520;
-  /* الصرف: أقرب «اعتبارا من» حول المطابقة؛ الكوبون: أقرب «بواقع/بقيمة» */
-  let pay=null,pr=/(?:اعتبارا|ابتداء|بدءا)\s+من(?:\s+يوم)?/g;pr.lastIndex=lo;
-  for(let p;(p=pr.exec(s))&&p.index<hi;){const d=dateAt(s,p.index+p[0].length,now);if(d&&d.at-(p.index+p[0].length)<45&&(!pay||Math.abs(p.index-m.index)<Math.abs(pay.pi-m.index)))pay={iso:d.iso,pi:p.index}}
-  let dps=null,dr=/(?:بواقع|بقيمه|بقيمة)\s*\d/g;dr.lastIndex=lo;
-  for(let p;(p=dr.exec(s))&&p.index<hi;){const x=dpsAt(s,p.index,p.index+40);if(x>0&&(dps===null||Math.abs(p.index-m.index)<Math.abs(dps.pi-m.index)))dps={x,pi:p.index}}
-  if(!dps)continue;
-  const cm=ctx.match(/(?:كوبون|الكوبون)(?:\s+\S{0,40}?)?\s+رقم\s*\(?\s*(\d+)/)||ctx.match(/رقم\s*\(?\s*(\d+)\s*\)?\s*بواقع/);
-  const key=cum.iso+'|'+dps.x;if(seen.has(key))continue;seen.add(key);
-  out.push({cum:cum.iso,dps:Math.round(dps.x*1e6)/1e6,pay:pay&&pay.iso>cum.iso?pay.iso:'',cpn:cm?cm[1]:''})}
- return out}
-if(typeof document==='undefined'){globalThis.__parseDisc=parseDisclosures;return}
-const V=()=>window.__dv,jl=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
-const st=jl(AK)||{};const sv=()=>{try{localStorage.setItem(AK,JSON.stringify(st))}catch(e){}};
-const symOf=r=>String(r||'').trim().toUpperCase().replace(/\.CA$/,'');
-function syms(){const o=new Set();(jl('u_hold_list_v3')||[]).forEach(r=>{if(Array.isArray(r)&&r[0]&&(+r[2]||0)>0)o.add(symOf(r[0]))});(jl('u_portfolio_v4')||[]).forEach(r=>{const x=symOf(typeof r==='string'?r:r&&r[0]);if(x)o.add(x)});return[...o].filter(x=>/^[A-Z0-9\-]{2,12}$/.test(x))}
-function namesOf(sym){const n=new Set(),h=(jl('u_hold_list_v3')||[]).find(r=>Array.isArray(r)&&symOf(r[0])===sym);
- if(h&&h[1])String(h[1]).split(/\s[–—-]\s/).forEach(x=>n.add(x.trim()));
- try{const e=EGX.find(x=>x[0]===sym);if(e&&e[1])n.add(e[1])}catch(_){}return[...n]}
-const tf=async(u,t)=>{const c=new AbortController(),k=setTimeout(()=>c.abort(),t||12000);try{return await fetch(u,{signal:c.signal,cache:'no-store'})}finally{clearTimeout(k)}};
-function plain(h){if(!/<\/?(html|body|div|p|span|a|li|tr)\b/i.test(h))return h;try{const d=new DOMParser().parseFromString(h.replace(/<(br|\/p|\/div|\/li|\/tr|\/h\d|\/article|\/section)[^>]*>/gi,'\n'),'text/html');d.querySelectorAll('script,style,noscript').forEach(n=>n.remove());return d.body.textContent||''}catch(e){return h.replace(/<[^>]+>/g,' ')}}
-async function getPage(url){const enc=encodeURIComponent(url),px=(localStorage.getItem('u_px')||(typeof DEFAULT_PROXY!=='undefined'?DEFAULT_PROXY:'')||'').replace(/\/+$/,'');
- const list=[];if(px)list.push(px+'/?url='+enc);list.push('https://api.allorigins.win/raw?url='+enc,'https://corsproxy.io/?'+enc);
- for(const u of list){try{const r=await tf(u);if(r.ok){const x=await r.text();if(x&&x.length>400)return plain(x)}}catch(e){}}return null}
-const sym2url=s=>'https://www.mubasher.info/markets/EGX/stocks/'+encodeURIComponent(s)+'/news';
-function commit(sym,found,url){const v=V();if(!v||!v.S)return 0;const S=v.S,T=v.today();let n=0;
- found.forEach(f=>{const c=v.P(f.cum),p=v.P(f.pay);if(isNaN(c))return;
-  if(!(c>=T-MS||(!isNaN(p)&&p>=T)))return;             /* منتهٍ تمامًا: يتجاهل */
-  if(c>T+200*MS)return;
-  const id='a-'+sym+'-'+f.cum;if(S.del.includes(id))return;
-  const near=S.ev.find(e=>e.sym===sym&&Math.abs(v.P(e.cum)-c)<=7*MS&&e.id!==id);if(near)return;   /* موجود يدويًا أو بذرة: لا نكرره */
-  const name=(()=>{try{const e=EGX.find(x=>x[0]===sym);return e?e[1]:sym}catch(_){return sym}})();
-  const ev={id,sym,name,dps:f.dps,cum:f.cum,pay:f.pay,cpn:f.cpn,src:'التقاط تلقائي من خبر إفصاح البورصة (مباشر) — '+url,conf:'official',auto:true,fol:false,note:'التقطه التطبيق تلقائيًا من نص الخبر؛ طابقه مع إفصاح البورصة قبل أي قرار'};
-  const k=v.check(ev);if(k.er.length)return;
-  const i=S.ev.findIndex(e=>e.id===id);
-  if(i>=0){if(S.ev[i].auto){if(S.ev[i].dps!==ev.dps||S.ev[i].pay!==ev.pay){S.ev[i]=Object.assign(S.ev[i],{dps:ev.dps,pay:ev.pay,cpn:ev.cpn});n++}}}else{S.ev.push(ev);n++}});
- if(n){try{localStorage.setItem('u_div_v1',JSON.stringify(S))}catch(e){}}return n}
-let busy=false;
-async function run(force,only){if(busy||navigator.onLine===false||!V())return;busy=true;let added=0;
- try{const list=(only||syms());
-  for(const s of list){const o=st[s]||{};const ttl=o.ok?3*36e5:36e5;if(!force&&Date.now()-(o.ts||0)<ttl)continue;
-   const url=sym2url(s),txt=await getPage(url);
-   if(!txt){st[s]={ts:Date.now(),ok:false,err:'تعذّر الجلب'};continue}
-   const found=parseDisclosures(txt,namesOf(s),Date.now()),n=commit(s,found,url);added+=n;st[s]={ts:Date.now(),ok:true,found:found.length,n}}
-  sv();Object.keys(st).forEach(k=>{if(!list.includes(k))delete st[k]})}finally{busy=false}
- if(added){try{toast('التُقط '+added+' توزيع جديد لأسهمك تلقائيًا — راجع تبويب التوزيعات')}catch(_){}
-  document.dispatchEvent(new Event('visibilitychange'));const t=document.querySelector('#tab-divs');if(t&&t.style.display==='block'){const b=document.querySelector('.tab[data-dv]');if(b)b.click()}}
- return added}
-let sig='';const sigNow=()=>syms().sort().join(',');
-setTimeout(()=>{sig=sigNow();run(false)},5000);
-setInterval(()=>{if(document.hidden)return;const n=sigNow();if(n!==sig){const old=new Set(sig.split(',')),fresh=n.split(',').filter(x=>x&&!old.has(x));sig=n;if(fresh.length)run(true,fresh)}},15000);
-setInterval(()=>{if(!document.hidden)run(false)},20*60*1000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)run(false)});
-window.__divAuto={run,parseDisclosures,state:()=>st};
-})();
-
-</script>
 <script id="nawa-a11y">
 (()=>{
   const tabs=()=>[...document.querySelectorAll('.tabs [role="tab"]')];
@@ -3334,72 +3248,24 @@ function summary(){if(!rows.length)return{ok:false,n:0};const last=rows[rows.len
 
 /* ---------- قراءة نص ملصوق (أخبار أو جدول) ---------- */
 function parseText(t){
- let s=String(t||'').replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\u00a0]/g,' ').replace(/البورصة المصرية/g,' ').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[إأآ]/g,'ا').replace(/[٠-٩]/g,d=>AD.indexOf(d)).replace(/[٬،](?=\d{3})/g,'').replace(/[−–‑﹣－]/g,'-').replace(/(\d),(?=\d{3}(?!\d))/g,'$1');
- s=s.replace(/(\d+(?:\.\d+)?)-(?=\s|$)/g,'-$1').replace(/(^|\s)-\s+(?=\d)/g,'$1-');s=s.replace(/\(\s*(\d+(?:\.\d+)?)\s*\)/g,'-$1');
- const v={};let hits=0,skipped=0,date=null;
- const dm=s.match(/(?:بتاريخ|جلسة(?:\s+يوم)?|ليوم)\s*(?:[^\d\n]{0,12})?(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(20\d{2})/);
- const dy=s.match(/(?:تاريخ\s+الجلسه?|تاريخ\s+الجلسة|جلسة)\s*:?\s*(20\d{2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{1,2})/);
- if(dy&&+dy[2]>=1&&+dy[2]<=12&&+dy[3]>=1&&+dy[3]<=31)date=dy[1]+'-'+String(+dy[2]).padStart(2,'0')+'-'+String(+dy[3]).padStart(2,'0');
- else if(dm&&+dm[1]>=1&&+dm[1]<=31&&+dm[2]>=1&&+dm[2]<=12)date=dm[3]+'-'+String(+dm[2]).padStart(2,'0')+'-'+String(+dm[1]).padStart(2,'0');
- /* ===== جداول الملخص اليومي (مباشر/البورصة) =====
-    تُقرأ كتدفق رموز، فلا تتأثر بضياع فواصل الأسطر ولا بعكس ترتيب الأرقام عند النسخ من PDF.
-    كل صف = فئة + 3 أرقام (بيع، شراء، صافي)؛ يُحسم الصافي بالعلاقة |بيع − شراء| = |صافي| */
- /* ===== تقرير البورصة الرسمي «تداولات المستثمرين»: صف = فئة + 8 أرقام (أفراد: شراء، بيع، شراء+بيع، صافي | مؤسسات: نفسها) بالمليون ===== */
- {const AL2='\\u0621-\\u064A',N='(-?\\d+(?:\\.\\d+)?)',R=new RegExp('(?:^|[^'+AL2+'])(مصريين|مصريون|عرب|اجانب)\\s+'+Array(8).fill(N).join('\\s+')+'(?![\\d.])','g'),got={};
-  for(let m;(m=R.exec(s));){const nat=m[1][0]==='م'?'eg':m[1][0]==='ع'?'ar':'fo';if(got[nat])continue;const x=m.slice(2,10).map(Number),e=0.26;
-   const ok=(b,sl,tot,net)=>b>=0&&sl>=0&&Math.abs(b+sl-tot)<=e&&Math.abs(b-sl-net)<=e;
-   if(ok(x[0],x[1],x[2],x[3])&&ok(x[4],x[5],x[6],x[7]))got[nat]={I:{b:x[0],s:x[1]},O:{b:x[4],s:x[5]}}}
-  if(Object.keys(got).length>=2){Object.keys(got).forEach(n=>{const g=got[n];v[n+'I']=g.I;v[n+'O']=g.O;v[n+'T']={b:g.I.b+g.O.b,s:g.I.s+g.O.s};hits+=3});return{v,hits,skipped,date}}}
- const AL='\\u0621-\\u064A',TK=new RegExp('(^|[^'+AL+'])(مصريين|مصريون|عرب|اجانب)(?![' + AL + '])|(-?\\d+(?:\\.\\d+)?)','g'),toks=[];
- for(let m;(m=TK.exec(s));){
-  if(m[2]){toks.push({k:'n',nat:m[2][0]==='م'?'eg':m[2][0]==='ع'?'ar':'fo',i:m.index+m[1].length});TK.lastIndex=m.index+m[0].length;continue}
-  const i=m.index,pre=s.slice(Math.max(0,i-3),i),post=s.slice(i+m[3].length,i+m[3].length+3);
-  if(/[%٪]/.test(post)||/[%٪]\s*$/.test(pre))continue;
-  toks.push({k:'v',x:parseFloat(m[3]),sg:m[3][0]==='-',i,raw:m[3]})}
- const heads=[];{const HR=new RegExp('(?:(ا{1,2}ل?ا?فراد|المؤسسات|المستثمرين)\\s+)?قيمة\\s+(البيع|الشراء)\\s+قيمة\\s+(البيع|الشراء)','g');
-  for(let m;(m=HR.exec(s));)heads.push({i:m.index,sec:!m[1]?null:/فراد/.test(m[1])?'I':/مؤسس/.test(m[1])?'O':'T',ord:m[2]==='البيع'?'sb':'bs'})}
- const tol=(a,b)=>Math.max(2,Math.abs(a)*1e-6,Math.abs(b)*1e-6,0.011);
- /* يفسّر ثلاثية: يعيد {b,s} أو null. lg = الترتيب المنطقي (بيع/شراء/صافي) */
- const interp=(lg,ord,hasOrd)=>{
-  const tryNet=k=>{const o=lg.filter((_,j)=>j!==k),net=lg[k];if(o[0].x<0||o[1].x<0)return null;
-   if(Math.abs(Math.abs(o[0].x-o[1].x)-Math.abs(net.x))>tol(o[0].x-o[1].x,net.x))return null;
-   let sl,b;if(ord==='sb'){sl=o[0].x;b=o[1].x}else{b=o[0].x;sl=o[1].x}
-   const pos=b-sl;
-   if(net.sg&&pos>0){[b,sl]=[sl,b]}               /* إشارة سالبة صريحة تحسم الاتجاه */
-   else if(!net.sg&&net.x>0&&pos<0&&!hasOrd){[b,sl]=[sl,b]}/* موجب بلا عنوان يحدد الترتيب: الشراء أكبر */
-   return{b,s:sl}};
-  return tryNet(2)||tryNet(0)||tryNet(1)};
- const assign=dir=>{const rows=[],used=new Set();
-  toks.forEach((t,ix)=>{if(t.k!=='n')return;const g=[];
-   if(dir>0){for(let j=ix+1;j<toks.length&&g.length<3;j++){if(toks[j].k==='n')break;if(used.has(j))break;g.push(j)}}
-   else{for(let j=ix-1;j>=0&&g.length<3;j--){if(toks[j].k==='n')break;if(used.has(j))break;g.unshift(j)}}
-   if(g.length<3)return;
-   const span=dir>0?toks[g[2]].i-t.i:t.i-toks[g[0]].i;if(span>160)return;
-   const hd=heads.filter(h=>h.i<t.i).pop()||(dir<0?heads.find(h=>h.i>t.i):null);
-   const lg=g.map(j=>toks[j]);if(dir<0)lg.reverse();
-   const r=interp(lg,hd?hd.ord:'sb',!!hd);
-   if(r){g.forEach(j=>used.add(j));rows.push({nat:t.nat,i:t.i,sec:hd?hd.sec:null,r})}});
-  return rows};
- const okT=(T,I,O)=>{if(!T||!I||!O)return false;const f=k=>Math.abs(T.r[k]-I.r[k]-O.r[k])<=Math.max(2,Math.abs(T.r[k])*0.002);return f('b')&&f('s')};
- /* تجميع الصفوف في أقسام (إجمالي/أفراد/مؤسسات) مع درجة اتساق: الإجمالي = أفراد + مؤسسات */
- const finalize=rows=>{const seen={};rows.forEach(r=>{const c=seen[r.nat]=(seen[r.nat]||0);seen[r.nat]++;r.sec2=r.sec||['T','I','O'][c]||null});
-  const by={};rows.forEach(r=>{if(!r.sec2)return;const k=r.nat+r.sec2;if(!by[k])by[k]=r});
-  let score=0;
-  ['eg','ar','fo'].forEach(n=>{const g=rows.filter(r=>r.nat===n);
-   if(okT(by[n+'T'],by[n+'I'],by[n+'O'])){score++;return}
-   if(g.length!==3)return;
-   for(const p of [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]]){if(okT(g[p[0]],g[p[1]],g[p[2]])){by[n+'T']=g[p[0]];by[n+'I']=g[p[1]];by[n+'O']=g[p[2]];score++;return}}});
-  return{by,score,n:rows.length}};
- const FA=finalize(assign(1)),FB=finalize(assign(-1)),F=(FB.n>FA.n||(FB.n===FA.n&&FB.score>FA.score))?FB:FA;
-  if(F.n){const by=F.by,all=Object.values(by),big=all.some(r=>Math.abs(r.r.b)>=1e6||Math.abs(r.r.s)>=1e6);
-  Object.keys(by).forEach(k=>{const r=by[k].r;v[k]=big?{b:r.b/1e6,s:r.s/1e6}:{b:r.b,s:r.s};hits++})}
- if(hits)return{v,hits,skipped,date};
- /* ===== جُمل الأخبار: «صافي شراء/بيع بقيمة X مليون» ===== */
+ let s=String(t||'').replace(/البورصة المصرية/g,' ').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[إأآ]/g,'ا').replace(/[٠-٩]/g,d=>AD.indexOf(d)).replace(/٬/g,'').replace(/(\d),(?=\d{3}(?!\d))/g,'$1');
+ const v={};let hits=0,skipped=0;
+ /* جداول الملخص اليومي (مباشر/البورصة): صف = فئة + 3 أرقام (بيع، شراء، صافي بأي ترتيب). يُحسم الاتجاه بمطابقة الصافي، والقسم من عنوان الجدول */
+ {let sec='T',ord=null;s=s.split('\n').map(L=>{
+  if(/قيمة البيع/.test(L)&&/قيمة الشراء/.test(L)){sec=/فراد/.test(L)?'I':/مؤسس/.test(L)?'O':'T';ord=L.indexOf('قيمة البيع')<L.indexOf('قيمة الشراء')?'sb':'bs';return ''}
+  const m=L.trim().match(/^(مصريين|مصريون|عرب|اجانب)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/);
+  if(!m)return L;
+  const nat=m[1][0]==='م'?'eg':m[1][0]==='ع'?'ar':'fo',x=+m[2],y=+m[3],net=+m[4],tol=Math.max(2,Math.abs(net)*1e-6);
+  let b,sl;const neg=m[4][0]==='-';
+  if(ord&&!neg&&Math.abs(Math.abs(x-y)-Math.abs(net))<=tol){if(ord==='sb'){sl=x;b=y}else{b=x;sl=y}}/* الصافي بلا إشارة (ضاعت في PDF): نعتمد ترتيب أعمدة العنوان */
+  else if(Math.abs(x-y-net)<=tol){b=x;sl=y}else if(Math.abs(y-x-net)<=tol){b=y;sl=x}else return L;
+  v[nat+sec]={b,s:sl};hits++;return ''}).join('\n')}
  s.split(/\n|[؛;،]|\.(?!\d)|\bبينما\b|\bفيما\b|\bفي حين\b/).forEach(c=>{
-  const nats=[];if(/(^|[^\u0621-\u064A])و?(?:ال)?مصري/.test(c))nats.push('eg');if(/(^|[^\u0621-\u064A])و?(?:ال)?عرب/.test(c))nats.push('ar');if(/اجانب|اجنب/.test(c))nats.push('fo');
-  if(!nats.length||!/\d/.test(c)||!/صافي|مبيعات|مشتريات|شراء|بيع/.test(c))return;
+  const nats=[];if(/مصري/.test(c))nats.push('eg');if(/عرب/.test(c))nats.push('ar');if(/اجانب|اجنب/.test(c))nats.push('fo');
+  if(!nats.length)return;
+  const hasNum=/\d/.test(c);if(!hasNum)return;
   if(nats.length>1){skipped++;return}
-  const cls=/فرد|افراد/.test(c)?'I':/مؤسس/.test(c)?'O':'T',key=nats[0]+cls;
+  const cls=/فرد|افراد/.test(c)?'I':/مؤسس/.test(c)?'O':'T';const key=nats[0]+cls;
   const m=c.match(/صافي\s*(شراء|مشتريات|بيع|مبيعات)/);
   const unit=u=>u==='مليار'?1000:u==='الف'?0.001:1;
   if(m){const after=c.slice(m.index+m[0].length).match(/(\d+(?:\.\d+)?)\s*(مليار|مليون|الف)?/);if(!after)return;
@@ -3407,7 +3273,7 @@ function parseText(t){
   const ns=[...c.matchAll(/(\d+(?:\.\d+)?)\s*(مليار|مليون|الف)?/g)];
   if(ns.length>=2){v[key]={b:parseFloat(ns[0][1])*unit(ns[0][2]),s:parseFloat(ns[1][1])*unit(ns[1][2])};hits++}
  });
- return{v,hits,skipped,date}}
+ return{v,hits,skipped}}
 
 /* ---------- واجهة ---------- */
 const tabs=document.querySelector('.tabs'),sett=document.querySelector('#tab-settings');
@@ -3501,25 +3367,57 @@ function loadPdfJs(){if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
  pdfLib=new Promise((res,rej)=>{const s=document.createElement('script');s.src=PDFJS+'pdf.min.js';
   s.onload=()=>{if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js';res(window.pdfjsLib)}else{pdfLib=null;rej(Error('تعذّر تحميل مكتبة قراءة PDF'))}};
   s.onerror=()=>{pdfLib=null;rej(Error('تعذّر تحميل مكتبة قراءة PDF (يلزم اتصال بالإنترنت لأول مرة)'))};document.head.appendChild(s)});return pdfLib}
-/* تجميع عناصر الصفحة في أسطر (الصف بنفس الارتفاع، من اليمين لليسار)، ثم ربط عنوان «الأفراد/المؤسسات» بأقرب جدول عموديًا لأن موضعه يختلف عن سطر الأعمدة */
-function linesFromItems(items){const lines=[];items.slice().sort((a,b)=>b.y-a.y).forEach(it=>{const L=lines.find(l=>Math.abs(l.y-it.y)<=3);if(L)L.a.push(it);else lines.push({y:it.y,a:[it]})});
+/* تنظيف رموز الاتجاه والإشارات الشاذة التي قد تأتي مع نص PDF */
+const cleanTok=s=>String(s).normalize('NFKC').replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g,'').replace(/[\u2212\u2012\u2013\u2014\u2011]/g,'-').replace(/[\u066c\u060c]/g,',').replace(/[\u00a0]/g,' ').trim();
+const ROW_RE=/(?:مصريين|مصريون|عرب|[أا]جانب)\s+-?[\d.,]+\s+-?[\d.,]+\s+-?[\d.,]+(?!\s*[\d.,(\-])/;
+const fixMinus=t=>t.replace(/(\d[\d.,]*)\s*-(?=\s|$)/g,'-$1').replace(/(^|\s)-\s+(?=\d)/g,'$1-');
+const secLabel=t=>{const n=t.replace(/[أإآ]/g,'ا').trim();return /^ا{1,2}لا?فراد$/.test(n)?'الافراد':/^المؤسسات$/.test(n)?'المؤسسات':''};
+/* الاستراتيجية أ: تجميع عناصر الصفحة في أسطر بالارتفاع (تسامح يتبع حجم الخط)، من اليمين لليسار، ثم ربط عنوان الأفراد/المؤسسات بأقرب جدول */
+function linesFromItems(items){const lines=[];items.slice().sort((a,b)=>b.y-a.y).forEach(it=>{const L=lines.find(l=>Math.abs(l.y-it.y)<=Math.min(10,Math.max(3,0.4*(it.h||0))));if(L)L.a.push(it);else lines.push({y:it.y,a:[it]})});
  lines.sort((a,b)=>b.y-a.y);
- const rowRe=/(?:مصريين|مصريون|عرب|[أا]جانب)(?:\s+\(?-?[\d.,]+\)?){3,8}/;
- const txt=lines.map(l=>{let t=l.a.sort((a,b)=>(b.x+b.w)-(a.x+a.w)).map(i=>i.s).join(' ').replace(/(\d[\d.,]*)\s*-(?=\s|$)/g,'-$1').replace(/(^|\s)-\s+(?=\d)/g,'$1-');const m=t.match(rowRe);if(m)t=m[0];return{y:l.y,t}});
- const secOf=t=>{const n=t.replace(/[أإآ]/g,'ا').trim();return /^ا{1,2}ل?ا?فراد$/.test(n)?'الافراد':/^المؤسسات$/.test(n)?'المؤسسات':''};
- txt.forEach(l=>{if(/قيمة البيع/.test(l.t)&&/قيمة الشراء/.test(l.t)&&!/فراد|مؤسس/.test(l.t)){let best=null;txt.forEach(m=>{const s=secOf(m.t),d=Math.abs(m.y-l.y);if(s&&d<=24&&(!best||d<best.d))best={d,s}});if(best)l.t=best.s+' '+l.t}});
+ const txt=lines.map(l=>{let t=fixMinus(l.a.sort((a,b)=>(b.x+b.w)-(a.x+a.w)).map(i=>i.s).join(' '));const m=t.match(ROW_RE);if(m)t=m[0];return{y:l.y,t}});
+ txt.forEach(l=>{if(/قيمة البيع/.test(l.t)&&/قيمة الشراء/.test(l.t)&&!/فراد|مؤسس/.test(l.t)){let best=null;txt.forEach(m=>{const s=secLabel(m.t),d=Math.abs(m.y-l.y);if(s&&d<=24&&(!best||d<best.d))best={d,s}});if(best)l.t=best.s+' '+l.t}});
  return txt.map(l=>l.t).join('\n')}
+/* الاستراتيجية ب: ترتيب العناصر كما في الملف دون الاعتماد على الارتفاع؛ يُقسَّم النص عند أسماء الفئات وعناوين الجداول */
+function streamText(items){const t=fixMinus(items.map(i=>i.s).join(' ')).replace(/[أإآ]/g,'ا'),out=[];let sec='';
+ const re=/(ا{1,2}ل[ا]?فراد|المؤسسات)|(قيمة\s+البيع\s+قيمة\s+الشراء)|((?:مصريين|مصريون|عرب|اجانب)\s+-?[\d.,]+\s+-?[\d.,]+\s+-?[\d.,]+)/g;let m;
+ while((m=re.exec(t))){if(m[1])sec=m[1][0]==='ا'&&/فراد/.test(m[1])?'الافراد':'المؤسسات';else if(m[2]){out.push((sec?sec+' ':'')+m[2]);sec=''}else out.push(m[3])}
+ return out.join('\n')}
+/* تقرير البورصة المصرية اليومي: «الأسهم المقيدة بدون صفقات» أفراد ثم مؤسسات؛ كل مجموعة: شراء، بيع، شراء+بيع، صافي (بالمليون، والسالب بين قوسين) */
+function parseEgx(text){const L=text.split('\n').map(s=>s.replace(/[أإآ]/g,'ا').replace(/\(\s*(\d[\d.,]*)\s*\)?/g,'-$1').replace(/(\d)\)/g,'$1').replace(/\s+/g,' ').trim());
+ const find=(re)=>{let on=false,ord='bs';const rows={};
+  for(const l of L){if(!on){if(re.test(l))on=true;continue}
+   if(/شراء/.test(l)&&/بيع/.test(l)&&!/^(مصريون|مصريين|عرب|اجانب)/.test(l)){ord=l.indexOf('شراء')<l.indexOf('بيع')?'bs':'sb';continue}
+   const m=l.match(/^(مصريون|مصريين|عرب|اجانب)((?:\s+-?\d[\d,]*(?:\.\d+)?){8})$/);if(!m)continue;
+   const n=m[1][0]==='م'?'eg':m[1]==='عرب'?'ar':'fo';if(rows[n])continue;rows[n]={ord,v:m[2].trim().split(/\s+/).map(x=>+x.replace(/,/g,''))};
+   if(Object.keys(rows).length===3)break}
+  return rows};
+ let rows=find(/^الاسهم المقيدة بدون صفقات$/),src='بدون صفقات';if(Object.keys(rows).length<3){rows=find(/^الاسهم المقيدة شاملة الصفقات$/);src='شاملة الصفقات'}
+ const v={};let hits=0,skipped=0;
+ for(const n of Object.keys(rows)){const {ord,v:a}=rows[n],cells={};let ok=true;
+  [[0,'I'],[4,'O']].forEach(([o,k])=>{const x=a.slice(o,o+4),b=ord==='bs'?x[0]:x[1],s=ord==='bs'?x[1]:x[0];
+   if(Math.abs(x[2]-(b+s))>0.25||Math.abs(Math.abs(x[3])-Math.abs(b-s))>0.25)ok=false;cells[k]={b,s}});
+  if(!ok){skipped++;continue}
+  v[n+'I']=cells.I;v[n+'O']=cells.O;v[n+'T']={b:cells.I.b+cells.O.b,s:cells.I.s+cells.O.s};hits+=3}
+ return{v,hits,skipped,src}}
+function sessionDate(pages){const c={};pages.flat().forEach(i=>{const m=String(i.s).match(/(?:^|\D)(20\d\d)\/(\d\d)\/(\d\d)(?!\d)/);if(m){const k=m[1]+'-'+m[2]+'-'+m[3];if(!Number.isNaN(Date.parse(k)))c[k]=(c[k]||0)+1}});
+ const ks=Object.keys(c).sort((x,y)=>c[y]-c[x]);return ks.length&&c[ks[0]]>=2?ks[0]:null}
+/* نصفا الصفحة بشكل مستقل حتى لا تختلط جداول اليمين واليسار في سطر واحد */
+function halvesText(items){const W=items.W||Math.max(...items.map(i=>i.x+i.w),0)+10,mid=W*0.5,R=items.filter(i=>i.x>=mid),Lf=items.filter(i=>i.x<mid);return linesFromItems(R)+'\n'+linesFromItems(Lf)}
 async function pdfItems(buf,lib){const doc=await lib.getDocument({data:buf}).promise;const pages=[];
  for(let p=1;p<=doc.numPages;p++){const pg=await doc.getPage(p),tc=await pg.getTextContent();
-  pages.push(tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:i.str.trim(),x:i.transform[4],y:i.transform[5],w:i.width||0})))}
+  const arr=tc.items.map(i=>({s:cleanTok(i.str),x:i.transform[4],y:i.transform[5],w:i.width||0,h:i.height||Math.abs(i.transform[3])||0})).filter(i=>i.s);arr.W=pg.view?pg.view[2]:0;pages.push(arr)}
  return pages}
-/* بعض ملفات PDF تخزّن الحروف العربية بترتيب بصري معكوس؛ نجرّب الصيغتين ونقبل الأولى المتسقة */
+/* بعض ملفات PDF تخزّن الحروف العربية بترتيب بصري معكوس؛ نجرّب الصيغتين والاستراتيجيتين ونقبل الأولى المتسقة */
 const revAr=s=>/[\u0600-\u06FF]/.test(s)?[...s].reverse().join(''):s;
 function consistency(v){for(const n of ['eg','ar','fo']){const T=v[n+'T'],I=v[n+'I'],O=v[n+'O'];if(T&&I&&O&&T.b!=null&&I.b!=null&&O.b!=null)for(const k of ['b','s'])if(Math.abs(I[k]+O[k]-T[k])>Math.max(2,T[k]*0.002))return 'الأرقام غير متسقة (الأفراد + المؤسسات لا يساوي الإجمالي)، لم تُحفظ حمايةً للبيانات'}return ''}
-function parsePages(pages){let raw='',err='';
- for(const tr of [x=>x,revAr])for(const mode of ['lines','raw']){const text=mode==='lines'?pages.map(p=>linesFromItems(p.map(i=>Object.assign({},i,{s:tr(i.s)})))).join('\n'):pages.map(p=>p.map(i=>tr(i.s)).join(' ')).join('\n');if(!raw)raw=text.replace(/\s+/g,' ').trim().slice(0,1800);
-  const p=parseText(text);if(!p.hits)continue;const c=consistency(p.v);if(!c)return{p,raw,err:''};err=c}
- return{p:null,raw,err:err||'لم أجد جداول شراء وبيع للمستثمرين في هذا الملف'}}
+function parsePages(pages){let raw='',err='',log=[];
+ const strat=[['أ',x=>x,linesFromItems,0],['أ-معكوس',revAr,linesFromItems,0],['نصفان',x=>x,halvesText,1],['نصفان-معكوس',revAr,halvesText,1],['ب',x=>x,streamText,0],['ب-معكوس',revAr,streamText,0]];
+ for(const [nm,tr,fn,egx] of strat){const tp=pages.map(p=>{const q=p.map(i=>Object.assign({},i,{s:tr(i.s)}));q.W=p.W;return q});
+  const text=tp.map(p=>fn(p)).join('\n');if(!raw)raw=text.replace(/\n/g,' ↵ ').replace(/ +/g,' ').trim().slice(0,1800);
+  for(const [kind,p] of [['م',parseText(text)],['ب',parseEgx(text)]]){const nk=Object.keys(p.v).length;log.push(nm+kind+':'+p.hits+'/'+nk);
+   if(!p.hits||p.hits!==nk||(nk!==9&&nk!==3))continue;/* خانات مكررة أو جداول ناقصة = قراءة غير موثوقة */const c=consistency(p.v);if(!c)return{p,raw,err:'',log,date:sessionDate(tp),src:p.src||''};err=c}}
+ return{p:null,raw,err:(err||'لم أجد جداول شراء وبيع للمستثمرين في هذا الملف')+' ['+log.join(' ')+']',log}}
 function dateFromName(n){const m=String(n||'').match(/(\d{1,2})[_\-.\/](\d{1,2})[_\-.\/](20\d{2})/);if(!m)return null;const d=+m[1],mo=+m[2];if(d<1||d>31||mo<1||mo>12)return null;return m[3]+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
 async function handlePdf(f){entOpen=true;lastRaw='';const formDate=(pn.querySelector('#flDate')||{}).value||todayIso();const step=t=>{msg=t;draw()};
  try{if(f.size>25e6)throw Error('الملف أكبر من 25 ميجابايت');
@@ -3527,14 +3425,14 @@ async function handlePdf(f){entOpen=true;lastRaw='';const formDate=(pn.querySele
   step('جارٍ قراءة صفحات الملف…');const pages=await pdfItems(await f.arrayBuffer(),lib);
   if(!pages.some(p=>p.length))throw Error('لا يوجد نص قابل للقراءة في الملف (ربما صفحات ممسوحة كصور)');
   const r=parsePages(pages);lastRaw=r.raw;if(!r.p)throw Error(r.err);
-  const nm=dateFromName(f.name),d=nm||formDate;commit(d,r.p.v,'من PDF'+(nm?'، التاريخ من اسم الملف':'، التاريخ من الحقل أعلاه')+(r.p.skipped?`، تجاهلت ${r.p.skipped} جملة ملتبسة`:''))}
+  const nm=dateFromName(f.name),d=r.date||nm||formDate;commit(d,r.p.v,'من PDF'+(r.src?' ('+r.src+')':'')+(r.date?'، التاريخ من الملف':nm?'، التاريخ من اسم الملف':'، التاريخ من الحقل أعلاه')+(r.p.skipped?`، تجاهلت ${r.p.skipped} جملة ملتبسة`:''))}
  catch(e){msg='تعذّرت قراءة الملف: '+(e&&e.message?e.message:String(e))+'. إن استمر الخطأ فافتح «ما الذي جُلب من الصفحة؟» أسفل وأرسل لي ما يظهر.'}draw()}
 pn.addEventListener('change',e=>{if(e.target.id==='flPdf'&&e.target.files[0]){const f=e.target.files[0];e.target.value='';handlePdf(f);return}
  if(e.target.id==='flView'){view=e.target.value;entOpen=!!(pn.querySelector('#flEnt')||{}).open;draw()}
  if(e.target.id==='flFile'&&e.target.files[0]){const fr=new FileReader();fr.onload=()=>{try{const j=JSON.parse(fr.result);if(!j||!Array.isArray(j.rows))throw 0;let n=0;j.rows.filter(validRow).forEach(x=>{mergeRow(x.d,x.v);n++});save();msg=`تم استيراد ${n} جلسة.`}catch(_){msg='ملف غير صالح.'}draw()};fr.readAsText(e.target.files[0])}});
 pn.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act,date=(pn.querySelector('#flDate')||{}).value||todayIso();entOpen=true;
  if(act==='saveForm'){commit(date,readForm());draw()}
- else if(act==='parse'){const raw=(pn.querySelector('#flPaste')||{}).value||'';lastRaw=raw.replace(/\s+/g,' ').trim();const p=parseText(raw);if(!p.hits){msg='لم أجد أرقامًا مفهومة. الصق صفحات «فئات المستثمرين» من التقرير كما هي (مصريين/عرب/أجانب مع أرقام البيع والشراء والصافي)، أو اكتب «صافي شراء/بيع» بجانب الفئة والرقم.';draw()}else{const c=consistency(p.v);if(c){msg=c;draw();return}const d2=p.date||date;commit(d2,p.v,'من النص'+(p.date?`، التاريخ من النص ${p.date}`:'')+(p.skipped?`، تجاهلت ${p.skipped} جملة ملتبسة`:''));draw()}}
+ else if(act==='parse'){const p=parseText((pn.querySelector('#flPaste')||{}).value);if(!p.hits){msg='لم أجد أرقامًا مفهومة. اكتب اسم الفئة (مصريين/عرب/أجانب) بجانب «صافي شراء/بيع» والرقم.';draw()}else{commit(date,p.v,'من النص'+(p.skipped?`، تجاهلت ${p.skipped} جملة ملتبسة`:''));draw()}}
  else if(act==='openEnt'){entOpen=true;draw();const d=pn.querySelector('#flEnt');if(d)d.scrollIntoView({behavior:'smooth',block:'start'})}
  else if(act==='fetch')doFetch((pn.querySelector('#flUrl')||{}).value.trim(),date);
  else if(act==='del'){rows=rows.filter(r=>r.d!==b.dataset.d);save();msg='تم حذف الجلسة.';draw()}

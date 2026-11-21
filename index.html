@@ -558,7 +558,7 @@ button{min-height:44px}button.sm{min-height:40px}
 <button id="resetProxy" class="sec sm">الوسيط الافتراضي</button>
 <button id="clearCache" class="sec sm">مسح الكاش المحلي</button>
 </div>
-<h2>عنصر إضافي: هامش الخروج</h2>
+<h2>عتبة الخروج فوق القيمة العادلة</h2>
 <label for="fvPrem">عتبة بيع السهم فوق القيمة العادلة (%)</label>
 <input id="fvPrem" type="number" min="0" max="50" step="0.5" value="0" style="max-width:160px">
 <p class="mu">افتراضيًا تُفعَّل إشارة الخروج عند بلوغ السعر القيمة العادلة (0%). ارفع القيمة لبيع جزء من المركز عند ارتفاع معتدل فوق القيمة العادلة.</p>
@@ -571,7 +571,7 @@ button{min-height:44px}button.sm{min-height:40px}
 </div>
 <h2>حول هذا الملف</h2>
 <p class="mu">تطبيق PWA قابل للتثبيت على HTTPS. تُخزّن واجهة التطبيق والبيانات التي تم جلبها بنجاح على هذا الجهاز. عند انقطاع الإنترنت تُعرض آخر الأسعار المحفوظة مع وقتها وتحذير واضح؛ لا يمكن تحديث أسعار السوق دون اتصال. بيانات المحفظة تبقى في تخزين المتصفح على هذا النطاق.</p>
-<p class="mu" id="appBuildInfo" style="margin-top:8px">إصدار الواجهة: <span class="ltr">2026.11.11</span> • تحليل فني تعليمي • لا نصيحة استثمارية.</p>
+<p class="mu" id="appBuildInfo" style="margin-top:8px">إصدار الواجهة: <span class="ltr">2026.11.19.5</span> • تحليل فني تعليمي • لا نصيحة استثمارية.</p>
 </div>
 </section>
 
@@ -759,7 +759,7 @@ if($('clearPort'))$('clearPort').onclick=async()=>{
 
 /* ============ EGX DATALIST ============ */
 const EGX=[
-  ['ABUK','أبوقير للأسمدة'],['AMOC','الإسكندرية للزيوت'],['VLMRA','فالمر القابضة'],['MPCI','ممفيس للأدوية'],
+  ['ABUK','أبوقير للأسمدة'],['AMOC','الإسكندرية للزيوت'],['VLMRA','فالمور القابضة'],['MPCI','ممفيس للأدوية'],
   ['SUGR','الدلتا للسكر'],['MICH','مصر للكيماويات'],['ETEL','المصرية للاتصالات'],['OLFI','عبور لاند'],
   ['SWDY','السويدي إليكتريك'],['EGAL','مصر للألومنيوم'],['POUL','القاهرة للدواجن'],['KZPC','كفر الزيات'],
   ['ORWE','النساجون الشرقيون'],['ORAS','أوراسكوم للإنشاء'],['MASR','مدينة مصر'],['COMI','البنك التجاري الدولي'],
@@ -1840,6 +1840,7 @@ if($('importFile'))$('importFile').onchange=async e=>{
     const writes={};
     if(data.dividends!=null&&(typeof data.dividends!=='object'||Array.isArray(data.dividends)))throw Error('بيانات التوزيعات غير صالحة');
     for(const [field,key] of Object.entries(keys))if(data[field]!=null)writes[key]=JSON.stringify(data[field]);
+    if(Object.prototype.hasOwnProperty.call(data,'lim')&&data.lim==null)writes.u_hold_lim_v1=null;
     if(data.fairValues!=null){
       const clean={},num=x=>+x>0&&isFinite(+x)?+x:0;
       for(const [k,v] of Object.entries(data.fairValues)){
@@ -2322,7 +2323,7 @@ function renderLogs(){
   const sessionCount=$('sessionCount'),quantityCount=$('quantityCount');
   if(sessionCount)sessionCount.textContent=`${s.length} ${s.length===1?'جلسة':'جلسات'}`;
   if(quantityCount)quantityCount.textContent=`${lg.length} ${lg.length===1?'تعديل':'تعديلات'}`;
-  const opts=[[0,'بلا حد'],[10,'10'],[20,'20'],[30,'30'],[60,'60'],[90,'90']];
+  const opts=[[0,'بلا حد'],[10,'10'],[20,'20'],[30,'30'],[60,'60'],[90,'90'],[180,'180'],[365,'365']];
   const sTools=`<div class="sortbar" style="margin-bottom:8px"><span class="mu">الحد الأقصى للجلسات</span><select id="snapMax" aria-label="الحد الأقصى">${opts.map(([v,l])=>`<option value="${v}"${mx===v?' selected':''}>${l}</option>`).join('')}</select>${s.length?'<button id="snapClear" class="sec sm dn" type="button">مسح كل الجلسات</button>':''}</div>`;
   $('sL').innerHTML=sTools+(s.length?s.slice().reverse().map(x=>`<div class="hi"><div class="hm"><b class="ltr">${esc(x.d)}</b>${x.fin===false?' <span class="mu">(مؤقتة — جلسة لم تُغلق)</span>':''} • <span class="ltr">${fmt(x.total)}</span> • تغير <span class="ltr">${x.chg==null?'—':sg(x.chg)}</span>${x.unrealized!=null?` • غير محقق <span class="${cl(x.unrealized)}">${sg(x.unrealized)}</span>`:''}</div><button class="sec sm dn" type="button" data-sd="${esc(x.d)}" aria-label="حذف جلسة">×</button></div>`).join(''):'<p class="mu">لا توجد جلسات محفوظة.</p>');
   $('qL').innerHTML=(lg.length?'<div class="sortbar" style="margin-bottom:8px"><button id="logClear" class="sec sm dn" type="button">مسح كل التعديلات</button></div>':'')+(lg.length?lg.map((x,i)=>`<div class="hi"><div class="hm">${esc(({buy:'شراء',sell:'بيع',set:'تعيين كمية',avg:'تعيين متوسط'})[x.act]||'تعديل')} ${esc(x.s)}: ${esc(x.from)} ← ${esc(x.to)}${x.price?` @ ${fmt(x.price)}`:''} <span class="hd">${esc(new Date(x.ts).toLocaleString(LOC))}</span></div><button class="sec sm dn" type="button" data-ql="${i}" data-ts="${esc(x.ts)}" aria-label="حذف">×</button></div>`).join(''):'<p class="mu">لا توجد تعديلات محفوظة.</p>');
@@ -3003,7 +3004,7 @@ let st=jl(K);if(!st||typeof st!=='object'||Array.isArray(st))st={};st.dis=st.dis
 const sv=()=>{try{localStorage.setItem(K,JSON.stringify(st))}catch(e){}};
 const dt=t=>new Date(t).toLocaleDateString('ar-EG-u-nu-latn',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'});
 const F=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
-const hold=()=>(jl('u_hold_list_v3')||[]).filter(r=>Array.isArray(r)&&r[0]).map(r=>({s:String(r[0]).toUpperCase().replace(/\.CA$/,''),q:+r[2]||0,c:+r[4]||0})).filter(h=>h.q>0);
+const hold=()=>(jl('u_hold_list_v3')||[]).filter(r=>Array.isArray(r)&&r[0]).map(r=>({s:String(r[0]).toUpperCase().replace(/\.CA$/,''),q:+r[2]||0,c:+r[4]||0,x:typeof r[3]==='string'?r[3]:''})).filter(h=>h.q>0);
 
 function build(){
   const V=window.__dv;if(!V)return[];
@@ -3025,9 +3026,12 @@ function build(){
     if(Number.isFinite(q.chgPct)&&Math.abs(q.chgPct)>=4&&age<36*36e5)add('m|'+h.s+'|'+T,q.chgPct>0?'up':'dn',h.s+': '+(q.chgPct>0?'ارتفاع':'هبوط')+' '+F(Math.abs(q.chgPct))+'% في الجلسة','السعر '+F(px)+' ج. راجع الخبر والحجم قبل أي قرار.',{nk:'m|'+h.s+'|'+T});
     if(h.c>0&&px<=h.c*.9)add('l|'+h.s,'dn',h.s+': أقل من متوسط تكلفتك بـ '+F((1-px/h.c)*100)+'%','السعر '+F(px)+' مقابل تكلفة '+F(h.c)+' ج.',{});
   });
-  if(all&&tot>0)Object.entries(val).forEach(([s,v])=>{if(v/tot*100>(+jl('u_hold_lim_v1')||30))add('c|'+s,'nt',s+' يمثل '+F(v/tot*100)+'% من المحفظة','التركّز المرتفع يضاعف أثر أي هبوط.',{})});
-  const stale=H.filter(h=>{const q=Q[h.s];return!q||Date.now()-(q.cachedAt||q.time||0)>4*D}).map(h=>h.s);
-  if(stale.length)add('s|'+T,'nt','أسعار قديمة: '+stale.join('، '),'آخر تحديث أقدم من 4 أيام.',{});
+  if(all&&tot>0){const LIM=+jl('u_hold_lim_v1')||30;Object.entries(val).forEach(([s,v])=>{if(v/tot*100>LIM)add('c|'+s,'nt',s+' يمثل '+F(v/tot*100)+'% من المحفظة','التركّز المرتفع يضاعف أثر أي هبوط.',{})});
+    const sec={};H.forEach(h=>{if(h.x&&h.x!=='غير محدد'&&val[h.s])sec[h.x]=(sec[h.x]||0)+val[h.s]});
+    Object.entries(sec).forEach(([k,v])=>{const p=v/tot*100;if(p>LIM*1.5)add('z|'+k,'nt','قطاع «'+k+'» يمثل '+F(p)+'% من المحفظة','أسهم القطاع الواحد تتحرك غالبًا بعامل مشترك؛ فكّر في توزيع أوسع.',{})})}
+  const missed=q=>{const s0=V.P(q&&q.sess);if(isNaN(s0))return Date.now()-((q&&(q.cachedAt||q.time))||0)>4*D;let n=0;for(let t=s0+D;t<T;t+=D)if(V.trade(t))n++;return n>=2};
+  const stale=H.filter(h=>{const q=Q[h.s];return!q||missed(q)}).map(h=>h.s);
+  if(stale.length)add('s|'+T,'nt','أسعار قديمة: '+stale.join('، '),'فاتت هذه الأسهم جلستا تداول أو أكثر دون تحديث.',{});
   const lb=+localStorage.getItem('u_last_backup')||0,bd=Math.floor((Date.now()-lb)/D);
   if(H.length&&(!lb||bd>14))add('b|'+Math.floor(T/(7*D)),'nt',lb?'لم تُنزّل نسخة احتياطية منذ '+bd+' يومًا':'لا توجد نسخة احتياطية','من الإعدادات اختر «تصدير نسخة احتياطية».',{});
   const w={dn:0,nt:1,up:2};
@@ -3043,10 +3047,11 @@ const hd=document.querySelector('.w>header');if(hd)hd.after(box);
 function paint(){
   const T=window.__dv?window.__dv.today():0,L=build().filter(a=>st.dis[a.id]!==T);
   const can=typeof Notification!=='undefined'&&Notification.permission==='default';
-  if(!L.length&&!can){box.style.display='none';box.innerHTML='';return}
+  if(!L.length&&!can){box.style.display='none';box.innerHTML='';box.__h='';return}
   box.style.display='block';
   const row=a=>'<div class="ac '+a.lv+'"><div><b>'+esc(a.t)+'</b><p>'+esc(a.x)+'</p></div><div class="acb">'+(a.dv?'<button class="sec sm" data-go="1">التوزيعات</button>':'')+'<button class="sec sm" data-x="'+esc(a.id)+'" aria-label="إخفاء اليوم">إخفاء اليوم</button></div></div>';
-  box.innerHTML='<div class="ach"><b>🔔 مركز التنبيهات'+(L.length?' ('+L.length+')':'')+'</b>'+(can?'<button class="sm" data-n="1">فعّل الإشعارات</button>':'')+'</div>'+L.slice(0,4).map(row).join('')+(L.length>4?'<details><summary>'+(L.length-4)+' تنبيهات أخرى</summary>'+L.slice(4).map(row).join('')+'</details>':'');
+  const html='<div class="ach"><b>🔔 مركز التنبيهات'+(L.length?' ('+L.length+')':'')+'</b>'+(can?'<button class="sm" data-n="1">فعّل الإشعارات</button>':'')+'</div>'+L.slice(0,4).map(row).join('')+(L.length>4?'<details><summary>'+(L.length-4)+' تنبيهات أخرى</summary>'+L.slice(4).map(row).join('')+'</details>':'');
+  if(html!==box.__h){box.__h=html;box.innerHTML=html}
 }
 
 box.addEventListener('click',async e=>{
@@ -3105,7 +3110,7 @@ function watchMan(){try{return JSON.parse(localStorage.getItem('u_watch_man_v1')
 </script>
 <script id="nawa-backtest">
 (()=>{
-const H=[5,10,20],MINN=20,WARM=60;
+const H=[5,10,20],MINN=20,WARM=60,TCRIT=2,BASE='كل الأيام (المرجع)';
 const RULES=[['فوق متوسط EMA50',(k,i)=>k.c[i]>k.e50[i]],
 ['تقاطع EMA20 صعودًا فوق EMA50',(k,i)=>k.e20[i]>k.e50[i]&&k.e20[i-1]<=k.e50[i-1]],
 ['RSI بين 50 و70',(k,i)=>k.r[i]>=50&&k.r[i]<=70],
@@ -3113,56 +3118,105 @@ const RULES=[['فوق متوسط EMA50',(k,i)=>k.c[i]>k.e50[i]],
 ['MACD موجب ومتزايد',(k,i)=>k.hi[i]>0&&k.hi[i]>k.hi[i-1]],
 ['اختراق أعلى 20 جلسة',(k,i)=>{let m=-Infinity;for(let j=i-20;j<i;j++)m=Math.max(m,k.h[j]);return k.c[i]>m}],
 ['المركّب: EMA50 + RSI 50–70 + MACD موجب',(k,i)=>k.c[i]>k.e50[i]&&k.r[i]>=50&&k.r[i]<=70&&k.hi[i]>0]];
-const BASE='كل الأيام (المرجع)';
+const NAMES=[BASE,...RULES.map(r=>r[0])];
 function kit(b){const c=b.map(x=>x.c),e12=ema(c,12),e26=ema(c,26),ml=e12.map((v,i)=>v-e26[i]),sg=ema(ml,9);
  return{c,h:b.map(x=>x.h),o:b.map(x=>x.o),e20:ema(c,20),e50:ema(c,50),r:rsi(c,14),hi:ml.map((v,i)=>v-sg[i])}}
+/* كل حدث = {r: العائد % بعد التكلفة, p: موضعه الزمني 0..1} لاختبار ثبات الميزة بين نصفي الفترة */
 function test(bars,cost){
  const b=bars.filter(x=>x&&x.c>0&&x.o>0&&x.h>0&&x.l>0);if(b.length<WARM+30)return null;
- const k=kit(b),n=b.length,out={};
- [BASE,...RULES.map(r=>r[0])].forEach(nm=>{out[nm]={};H.forEach(h=>out[nm][h]=[])});
- RULES.forEach(([nm,f])=>{H.forEach(h=>{let last=-1e9;
-  for(let i=WARM;i+h<n;i++){if(i-last<h)continue;let ok=false;try{ok=f(k,i)}catch(e){}
-   if(ok){last=i;out[nm][h].push((k.c[i+h]/k.o[i+1]-1)*100-cost)}}})});
- H.forEach(h=>{for(let i=WARM;i+h<n;i++)out[BASE][h].push((k.c[i+h]/k.o[i+1]-1)*100-cost)});
- return out}
+ const k=kit(b),n=b.length,ev={},now={};
+ NAMES.forEach(nm=>{ev[nm]={};H.forEach(h=>ev[nm][h]=[])});
+ const R=(i,h)=>(k.c[i+h]/k.o[i+1]-1)*100-cost;
+ RULES.forEach(([nm,f])=>{
+  try{now[nm]=!!f(k,n-1)}catch(e){now[nm]=false}
+  H.forEach(h=>{let last=-1e9;
+   for(let i=WARM;i+h<n;i++){if(i-last<h)continue;let ok=false;try{ok=f(k,i)}catch(e){}
+    if(ok){last=i;ev[nm][h].push({r:R(i,h),p:i/n})}}})});
+ H.forEach(h=>{for(let i=WARM;i+h<n;i++)ev[BASE][h].push({r:R(i,h),p:i/n})});
+ return{ev,now,bars:n}}
+const rs=a=>a.map(x=>x.r);
 const stat=a=>{const n=a.length;if(!n)return{n:0};const s=[...a].sort((x,y)=>x-y),avg=a.reduce((p,x)=>p+x,0)/n;
  return{n,win:100*a.filter(x=>x>0).length/n,avg,sd:n>1?Math.sqrt(a.reduce((p,x)=>p+(x-avg)*(x-avg),0)/(n-1)):0,med:n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2}};
-/* t تقريبي؛ عوائد المرجع متداخلة فيُقسم حجم عيّنتها على مدة الاحتفاظ لتفادي المبالغة في الثقة */
-const verdict=(s,b,h)=>{if(s.n<MINN)return['عيّنة صغيرة','mu'];const e=s.avg-b.avg,se=Math.sqrt((s.sd||0)**2/s.n+(b.sd||0)**2/Math.max(1,b.n/(h||1))),t=se>0?e/se:0;
- if(e>0.5&&s.win>b.win+3)return t>=1.65?['ميزة محتملة','up']:['فارق غير مؤكّد إحصائيًا','mu'];if(e<-0.5||s.win<b.win-3)return['أضعف من المرجع','dn'];return['غير حاسم','mu']};
+/* الحكم: فارق ملموس + t≥2 (عوائد المرجع متداخلة فيُقسم حجم عيّنتها على مدة الاحتفاظ) + ثبات الفارق في نصفي الفترة معًا */
+function verdict(ev,base,h){
+ const s=stat(rs(ev)),b=stat(rs(base));
+ if(s.n<MINN)return{s,b,e:null,stable:null,t:'عيّنة صغيرة',c:'mu'};
+ const e=s.avg-b.avg,se=Math.sqrt((s.sd||0)**2/s.n+(b.sd||0)**2/Math.max(1,b.n/(h||1))),tt=se>0?e/se:0;
+ const half=(x,i)=>x.filter(y=>i?y.p>=.5:y.p<.5);
+ const part=i=>{const a=stat(rs(half(ev,i))),c=stat(rs(half(base,i)));return a.n>=8&&c.n>0?a.avg-c.avg:null};
+ const d1=part(0),d2=part(1),stable=d1!=null&&d2!=null?(d1>0&&d2>0):null;
+ let t,c;
+ if(e>0.5&&s.win>b.win+3){
+  if(tt>=TCRIT&&stable===true){t='ميزة محتملة';c='up'}
+  else if(stable===false){t='غير ثابتة عبر الزمن';c='mu'}
+  else{t='فارق غير مؤكّد إحصائيًا';c='mu'}
+ }else if(e<-0.5||s.win<b.win-3){t='أضعف من المرجع';c='dn'}
+ else{t='غير حاسم';c='mu'}
+ return{s,b,e,stable,t,c}}
 const tabs=document.querySelector('.tabs'),sett=document.querySelector('#tab-settings');if(!tabs||!sett)return;
-const st=document.createElement('style');st.textContent='.tab[data-bt]::before{content:"▤"}#tab-bt .btw{overflow-x:auto}#tab-bt table{width:100%;border-collapse:collapse;font-size:.85rem}#tab-bt th,#tab-bt td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:center}#tab-bt td:first-child,#tab-bt th:first-child{text-align:right}#tab-bt .up{color:var(--up)}#tab-bt .dn{color:var(--dn)}#tab-bt .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}';document.head.appendChild(st);
-const tb=document.createElement('div');tb.className='tab';tb.dataset.bt='1';tb.textContent='اختبار تاريخي';tb.setAttribute('role','tab');tb.id='tabbtn-bt';tb.setAttribute('aria-controls','tab-bt');tb.setAttribute('aria-selected','false');tb.tabIndex=-1;
+const st=document.createElement('style');st.textContent='.tab[data-bt]::before{content:"▤"}#tab-bt .btw{overflow-x:auto}#tab-bt table{width:100%;border-collapse:collapse;font-size:.85rem}#tab-bt th,#tab-bt td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}#tab-bt td:first-child,#tab-bt th:first-child{text-align:right;white-space:normal;min-width:150px}#tab-bt .up{color:var(--up)}#tab-bt .dn{color:var(--dn)}#tab-bt .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}#tab-bt .row select{width:auto;min-width:130px}#tab-bt .verd{background:var(--in);border-radius:12px;padding:12px 14px;margin:10px 0}#tab-bt details{margin-top:12px}#tab-bt summary{cursor:pointer;font-weight:700}#tab-bt details ul{margin:8px 18px 0;padding:0}#tab-bt details li{margin:4px 0}';document.head.appendChild(st);
+const tb=document.createElement('div');tb.className='tab';tb.dataset.bt='1';tb.textContent='اختبار المؤشرات';tb.setAttribute('role','tab');tb.id='tabbtn-bt';tb.setAttribute('aria-controls','tab-bt');tb.setAttribute('aria-selected','false');tb.tabIndex=-1;
 tabs.insertBefore(tb,tabs.querySelector('[data-tab="settings"]'));
 const pn=document.createElement('div');pn.id='tab-bt';pn.setAttribute('role','tabpanel');pn.setAttribute('aria-labelledby','tabbtn-bt');pn.style.display='none';sett.parentNode.appendChild(pn);
-let per={},fails=[],busy=false,view='ALL',hz=10,note='';
+const SK='u_bt_v1';
+let per={},fails=[],busy=false,stop=false,view='ALL',hz=10,note='',usedCost=null,ranAt=null,lastText='',saved=null;
+try{const x=JSON.parse(localStorage.getItem(SK));if(x&&typeof x==='object'&&x.m&&H.every(k=>x.m[k]&&Array.isArray(x.m[k].rows)))saved=x}catch(e){}
 const syms=()=>{const s=new Set();try{(JSON.parse(localStorage.getItem('u_hold_list_v3'))||[]).forEach(r=>Array.isArray(r)&&typeof r[0]==='string'&&s.add(r[0]))}catch(e){}try{(MY_PORTFOLIO||[]).forEach(x=>typeof x==='string'&&s.add(x))}catch(e){}return[...s]};
-const pool=ks=>{const o={};[BASE,...RULES.map(r=>r[0])].forEach(nm=>{o[nm]={};H.forEach(h=>o[nm][h]=ks.flatMap(s=>per[s][nm][h]))});return o};
+const pool=ks=>{const o={};NAMES.forEach(nm=>{o[nm]={};H.forEach(h=>o[nm][h]=ks.flatMap(s=>per[s].ev[nm][h]))});return o};
+const f1=n=>Number.isFinite(n)?n.toFixed(1):'—';
+function model(one,hz){
+ const ks=Object.keys(per),d=one?per[view].ev:pool(ks),base=d[BASE][hz],b=stat(rs(base));
+ const rows=RULES.map(([nm])=>{
+  const v=verdict(d[nm][hz],base,hz);let br='—',act='—';
+  if(!one){let w=0,n=0;ks.forEach(s=>{const x=per[s].ev[nm][hz],y=per[s].ev[BASE][hz];if(x.length>=5&&y.length){n++;if(stat(rs(x)).avg>stat(rs(y)).avg)w++}});br=n?w+'/'+n:'—';act=ks.filter(s=>per[s].now[nm]).length+'/'+ks.length}
+  else act=per[view].now[nm]?'✓':'—';
+  return{nm,s:v.s,e:v.e,stable:v.stable,t:v.t,c:v.c,br,act}});
+ const best=rows.filter(r=>r.c==='up').sort((x,y)=>y.e-x.e)[0];
+ let concl;
+ if(best){const on=one?(per[view].now[best.nm]?[view]:[]):ks.filter(s=>per[s].now[best.nm]);
+  concl='أفضل قاعدة تاريخيًا هنا: '+best.nm+' (متوسط '+f1(best.s.avg)+'% مقابل '+f1(b.avg)+'% للمرجع، فارق ثابت في نصفي الفترة). '+(on.length?'فعّالة الآن في: '+on.join('، ')+'.':'غير فعّالة الآن في أي سهم مفحوص.')+' تبقى دلالة تاريخية لا ضمانًا.';
+ }else concl='لا توجد قاعدة أثبتت ميزة ثابتة على هذه البيانات. أي مؤشر منفرد لم يتفوق بوضوح على الاحتفاظ العادي، فلا تبنِ قرارك على إشارة واحدة.';
+ return{concl,b,rows,one:!!one,lbl:one?view:'كل الأسهم',bars:one?per[view].bars:null}}
 function draw(){
- const ks=Object.keys(per),have=ks.length>0,f=n=>Number.isFinite(n)?n.toFixed(1):'—';
- let h='<div class="c"><h2>اختبار تاريخي للمؤشرات</h2><p class="mu">يفحص كل قاعدة على الشموع اليومية المخزنة: كم مرة ظهرت، وماذا حدث للسعر بعد 5 و10 و20 جلسة (دخول عند افتتاح اليوم التالي وبعد خصم التكلفة). الإشارات المتقاربة لا تُحسب مرتين.</p>';
- h+='<div class="row"><button id="btRun" class="sm"'+(busy?' disabled':'')+'>'+(busy?'جارٍ الاختبار…':'تشغيل الاختبار على أسهمي')+'</button>';
- if(have){h+='<select id="btView" aria-label="السهم"><option value="ALL">كل الأسهم (مجمّع)</option>'+ks.map(s=>'<option value="'+esc(s)+'"'+(view===s?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select><select id="btHz" aria-label="مدة الاحتفاظ">'+H.map(x=>'<option value="'+x+'"'+(hz===x?' selected':'')+'>بعد '+x+' جلسة</option>').join('')+'</select>'}
- h+='</div>';if(note)h+='<p class="mu">'+esc(note)+'</p>';
- if(have){const d=view==='ALL'||!per[view]?pool(ks):per[view],b=stat(d[BASE][hz]);
-  const rows=RULES.map(([nm])=>{const s=stat(d[nm][hz]),v=verdict(s,b,hz);return{nm,s,v,e:s.n?s.avg-b.avg:-1e9}});
-  const best=rows.filter(r=>r.s.n>=MINN&&r.v[1]==='up').sort((x,y)=>y.e-x.e)[0];
-  h+='<p><b>'+(best?'أفضل قاعدة تاريخيًا هنا: '+esc(best.nm)+' (متوسط '+f(best.s.avg)+'% مقابل '+f(b.avg)+'% للمرجع)':'لا توجد قاعدة بميزة واضحة على هذه البيانات')+'</b></p>';
-  h+='<div class="btw"><table><thead><tr><th>القاعدة</th><th>مرات</th><th>نجاح %</th><th>متوسط %</th><th>الحكم</th></tr></thead><tbody>';
-  h+='<tr class="mu"><td>'+BASE+'</td><td>'+b.n+'</td><td>'+f(b.win)+'</td><td>'+f(b.avg)+'</td><td>—</td></tr>';
-  rows.forEach(r=>{h+='<tr><td>'+esc(r.nm)+'</td><td>'+r.s.n+'</td><td>'+f(r.s.win)+'</td><td>'+f(r.s.avg)+'</td><td class="'+r.v[1]+'">'+r.v[0]+'</td></tr>'});
+ const ks=Object.keys(per),live=ks.length>0,have=live||!!saved,one=live&&view!=='ALL'&&!!per[view];
+ let h='<div class="c"><h2>اختبار المؤشرات على تاريخ أسهمك</h2><p class="mu">السؤال الذي يجيب عنه: هل إشارات مثل EMA وRSI وMACD أعطت فعلاً نتيجة أفضل من الاحتفاظ العادي في أسهمك أنت؟ لا يغيّر أي توصية في التطبيق، بل يمنحك مقياسًا لمدى الوثوق بالمؤشرات.</p>';
+ h+='<div class="row">'+(busy?'<button id="btStop" class="sm sec">إيقاف الاختبار</button>':'<button id="btRun" class="sm">'+(have?'إعادة الاختبار':'تشغيل الاختبار على أسهمي')+'</button>');
+ if(have&&!busy){h+=(live?'<select id="btView" aria-label="السهم"><option value="ALL">كل الأسهم (مجمّع)</option>'+ks.map(s=>'<option value="'+esc(s)+'"'+(view===s?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select>':'')+'<select id="btHz" aria-label="مدة الاحتفاظ">'+H.map(x=>'<option value="'+x+'"'+(hz===x?' selected':'')+'>بعد '+x+' جلسة</option>').join('')+'</select><button id="btCopy" class="sm sec">نسخ الملخص</button>'}
+ h+='</div>';
+ if(note)h+='<p class="mu" role="status">'+esc(note)+'</p>';
+ lastText='';
+ if(have){
+  const M=live?model(one,hz):saved.m[hz],b=M.b,tm=live?ranAt:saved.at,cs=live?usedCost:saved.cost;
+  if(!live)h+='<p class="mu">نتائج محفوظة من آخر اختبار'+(tm?' ('+esc(tm)+')':'')+' لكل الأسهم مجمّعة. أعد الاختبار لتحديثها أو لعرض كل سهم على حدة.</p>';
+  lastText='اختبار المؤشرات — '+M.lbl+' — بعد '+hz+' جلسة\n'+M.concl+'\n'+M.rows.map(r=>r.nm+': '+r.s.n+' مرة، نجاح '+f1(r.s.win)+'%، متوسط '+f1(r.s.avg)+'% ← '+r.t).join('\n')+'\nالمرجع: '+b.n+' يوم، متوسط '+f1(b.avg)+'%';
+  h+='<div class="verd"><b>'+esc(M.concl)+'</b></div>';
+  if(M.one&&M.bars)h+='<p class="mu">عدد الشموع المفحوصة: '+M.bars+'</p>';
+  h+='<div class="btw"><table><thead><tr><th>القاعدة</th><th>مرات</th><th>نجاح %</th><th>متوسط %</th><th>وسيط %</th><th>ثبات</th>'+(M.one?'':'<th>أسهم متفوقة</th>')+'<th>فعّالة الآن</th><th>الحكم</th></tr></thead><tbody>';
+  h+='<tr class="mu"><td>'+BASE+'</td><td>'+b.n+'</td><td>'+f1(b.win)+'</td><td>'+f1(b.avg)+'</td><td>'+f1(b.med)+'</td><td>—</td>'+(M.one?'':'<td>—</td>')+'<td>—</td><td>—</td></tr>';
+  M.rows.forEach(r=>{const s=r.s;h+='<tr><td>'+esc(r.nm)+'</td><td>'+s.n+'</td><td>'+f1(s.win)+'</td><td>'+f1(s.avg)+'</td><td>'+f1(s.med)+'</td><td>'+(r.stable===true?'✓':r.stable===false?'✗':'—')+'</td>'+(M.one?'':'<td>'+esc(r.br)+'</td>')+'<td>'+esc(r.act)+'</td><td class="'+esc(r.c)+'">'+esc(r.t)+'</td></tr>'});
   h+='</tbody></table></div>';
-  if(fails.length)h+='<p class="mu">تعذّر جلب: '+esc(fails.join('، '))+'</p>'}
- h+='<p class="mu" style="margin-top:12px">تنبيه: النتائج وصف للماضي لا ضمان للمستقبل. «ميزة محتملة» تعني أن القاعدة تفوّقت على المرجع بفارق ملموس مع 20 إشارة على الأقل ودلالة إحصائية تقريبية (t ≥ 1.65)، وقد يكون ذلك صدفة. العيّنة نحو سنتين ونصف فقط.</p></div>';
+  if(live&&fails.length)h+='<p class="mu">تعذّر فحص: '+esc(fails.join('، '))+'</p>';
+  h+='<p class="mu">'+(tm&&live?'آخر تشغيل: '+esc(tm)+' • ':'')+'التكلفة المخصومة لكل صفقة: '+f1(cs)+'% (من حقل «تكلفة الدخول+الخروج» في تحليل سهم).</p>';
+ }
+ h+='<details><summary>كيف أقرأ النتائج؟</summary><ul><li><b>المرجع:</b> متوسط نتيجة الدخول في أي يوم عشوائي ثم الخروج بعد المدة المحددة. القاعدة لا تستحق الاهتمام إلا إذا تفوقت عليه.</li><li><b>نجاح %:</b> نسبة الصفقات الرابحة بعد خصم التكلفة. <b>المتوسط والوسيط:</b> العائد بعد المدة؛ إن اختلفا كثيرًا فالمتوسط تقوده صفقات قليلة.</li><li><b>ثبات:</b> ✓ إذا تفوقت القاعدة في النصف الأول والثاني من التاريخ معًا، و✗ إذا تفوقت في نصف فقط (غالبًا صدفة).</li><li><b>أسهم متفوقة:</b> في كم سهم من أسهمك تفوقت القاعدة على مرجع السهم نفسه؛ كلما زادت النسبة زادت الثقة.</li><li><b>فعّالة الآن:</b> هل الشرط متحقق عند آخر شمعة مخزنة.</li><li><b>«ميزة محتملة»</b> تتطلب 20 إشارة على الأقل، وفارقًا ملموسًا في المتوسط ونسبة النجاح، ودلالة t ≥ 2، وثباتًا في نصفي الفترة.</li></ul></details>';
+ h+='<p class="mu" style="margin-top:12px">تنبيه: النتائج وصف للماضي لا ضمان للمستقبل. اختبار 7 قواعد على عدة أسهم ومدد يرفع احتمال ظهور ميزة بالصدفة، لذلك ثق بالقاعدة التي تثبت عبر الزمن وعبر أكثر من سهم. العيّنة نحو سنتين ونصف فقط، ولا تشمل الأخبار ولا الأساسيات.</p></div>';
  pn.innerHTML=h}
 async function run(){
  if(busy)return;const L=syms();if(!L.length){note='لا توجد أسهم في محفظتك لاختبارها.';draw();return}
- busy=true;per={};fails=[];note='';draw();
+ busy=true;stop=false;per={};fails=[];note='';draw();
  const custom=($('px')&&$('px').value.trim())||'',cost=(v=>Number.isFinite(v)?Math.min(3,Math.max(0,v)):0.4)(parseFloat($('cs')&&$('cs').value));
- for(let i=0;i<L.length;i++){note='جارٍ فحص '+L[i]+' ('+(i+1)+'/'+L.length+')';draw();
+ usedCost=cost;
+ for(let i=0;i<L.length;i++){if(stop)break;note='جارٍ فحص '+L[i]+' ('+(i+1)+'/'+L.length+')';draw();
   try{const R=await loadAll(detectAsset(L[i]),'1d',custom,null),o=test(R.bars,cost);if(o)per[L[i]]=o;else fails.push(L[i]+' (بيانات قليلة)')}catch(e){fails.push(L[i])}}
- busy=false;note='';draw()}
-pn.addEventListener('click',e=>{if(e.target.id==='btRun')run()});
+ busy=false;note=stop?'أُوقف الاختبار؛ النتائج تخص الأسهم المفحوصة فقط.':'';ranAt=new Date().toLocaleString();
+ if(view!=='ALL'&&!per[view])view='ALL';
+ if(!stop&&Object.keys(per).length){try{const m={};H.forEach(x=>m[x]=model(false,x));saved={at:ranAt,cost:usedCost,m};localStorage.setItem(SK,JSON.stringify(saved))}catch(e){}}
+ draw()}
+pn.addEventListener('click',e=>{const id=e.target.id;
+ if(id==='btRun')run();
+ else if(id==='btStop'){stop=true;e.target.disabled=true}
+ else if(id==='btCopy'&&lastText){const done=()=>toast('تم نسخ الملخص');
+  try{navigator.clipboard.writeText(lastText).then(done,()=>toast('تعذّر النسخ',true))}catch(_){toast('تعذّر النسخ',true)}}});
 pn.addEventListener('change',e=>{if(e.target.id==='btView'){view=e.target.value;draw()}if(e.target.id==='btHz'){hz=+e.target.value;draw()}});
 const panels=['analyze','portfolio','history','settings','holdings','divs','flows'];
 function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});

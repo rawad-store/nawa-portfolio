@@ -571,7 +571,7 @@ button{min-height:44px}button.sm{min-height:40px}
 </div>
 <h2>حول هذا الملف</h2>
 <p class="mu">تطبيق PWA قابل للتثبيت على HTTPS. تُخزّن واجهة التطبيق والبيانات التي تم جلبها بنجاح على هذا الجهاز. عند انقطاع الإنترنت تُعرض آخر الأسعار المحفوظة مع وقتها وتحذير واضح؛ لا يمكن تحديث أسعار السوق دون اتصال. بيانات المحفظة تبقى في تخزين المتصفح على هذا النطاق.</p>
-<p class="mu" id="appBuildInfo" style="margin-top:8px">إصدار الواجهة: <span class="ltr">2026.11.22.2</span> • تحليل فني تعليمي • لا نصيحة استثمارية.</p>
+<p class="mu" id="appBuildInfo" style="margin-top:8px">إصدار الواجهة: <span class="ltr">2026.11.22.3</span> • تحليل فني تعليمي • لا نصيحة استثمارية.</p>
 </div>
 </section>
 
@@ -655,7 +655,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.22.2';
+const APP_BUILD='2026.11.22.3';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -3777,6 +3777,7 @@ function bFin(){
   h+='<p class="mu">الأرباح (EPS) والقيمة الدفترية (BVPS) تؤخذ من بيانات القيمة العادلة المخزنة في «قائمة المتابعة» (Yahoo أو يدويًا). العلامة ⚠️ تعني أن الرقم غير معتاد فتحقق منه قبل الاعتماد عليه.</p>';
   h+='<div class="btw"><table><thead><tr><th>السهم</th><th>السعر</th><th>EPS</th><th>مكرر الربحية</th><th>BVPS</th><th>السعر÷الدفترية</th><th>عائد حقوق (تقريبي)</th><th>عائد الأرباح</th><th>عائد التوزيع 12ش</th><th>رقم جراهام</th><th>تاريخ البيانات</th><th>ملاحظة</th></tr></thead><tbody>'+
   R.map(r=>'<tr><td><b class="ltr">'+E(r.s)+'</b></td><td>'+f(r.p)+'</td><td>'+f(r.eps)+'</td><td>'+f(r.pe,1)+'</td><td>'+f(r.bv)+'</td><td>'+f(r.pb,2)+'</td><td>'+(r.roe!=null?f(r.roe,1)+'%':'—')+'</td><td>'+(r.e!=null?f(r.e,1)+'%':'—')+'</td><td>'+(r.dy>0?f(r.dy,1)+'%':'—')+'</td><td>'+f(r.gr,1)+'</td><td>'+(r.asOf?'<span class="ltr">'+E(r.asOf)+'</span>':'—')+'</td><td>'+(r.flags.length?'⚠️ '+E(r.flags.join('، ')):(r.has?'—':'بلا بيانات'))+'</td></tr>').join('')+'</tbody></table></div>';
+  if(R.some(r=>r.flags.includes('مكرر غير معتاد')))h+='<p class="mu">⚠️ المكرر غير المعتاد غالبًا سببه اختلاف أساس الأسهم أو العملة: أرباح مخزنة قبل توزيع أسهم مجانية أو تجزئة أو زيادة رأس مال، أو أرباح بالدولار مقابل سعر بالجنيه. قارن مع آخر إفصاح للشركة وعدّل الأرباح والقيمة الدفترية يدويًا (بالجنيه وعلى عدد الأسهم الحالي).</p>';
   if(miss.length)h+='<p class="mu">بلا بيانات أرباح أو قيمة دفترية: '+E(miss.join('، '))+'. افتح قائمة المتابعة واضغط تحديث القيمة العادلة أو أدخلها يدويًا.</p>';
   if(Number.isFinite(M.tbill)){const pe=portfolioEY();if(pe&&pe.ey!=null)h+='<p>عائد أرباح محفظتك '+f(pe.ey,1)+'% مقابل '+f(M.tbill,1)+'% في أذون الخزانة (من باب السياسة النقدية).</p>'}
  }

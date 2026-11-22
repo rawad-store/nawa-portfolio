@@ -571,7 +571,7 @@ button{min-height:44px}button.sm{min-height:40px}
 </div>
 <h2>حول هذا الملف</h2>
 <p class="mu">تطبيق PWA قابل للتثبيت على HTTPS. تُخزّن واجهة التطبيق والبيانات التي تم جلبها بنجاح على هذا الجهاز. عند انقطاع الإنترنت تُعرض آخر الأسعار المحفوظة مع وقتها وتحذير واضح؛ لا يمكن تحديث أسعار السوق دون اتصال. بيانات المحفظة تبقى في تخزين المتصفح على هذا النطاق.</p>
-<p class="mu" id="appBuildInfo" style="margin-top:8px">إصدار الواجهة: <span class="ltr">2026.11.19.5</span> • تحليل فني تعليمي • لا نصيحة استثمارية.</p>
+<p class="mu" id="appBuildInfo" style="margin-top:8px">إصدار الواجهة: <span class="ltr">2026.11.22.1</span> • تحليل فني تعليمي • لا نصيحة استثمارية.</p>
 </div>
 </section>
 
@@ -655,7 +655,7 @@ addEventListener('online',updateNetworkState);addEventListener('offline',updateN
 const MARKET_CACHE_KEY='u_market_quotes_v1';
 const FV_KEY='u_fv_v1';
 const PORT_KEY='u_portfolio_v4';
-const APP_BUILD='2026.11.19.5';
+const APP_BUILD='2026.11.22.1';
 function freeLocalCache(aggressive=false){
   try{
     Object.keys(localStorage).filter(k=>k.startsWith('u_y_')).forEach(k=>localStorage.removeItem(k));
@@ -1810,6 +1810,7 @@ if($('exportAll'))$('exportAll').onclick=()=>{
       snapDel:JSON.parse(localStorage.getItem('u_hold_snapdel_v1')||'[]'),
       snapMax:JSON.parse(localStorage.getItem('u_hold_snapmax_v1')||'0'),
       fvPrem:FV_EXIT_PREMIUM,
+      macro:(()=>{try{return JSON.parse(localStorage.getItem('u_macro_v1')||'null')}catch(e){return null}})(),
       appBuild:APP_BUILD,
       settings:{cap:localStorage.getItem('u_cap'),px:localStorage.getItem('u_px')}
     };
@@ -1863,6 +1864,16 @@ if($('importFile'))$('importFile').onchange=async e=>{
       writes.u_div_v1=JSON.stringify({ev,del,ack,cfg:{tax:Math.min(50,Math.max(0,Number.isFinite(+c.tax)?+c.tax:10)),notif:c.notif===true},auto});
     }
     if(data.fvPrem!=null)writes.u_fv_prem_v1=String(Math.max(0,Math.min(50,+data.fvPrem||0)));
+    if(data.macro!=null){
+      const m=data.macro;if(typeof m!=='object'||Array.isArray(m))throw Error('بيانات المؤشرات الكلية غير صالحة');
+      const o={dir:{}};
+      [['policyRate',-10,100],['inflation',-50,1000],['tbill',-10,200],['growth',-50,100],['deficit',-50,100],['debt',0,1000],['fx',0,1e6]].forEach(([k,lo,hi])=>{
+        if(m[k]==null||m[k]==='')return;const v=+m[k];if(Number.isFinite(v)&&v>=lo&&v<=hi)o[k]=v});
+      if(typeof m.asOf==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(m.asOf))o.asOf=m.asOf;
+      const dr=m.dir&&typeof m.dir==='object'&&!Array.isArray(m.dir)?m.dir:{};
+      [['g',['up','down']],['i',['up','down']],['r',['up','down','flat']]].forEach(([k,al])=>{if(al.includes(dr[k]))o.dir[k]=dr[k]});
+      writes.u_macro_v1=JSON.stringify(o);
+    }
     if(data.settings&&Object.prototype.hasOwnProperty.call(data.settings,'cap')){
       const cap=data.settings.cap;
       if(cap!=null&&(typeof cap!=='string'&&typeof cap!=='number'))throw Error('رأس المال غير صالح');
@@ -1886,7 +1897,7 @@ if($('importFile'))$('importFile').onchange=async e=>{
 
 /* ---- التراجع عن آخر استعادة ---- */
 {
-  const ub=$('undoRestore'),ALLOWED=new Set(['u_portfolio_v4','u_hist_v4','u_hold_list_v3','u_hold_flow_v1','u_hold_snap_v1','u_hold_log_v1','u_hold_man_v1','u_hold_lim_v1','u_watch_man_v1','u_hold_snapdel_v1','u_hold_snapmax_v1','u_fv_v1','u_div_v1','u_fv_prem_v1','u_cap','u_px']);
+  const ub=$('undoRestore'),ALLOWED=new Set(['u_portfolio_v4','u_hist_v4','u_hold_list_v3','u_hold_flow_v1','u_hold_snap_v1','u_hold_log_v1','u_hold_man_v1','u_hold_lim_v1','u_watch_man_v1','u_hold_snapdel_v1','u_hold_snapmax_v1','u_fv_v1','u_div_v1','u_fv_prem_v1','u_macro_v1','u_cap','u_px']);
   const readPre=()=>{try{const x=JSON.parse(localStorage.getItem(BK_PRE)||'null');return x&&typeof x==='object'&&x.data&&typeof x.data==='object'&&!Array.isArray(x.data)?x:null}catch(_){return null}};
   const sync=()=>{if(!ub)return;const x=readPre();ub.style.display=x?'':'none';if(x)ub.textContent='التراجع عن آخر استعادة ('+new Date(x.ts).toLocaleDateString(LOC)+')'};
   if(ub)ub.onclick=async()=>{
@@ -3560,11 +3571,365 @@ tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
 tb.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show()}});
 })();
 </script>
+<script id="nawa-learn">
+/* ============ مركز المعرفة والاقتصاد ============ */
+(()=>{'use strict';
+const tabs=document.querySelector('.tabs'),sett=document.querySelector('#tab-settings');if(!tabs||!sett)return;
+const g=id=>document.getElementById(id);
+const jl=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
+const f=(n,d=2)=>Number.isFinite(n)?n.toLocaleString('en-US',{maximumFractionDigits:d}):'—';
+const pc=(n,d=1)=>Number.isFinite(n)?(n>0?'+':'')+f(n,d)+'%':'—';
+const cl=n=>n>0?'up':n<0?'dn':'';
+const E=s=>esc(s);
+const today=()=>new Date().toISOString().slice(0,10);
+const DAY=864e5;
+const js=n=>n+' '+(n>=3&&n<=10?'جلسات':'جلسة');
+
+/* ---------- بيانات مخزنة ---------- */
+const hold=()=>{const a=jl('u_hold_list_v3',[]);return(Array.isArray(a)?a:[]).filter(r=>Array.isArray(r)&&r[0]).map(r=>({s:String(r[0]).toUpperCase().replace(/\.CA$/,''),n:r[1]||r[0],q:+r[2]||0,x:(typeof r[3]==='string'&&r[3])||'غير محدد',c:+r[4]||0})).filter(h=>h.q>0)};
+const quotes=()=>{const q=jl('u_market_quotes_v1',{});return q&&typeof q==='object'?q:{}};
+const pxOf=s=>{const q=quotes()[s];return q&&q.price>0?q.price:0};
+const fvRec=s=>{try{const a=typeof fvAll==='function'?fvAll():jl('u_fv_v1',{});return a&&a[s]||null}catch(e){return null}};
+const divS=()=>{try{const x=jl('u_div_v1',null);return x&&typeof x==='object'?x:((window.__dv&&window.__dv.S)||{})}catch(e){return{}}};
+const divL=s=>{const a=(divS().auto||{})[s];return a&&Array.isArray(a.L)?a.L.filter(x=>x&&x.d&&+x.a>0):[]};
+const ttmDiv=s=>{const lim=Date.now()-365*DAY;return divL(s).filter(x=>Date.parse(x.d)>=lim).reduce((p,x)=>p+(+x.a||0),0)};
+const rows=()=>hold().map(h=>({...h,p:pxOf(h.s)})).map(h=>({...h,v:h.p*h.q}));
+const sumV=a=>a.reduce((p,x)=>p+(x.v||0),0);
+
+/* ---------- المؤشرات الكلية (يدخلها المستخدم) ---------- */
+const MK='u_macro_v1';
+let M=(()=>{const m=jl(MK,{});return m&&typeof m==='object'&&!Array.isArray(m)?m:{}})();
+if(!M.dir||typeof M.dir!=='object'||Array.isArray(M.dir))M.dir={};
+const saveM=()=>{try{localStorage.setItem(MK,JSON.stringify(M))}catch(e){toast('تعذّر الحفظ المحلي',true)}};
+const MF={policyRate:['سعر الفائدة الأساسي للبنك المركزي %',-10,100],inflation:['التضخم السنوي %',-50,1000],tbill:['عائد أذون الخزانة لسنة %',-10,200],fx:['سعر الدولار (ج.م)',0,1e6],growth:['نمو الناتج المحلي %',-50,100],deficit:['عجز الموازنة % من الناتج',-50,100],debt:['الدين العام % من الناتج',0,1000]};
+const real=(a,b)=>Number.isFinite(a)&&Number.isFinite(b)?((1+a/100)/(1+b/100)-1)*100:null;
+function staleWarn(){
+ const has=Object.keys(MF).some(k=>Number.isFinite(M[k]));
+ if(!has)return'';
+ if(!M.asOf)return'<p class="mu" style="color:var(--wn)">⚠️ أضف تاريخ الأرقام لتعرف متى تصبح قديمة.</p>';
+ const age=(Date.now()-Date.parse(M.asOf))/DAY;
+ return age>45?'<p class="mu" style="color:var(--wn)">⚠️ مضى أكثر من 45 يومًا على هذه الأرقام؛ حدّثها قبل الاعتماد على القراءة.</p>':'';
+}
+function macroForm(keys){
+ return'<div class="verd"><b>مؤشراتي (أدخلها من مصدر رسمي)</b><p class="mu" style="margin:4px 0 8px">لا يجلب التطبيق هذه الأرقام تلقائيًا لأنها تتغير؛ أدخل آخر قيمة معلنة وتاريخها. تُحفظ على جهازك وتدخل في النسخة الاحتياطية.</p><div class="g">'+
+ keys.map(k=>'<div><label for="m_'+k+'">'+MF[k][0]+'</label><input id="m_'+k+'" type="number" step="any" inputmode="decimal" data-m="'+k+'" value="'+(Number.isFinite(M[k])?M[k]:'')+'"></div>').join('')+
+ '<div><label for="m_asOf">تاريخ هذه الأرقام</label><input id="m_asOf" type="date" data-m="asOf" value="'+E(M.asOf||'')+'"></div></div>'+staleWarn()+'</div>';
+}
+const acc=(t,b,open)=>'<details'+(open?' open':'')+'><summary>'+t+'</summary><div class="lbody">'+b+'</div></details>';
+const ul=a=>'<ul>'+a.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
+const tbl=(head,body)=>'<div class="btw"><table><thead><tr>'+head.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+body.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+const goBtn=(k,t)=>'<button type="button" class="sec sm" data-go="'+k+'">'+t+'</button>';
+
+/* ---------- حسابات مشتركة ---------- */
+function ey(r){const rec=fvRec(r.s);if(!rec||!(rec.eps>0)||!(r.p>0))return null;const pe=r.p/rec.eps;return(pe>=3&&pe<=100)?rec.eps/r.p*100:null}
+function portfolioEY(){
+ const R=rows().filter(r=>r.v>0),tot=sumV(R);if(!tot)return null;
+ let w=0,cv=0,n=0;R.forEach(r=>{const e=ey(r);if(e!=null){w+=e*r.v;cv+=r.v;n++}});
+ return cv?{ey:w/cv,cover:cv/tot*100,n,of:R.length}:{ey:null,cover:0,n:0,of:R.length};
+}
+function portfolioDY(){
+ const R=rows().filter(r=>r.v>0),tot=sumV(R);if(!tot)return null;
+ const inc=R.reduce((p,r)=>p+ttmDiv(r.s)*r.q,0);return{dy:inc/tot*100,inc,tot};
+}
+const sectors=()=>{const R=rows().filter(r=>r.v>0),tot=sumV(R),o={};R.forEach(r=>{o[r.x]=(o[r.x]||0)+r.v});return{tot,list:Object.entries(o).map(([k,v])=>({k,v,w:tot?v/tot*100:0})).sort((a,b)=>b.v-a.v)}};
+
+/* ---------- 1) أساسيات الاستثمار ---------- */
+function bBasics(){
+ const dd=[10,20,30,40,50,70].map(l=>[l+'%','+'+f((1/(1-l/100)-1)*100,0)+'%']);
+ return[
+ acc('ما الذي تشتريه حين تشتري سهمًا؟','<p>تشتري حصة ملكية صغيرة في شركة. يأتي عائدك من مصدرين: <b>تغيّر سعر السهم</b> و<b>التوزيعات النقدية</b>. السهم غير مضمون: قد ترتفع قيمته أو تنخفض بشدة، وعند التصفية يُسدَّد الدائنون قبل المساهمين.</p>',true),
+ acc('كيف تعمل البورصة المصرية؟',ul(['التداول من الأحد إلى الخميس، ويتحدد السعر بتلاقي أوامر البيع والشراء.','توجد حدود سعرية يومية وإيقاف مؤقت عند التحركات الحادة، وتتم التسوية بعد يومي عمل تقريبًا.','الأيام والساعات والحدود والرسوم تتغير أحيانًا؛ تحقق من موقع البورصة المصرية أو وسيطك.','حجم التداول مهم: الأسهم الضعيفة السيولة يصعب بيعها بالسعر المرجو.'])),
+ acc('أنواع الأوامر',ul(['<b>أمر سوقي:</b> تنفيذ فوري بأفضل سعر متاح، وقد يختلف عن المتوقع في الأسهم الضعيفة السيولة.','<b>أمر محدد:</b> تنفيذ عند سعرك أو أفضل منه فقط، وقد لا يُنفَّذ.','<b>وقف الخسارة:</b> أمر بيع يُفعَّل عند بلوغ سعر تحدده لتحدّ من الخسارة (يتوفر بحسب منصة وسيطك).'])),
+ acc('العائد والمخاطرة والتنويع',ul(['العائد الأعلى يأتي عادةً مع تذبذب وخسائر محتملة أكبر.','التنويع يقلل أثر سهم واحد أو قطاع واحد، لكنه لا يحميك من هبوط السوق كله.','سهم واحد بنسبة كبيرة من محفظتك يجعل نتائجك رهينة به؛ راجع «حد التركّز» في محفظتي الفعلية.','عدد الأسهم وحده لا يكفي: عشرة أسهم في قطاع واحد ليست تنويعًا حقيقيًا.']),false),
+ acc('الخسارة تحتاج ربحًا أكبر للتعويض','<p>بعد خسارة نسبة معينة، الربح المطلوب للعودة إلى نقطة البداية أكبر منها:</p>'+tbl(['الخسارة','الربح المطلوب للتعويض'],dd)+'<p class="mu">لذلك تحديد الخسارة القصوى المقبولة مسبقًا أهم من توقع الربح.</p>'),
+ acc('حجم المركز وإدارة المخاطرة',ul(['حدد نسبة صغيرة من رأس مالك تقبل خسارتها في الصفقة الواحدة (غالبًا 1% إلى 2%).','عدد الأسهم = (رأس المال × نسبة المخاطرة) ÷ (سعر الدخول − سعر وقف الخسارة).','لا تُدخل صفقة عائدها المتوقع أقل من ضعف خسارتها المحتملة على الأقل.','يوجد حاسبة جاهزة في باب «التحليل الفني».'])),
+ acc('التكاليف والضرائب',ul(['تشمل غالبًا عمولة الوسيط ورسوم البورصة والرقابة، وضريبة على التوزيعات (إعداد التطبيق الحالي في التوزيعات).','التكاليف تتراكم مع كثرة التداول، وتقلل العائد الحقيقي.','الرسوم والضرائب تتغير بقرارات تنظيمية؛ تحقق من وسيطك ومن مصلحة الضرائب قبل الحساب.'])),
+ acc('العائد الحقيقي والتضخم','<p>العائد الاسمي لا يكفي: ما يهم هو العائد بعد التضخم. <b>العائد الحقيقي = (1 + العائد الاسمي) ÷ (1 + التضخم) − 1</b>. مثال: عائد 30% مع تضخم 25% يعطي نحو 4% حقيقيًا فقط. أدخل أرقامك في باب «السياسة النقدية» لتُحسب لك.</p>'),
+ acc('أخطاء سلوكية شائعة',ul(['<b>كراهية الخسارة:</b> التمسك بسهم خاسر أملًا في العودة وبيع الرابح مبكرًا.','<b>الخوف من فوات الفرصة:</b> الشراء بعد صعود حاد بسبب الحماس.','<b>كثرة التداول:</b> ترفع التكاليف ولا تحسّن النتائج غالبًا.','<b>التعزيز العشوائي للخاسر:</b> الشراء عند الهبوط دون خطة يضاعف الخطأ.','<b>التحيز للتأكيد:</b> قراءة ما يوافق رأيك فقط.','<b>التثبيت:</b> ربط قرارك بسعر شرائك لا بقيمة السهم الآن.'])),
+ acc('قائمة تدقيق قبل الشراء','<ol><li>ما نشاط الشركة وكيف تربح؟</li><li>هل أرباحها مستقرة أو نامية وبأي سبب؟</li><li>ما ديونها وهل تغطيها أرباحها؟</li><li>هل التقييم (مكرر الربحية والقيمة الدفترية) معقول مقارنة بقطاعها؟</li><li>ما حجم التداول وهل أستطيع الخروج بسهولة؟</li><li>أين أضع وقف الخسارة وما الهدف؟</li><li>كم تمثل الصفقة من محفظتي وهل تزيد تركّزي؟</li><li>هل أستطيع شرح قراري في جملتين؟</li></ol>'),
+ acc('خطة استثمار شخصية','<ol><li>حدد الهدف والأفق الزمني (سنة؟ خمس سنوات؟).</li><li>حدد نسبة الأسهم من إجمالي أموالك وما تبقى للسيولة والملاذات الأخرى.</li><li>ضع قواعد دخول وخروج مكتوبة وحدًا أقصى للتركّز.</li><li>راجع المحفظة دوريًا (شهريًا أو ربع سنويًا) لا يوميًا.</li><li>دوّن سبب كل قرار ثم قيّمه لاحقًا.</li></ol>'),
+ acc('مصطلحات سريعة',ul(['<b>القيمة السوقية:</b> السعر × عدد الأسهم.','<b>التوزيع:</b> نصيب السهم من الأرباح النقدية، وتاريخ الأحقية هو آخر يوم لاستحقاقه.','<b>السيولة:</b> سهولة البيع والشراء دون تحريك السعر.','<b>الفجوة السعرية:</b> فرق بين إغلاق اليوم وافتتاح التالي.','<b>أسهم مجانية:</b> زيادة عدد الأسهم دون دفع، وينخفض سعر السهم بنسبتها.','<b>الاكتتاب:</b> الشراء في طرح جديد للسهم قبل بدء تداوله.']))
+ ].join('');
+}
+
+/* ---------- 2) السياسة النقدية ---------- */
+function monOut(){
+ const rp=real(M.policyRate,M.inflation),rt=real(M.tbill,M.inflation),pe=portfolioEY(),pd=portfolioDY();
+ let h='';
+ if(rp==null&&rt==null)return'<p class="mu">أدخل الفائدة والتضخم لتظهر القراءة.</p>';
+ const lbl=r=>r>2?'<b class="dn">مشدّدة</b> (عائد حقيقي موجب مرتفع)':r>0?'<b>معتدلة</b> (عائد حقيقي موجب منخفض)':'<b class="up">تيسيرية</b> (عائد حقيقي سلبي)';
+ h+='<div class="g">';
+ if(rp!=null)h+='<div class="c"><div class="mu">العائد الحقيقي على الفائدة الأساسية</div><b class="'+cl(rp)+'">'+pc(rp)+'</b></div>';
+ if(rt!=null)h+='<div class="c"><div class="mu">العائد الحقيقي لأذون الخزانة</div><b class="'+cl(rt)+'">'+pc(rt)+'</b></div>';
+ if(pe&&pe.ey!=null)h+='<div class="c"><div class="mu">عائد أرباح محفظتك (EPS÷السعر)</div><b>'+f(pe.ey,1)+'%</b><div class="mu">يغطي '+f(pe.cover,0)+'% من القيمة ('+pe.n+' من '+pe.of+')</div></div>';
+ if(pd)h+='<div class="c"><div class="mu">عائد التوزيعات آخر 12 شهرًا</div><b>'+f(pd.dy,1)+'%</b></div>';
+ h+='</div><ul>';
+ if(rp!=null)h+='<li>السياسة النقدية تبدو '+lbl(rp)+' بحسب أرقامك. هذا تصنيف مبسّط لا حكم رسمي.</li>';
+ if(Number.isFinite(M.tbill)&&pe&&pe.ey!=null){const sp=pe.ey-M.tbill;h+='<li>عائد أرباح محفظتك '+f(pe.ey,1)+'% مقابل '+f(M.tbill,1)+'% في أذون الخزانة: '+(sp<0?'الأذون تعطي عائدًا أعلى من أرباحك الحالية، فيحتاج الاستثمار في الأسهم إلى نمو أرباح أو توزيعات لتبريره.':'أرباح محفظتك تتفوق على الأذون، وهو هامش أمان نسبي (إن كانت الأرباح مستدامة).')+'</li>';}
+ if(Number.isFinite(M.tbill)&&pd)h+='<li>عائد توزيعاتك '+f(pd.dy,1)+'% مقابل '+f(M.tbill,1)+'% في الأذون، فالفارق يجب أن تعوّضه زيادة سعرية محتملة لتستحق المخاطرة.</li>';
+ h+='</ul>';
+ return h;
+}
+function bMonetary(){
+ return macroForm(['policyRate','inflation','tbill','fx'])+'<div id="mOut">'+monOut()+'</div>'+[
+ acc('ما السياسة النقدية؟','<p>هي ما يفعله البنك المركزي للتحكم في المعروض النقدي والتضخم والاستقرار المالي. أدواته الأساسية:</p>'+ul(['<b>سعر الفائدة الأساسي:</b> تكلفة الاقتراض والإيداع لليلة واحدة لدى البنك المركزي، وتنتقل إلى بقية أسعار الفائدة.','<b>عمليات السوق المفتوحة:</b> سحب السيولة أو ضخها لضبط الفائدة قصيرة الأجل.','<b>نسبة الاحتياطي الإلزامي:</b> جزء من ودائع البنوك يُحتجز لدى المركزي.','<b>سياسة سعر الصرف:</b> إدارة سعر الجنيه وتوافر العملة الأجنبية.','<b>استهداف التضخم:</b> نطاق مستهدف للتضخم تُعدَّل الفائدة للوصول إليه.']),true),
+ acc('كيف تؤثر الفائدة على الأسهم؟',ul(['<b>التقييم:</b> ارتفاع الفائدة يرفع معدل الخصم فتنخفض القيمة الحالية للأرباح المستقبلية، خاصة للشركات النامية.','<b>تكلفة الدين:</b> الشركات المقترضة تتحمل أعباء أكبر وتتراجع أرباحها.','<b>المنافسة:</b> أذون الخزانة والشهادات ذات العائد المرتفع تسحب السيولة من البورصة.','<b>البنوك:</b> قد تستفيد من هامش الفائدة لكنها تتأثر بجودة الائتمان.','<b>الطلب:</b> ترتفع تكلفة التمويل العقاري والاستهلاكي فيتباطأ الطلب.']),false),
+ acc('أثر القرار على القطاعات (قاعدة عامة)',tbl(['القرار','أكثر تأثرًا إيجابًا','أكثر تأثرًا سلبًا'],[['رفع الفائدة','بنوك (من اتساع هامش الفائدة)، شركات بلا ديون وذات سيولة عالية','عقارات، شركات مقترضة، أسهم النمو، وأسهم التوزيعات التي تنافس الأذون'],['خفض الفائدة','عقارات، صناعة، استهلاكي، أسهم النمو','عوائد الودائع والأذون الجديدة، وهامش بعض البنوك'],['تحرير أو تخفيض الجنيه','مصدّرون ومن يحصلون على إيراد بالدولار (طاقة، أسمدة، كيماويات)','مستوردو المدخلات ومن عليهم ديون بالدولار']])+'<p class="mu">هذه قواعد عامة؛ الأثر الفعلي يتوقف على ميزانية كل شركة ومدى توقع السوق للقرار مسبقًا.</p>'),
+ acc('التضخم وسعر الصرف في مصر',ul(['التضخم المرتفع يأكل العائد الحقيقي، ويدفع المستثمرين إلى أصول تحمي القيمة (أسهم شركات تسعّر بالدولار أو تمرر الأسعار).','تحركات الجنيه تنعكس على أرباح الشركات المصدّرة والمستوردة وعلى تقييم الأسهم بالدولار.','تراقب البورصة مواعيد اجتماعات لجنة السياسة النقدية؛ يتحرك السوق غالبًا مسبقًا بحسب التوقعات.'])),
+ acc('أين أجد الأرقام؟','<p>موقع البنك المركزي المصري (قرارات لجنة السياسة النقدية وأسعار الفائدة)، والجهاز المركزي للتعبئة العامة والإحصاء (التضخم)، ونشرات عطاءات أذون الخزانة. أدخل آخر قيمة وتاريخها في الحقول أعلاه.</p>')
+ ].join('');
+}
+
+/* ---------- 3) السياسة المالية ---------- */
+function fisOut(){
+ const h=[];
+ if(Number.isFinite(M.deficit))h.push('عجز الموازنة '+f(M.deficit,1)+'% من الناتج: '+(M.deficit>=7?'مرتفع نسبيًا، ويعني حاجة كبيرة للاقتراض الحكومي قد تُبقي عوائد الأذون مرتفعة.':M.deficit>=4?'متوسط، ويستحق المتابعة.':'منخفض نسبيًا.'));
+ if(Number.isFinite(M.debt))h.push('الدين العام '+f(M.debt,0)+'% من الناتج: '+(M.debt>=90?'مرتفع، فتتضخم أعباء الفوائد عند ارتفاع الفائدة.':M.debt>=60?'متوسط إلى مرتفع، ويحتاج متابعة هيكل الدين.':'في نطاق أقل ضغطًا.'));
+ if(Number.isFinite(M.growth)&&Number.isFinite(M.inflation))h.push('نمو الناتج '+f(M.growth,1)+'% مقابل تضخم '+f(M.inflation,1)+'%: '+(M.growth<M.inflation?'النمو الاسمي أقل من التضخم، وقد يعني نموًا حقيقيًا محدودًا.':'نمو يتفوق على التضخم ظاهريًا؛ تحقق من الأرقام الحقيقية.'));
+ return h.length?'<ul>'+h.map(x=>'<li>'+x+'</li>').join('')+'</ul><p class="mu">تفسيرات تقريبية بعتبات عامة وليست حكمًا اقتصاديًا.</p>':'<p class="mu">أدخل العجز أو الدين أو النمو لتظهر القراءة.</p>';
+}
+function bFiscal(){
+ return macroForm(['growth','deficit','debt','inflation'])+'<div id="mOut">'+fisOut()+'</div>'+[
+ acc('ما السياسة المالية؟','<p>هي قرارات الحكومة في <b>الإنفاق</b> و<b>الضرائب</b> و<b>الاقتراض</b>. تؤثر في الطلب الكلي ونمو الاقتصاد وأرباح الشركات.</p>'+ul(['<b>سياسة توسعية:</b> زيادة الإنفاق أو خفض الضرائب لتحفيز النمو، وقد ترفع العجز والتضخم.','<b>سياسة انكماشية:</b> خفض الإنفاق أو رفع الضرائب لضبط العجز، وقد تبطئ النمو.']),true),
+ acc('قنوات التأثير على الأسهم',ul(['<b>ضرائب الشركات والتوزيعات والدمغة:</b> أي تغيير يؤثر مباشرة على صافي أرباحك.','<b>الإنفاق على البنية التحتية:</b> يدعم المقاولات والأسمنت والحديد ومواد البناء.','<b>الدعم الحكومي لأسعار الطاقة والمدخلات:</b> يغيّر هوامش الصناعات كثيفة الطاقة والأسمدة.','<b>الاقتراض الحكومي:</b> الاستحواذ على السيولة المحلية يرفع عوائد الأذون ويزاحم الاستثمار الخاص.','<b>برامج الطروحات والخصخصة:</b> تزيد المعروض من الأسهم وتغيّر فرص الاستثمار.','<b>برامج التمويل الدولي:</b> ترتبط غالبًا بإصلاحات مالية ونقدية يتحرك السوق على توقعها.'])),
+ acc('مؤشرات مالية تراقبها',ul(['رصيد الموازنة الأولي (قبل الفوائد).','نسبة بند الفوائد إلى الإيرادات العامة.','هيكل الدين: داخلي/خارجي، قصير/طويل الأجل.','الاحتياطي الأجنبي وميزان المدفوعات.','موعد إعلان الموازنة الجديدة وقوانين الضرائب.'])),
+ acc('التنسيق بين المالية والنقدية',ul(['عجز كبير مع فائدة مرتفعة: ضغط على الشركات والمستثمرين معًا.','سياسة مالية منضبطة تتيح للمركزي خفض الفائدة بأمان، وهذا يدعم الأسهم تقليديًا.','تعارض السياستين (إنفاق توسعي وفائدة مشددة) يزيد التقلب.']))
+ ].join('');
+}
+
+/* ---------- 4) الدورات الاقتصادية ---------- */
+const PH={
+ early:{t:'توسع مبكر (نمو متسارع وتضخم متراجع)',fav:['بنوك','عقار','تطوير','أسمنت','مواد بناء','صناعات','سيارات','تجزئة','استهلاك'],note:'مرحلة تدعم الشركات الدورية الحساسة للنمو.'},
+ late:{t:'توسع متأخر قرب الذروة (نمو قوي وتضخم صاعد)',fav:['طاقة','بترول','بتروكيماويات','كيماويات','أسمدة','معادن','حديد','صلب','أغذية'],note:'ترتفع تكلفة المدخلات وتستفيد شركات السلع والطاقة نسبيًا.'},
+ stag:{t:'انكماش مع تضخم (ركود تضخمي)',fav:['أغذية','اتصالات','أدوية','صحة','كهرباء','مرافق','طاقة'],note:'تفضل القطاعات الدفاعية وشركات القدرة على تمرير الأسعار.'},
+ trough:{t:'انكماش أو قاع (نمو ضعيف وتضخم متراجع)',fav:['بنوك','اتصالات','أغذية','أدوية','عقار'],note:'مرحلة تسبق التعافي، وتبدأ الأسهم غالبًا بالتحسن قبل أن تظهر في الأرقام.'}
+};
+function phase(){const d=M.dir||{};if(!d.g||!d.i)return null;return d.g==='up'?(d.i==='down'?'early':'late'):(d.i==='up'?'stag':'trough')}
+function cycOut(){
+ const k=phase(),S=sectors();
+ if(!k)return'<p class="mu">اختر اتجاه النمو والتضخم لتظهر قراءة المرحلة وموقع محفظتك منها.</p>';
+ const P=PH[k],d=M.dir||{};
+ let h='<div class="verd"><b>المرحلة التقريبية: '+P.t+'</b><p class="mu" style="margin:6px 0 0">'+P.note+'</p></div>';
+ h+='<p>القطاعات التي تُفضَّل تقليديًا في هذه المرحلة: '+P.fav.map(x=>'<span class="tag">'+x+'</span>').join(' ')+'</p>';
+ if(d.r==='up')h+='<p class="mu">اتجاه الفائدة صاعد: خفّف الاعتماد على الشركات المقترضة والنامية بدين مرتفع.</p>';
+ else if(d.r==='down')h+='<p class="mu">اتجاه الفائدة هابط: يدعم عادة العقارات والصناعة وأسهم النمو.</p>';
+ if(S.tot>0){
+  let fav=0,un=0;const hit=[];
+  S.list.forEach(s=>{if(s.k==='غير محدد'){un+=s.w;return}if(P.fav.some(x=>s.k.includes(x))){fav+=s.w;hit.push(s.k)}});
+  h+='<p><b>محفظتك:</b> '+f(fav,0)+'% في قطاعات تُفضَّل في هذه المرحلة'+(hit.length?' ('+hit.map(E).join('، ')+')':'')+'، و'+f(100-fav-un,0)+'% في غيرها'+(un>0?'، و'+f(un,0)+'% بلا قطاع محدد':'')+'.</p>';
+  h+='<p class="mu">لا يعني انخفاض النسبة أن محفظتك خاطئة؛ هو مجرد مقارنة مع قاعدة تاريخية عامة. تحديد القطاع لسهمك يتم من محفظتي الفعلية.</p>';
+ }
+ return h;
+}
+function bCycles(){
+ const sel=(k,opts)=>'<select id="d_'+k+'" data-dir="'+k+'"><option value="">— اختر —</option>'+opts.map(([v,t])=>'<option value="'+v+'"'+((M.dir||{})[k]===v?' selected':'')+'>'+t+'</option>').join('')+'</select>';
+ return'<div class="verd"><b>أين نحن في الدورة؟ (تقدير شخصي)</b><div class="g" style="margin-top:8px"><div><label for="d_g">اتجاه النمو الاقتصادي</label>'+sel('g',[['up','متسارع'],['down','متباطئ']])+'</div><div><label for="d_i">اتجاه التضخم</label>'+sel('i',[['up','صاعد'],['down','هابط']])+'</div><div><label for="d_r">اتجاه الفائدة</label>'+sel('r',[['up','رفع'],['flat','ثبات'],['down','خفض']])+'</div></div></div><div id="mOut">'+cycOut()+'</div>'+[
+ acc('ما الدورة الاقتصادية؟','<p>تناوب الاقتصاد بين نمو وتباطؤ على فترات غير منتظمة. لها أربع مراحل: <b>توسع</b> فـ<b>ذروة</b> فـ<b>انكماش</b> فـ<b>قاع</b>. تتحرك الأسهم غالبًا قبل الاقتصاد بأشهر لأنها تسعّر التوقعات.</p>',true),
+ acc('مؤشرات تساعد على التقدير',tbl(['النوع','أمثلة','ما تقوله'],[['قائدة','مؤشر مديري المشتريات، نمو الائتمان، ثقة المستهلك، ميل منحنى العائد','تسبق التحول'],['متزامنة','الناتج المحلي، الإنتاج الصناعي، التوظيف','تؤكد الوضع الحالي'],['متأخرة','التضخم، البطالة، أرباح الشركات المعلنة','تؤكد ما حدث']])),
+ acc('تدوير القطاعات حسب المرحلة',tbl(['المرحلة','قطاعات تُفضَّل تقليديًا'],Object.values(PH).map(p=>[p.t,p.fav.join('، ')]))+'<p class="mu">قاعدة تاريخية عامة من الأسواق الناضجة. في مصر تتداخل معها عوامل مثل سعر الصرف وتوافر الدولار والبرامج الدولية، فاستخدمها إطارًا للتفكير لا إشارة تداول.</p>'),
+ acc('كيف تستخدم هذا في قرارك؟',ul(['حدد المرحلة بتقدير متحفظ ثم راجعه كل ربع سنة.','قارن توزيع محفظتك القطاعي بما تفضّله المرحلة، دون تبديل كامل.','اعتمد على الشركة نفسها قبل القطاع: ميزانية قوية في قطاع غير مفضّل قد تتفوق.','لا تحاول توقيت القمم والقيعان بدقة؛ المرحلة اتجاه لا موعد.']))
+ ].join('');
+}
+
+/* ---------- 5) التحليل الفني ---------- */
+function bTech(){
+ const ls=k=>{try{return localStorage.getItem(k)}catch(e){return null}},cap=ls('u_cap')||'',rk=ls('u_in_rk')||'1',cs=ls('u_in_cs')||'0.4';
+ const calc='<div class="verd"><b>حاسبة حجم المركز</b><div class="g" style="margin-top:8px">'+
+ [['ps_cap','رأس المال',cap||'100000'],['ps_rk','المخاطرة % لكل صفقة',rk],['ps_en','سعر الدخول',''],['ps_sl','وقف الخسارة',''],['ps_tg','الهدف (اختياري)',''],['ps_cs','تكلفة الدخول+الخروج %',cs]].map(([id,l,v])=>'<div><label for="'+id+'">'+l+'</label><input id="'+id+'" type="number" step="any" min="0" inputmode="decimal" data-ps="1" value="'+E(v)+'"></div>').join('')+'</div><div id="psOut" style="margin-top:8px"><p class="mu">أدخل سعر الدخول ووقف الخسارة.</p></div></div>';
+ return'<div class="row">'+goBtn('analyze','افتح تحليل سهم')+goBtn('bt','افتح اختبار المؤشرات')+'</div>'+calc+[
+ acc('ما التحليل الفني ولماذا؟','<p>يدرس سلوك السعر والحجم تاريخيًا لاستنتاج اتجاه واحتمالات. يفترض أن السعر يعكس المعلومات المتاحة وأن سلوك المتداولين يتكرر جزئيًا. هو أداة توقيت ومخاطرة، لا يغني عن فهم الشركة، ولا تضمن إشاراته النتيجة. جرّب موثوقية مؤشراتك في «اختبار المؤشرات».</p>',true),
+ acc('الاتجاه والدعم والمقاومة',ul(['<b>الاتجاه الصاعد:</b> قمم وقيعان أعلى؛ <b>الهابط:</b> قمم وقيعان أدنى؛ <b>العرضي:</b> نطاق ثابت.','<b>الدعم:</b> مستوى يتوقف عنده الهبوط عادة، <b>والمقاومة:</b> مستوى يتوقف عنده الصعود.','كسر المستوى بحجم تداول مرتفع أقوى دلالة من كسره بحجم ضعيف.','المستوى الذي أُخترق يتحول غالبًا إلى مستوى معاكس.'])),
+ acc('المؤشرات المستخدمة في نواة',tbl(['المؤشر','المعنى','كيف يُقرأ'],[['EMA 20 / 50','متوسط متحرك أسي يعطي وزنًا أكبر للأسعار الحديثة','السعر فوق EMA50 اتجاه إيجابي؛ تقاطع EMA20 فوق EMA50 إشارة صعود'],['RSI (14)','قياس زخم من 0 إلى 100','فوق 70 تشبّع شراء محتمل، وتحت 30 تشبّع بيع؛ 50–70 زخم صحي'],['MACD (12,26,9)','فرق متوسطين مع خط إشارة','الهيستوجرام الموجب والمتزايد زخم صاعد'],['ATR (14)','متوسط المدى الحقيقي للتذبذب','يحدد مسافة وقف الخسارة المناسبة للسهم'],['اختراق 20 جلسة','إغلاق فوق أعلى سعر في 20 جلسة','بداية موجة صعود محتملة، ويحتاج حجمًا يؤكده']])),
+ acc('الشموع اليابانية',ul(['الجسم يوضح الفرق بين الافتتاح والإغلاق، والظلال تبيّن أعلى وأدنى سعر.','ظل سفلي طويل في قاع: رفض للهبوط؛ ظل علوي طويل في قمة: رفض للصعود.','الشمعة الابتلاعية: جسم يغطي جسم الشمعة السابقة، تُقرأ في سياق الاتجاه.','الدوجي: افتتاح قريب من الإغلاق، يدل على تردد.','الأنماط وحدها ضعيفة؛ تُقاس بموضعها عند دعم أو مقاومة وبالحجم.'])),
+ acc('أطر زمنية ومنهجية',ul(['الإطار الأكبر يحدد الاتجاه، والأصغر يحدد التوقيت.','لا تعتمد على مؤشر واحد؛ اجمع اتجاهًا وزخمًا وحجمًا.','حدد وقف الخسارة قبل الدخول، ولا تحرّكه ضد الصفقة.','سجّل كل صفقة وراجع نتائجها بصدق.'])),
+ acc('حدود التحليل الفني',ul(['الأسهم الضعيفة السيولة تعطي إشارات مضللة.','الأخبار والقرارات النقدية والمالية تكسر الأنماط فجأة.','كثرة المؤشرات تخلق إشارات متعارضة وثقة زائفة.','النتائج السابقة لا تضمن المستقبل.']))
+ ].join('');
+}
+function calcPS(){
+ const v=id=>parseFloat((g(id)||{}).value),cap=v('ps_cap'),rk=v('ps_rk'),en=v('ps_en'),sl=v('ps_sl'),tg=v('ps_tg'),cs=v('ps_cs'),o=g('psOut');if(!o)return;
+ if(!(cap>0&&rk>0&&en>0&&sl>0)){o.innerHTML='<p class="mu">أدخل رأس المال والمخاطرة وسعر الدخول ووقف الخسارة.</p>';return}
+ if(sl>=en){o.innerHTML='<p class="mu" style="color:var(--wn)">وقف الخسارة يجب أن يكون أقل من سعر الدخول (صفقة شراء).</p>';return}
+ const risk=cap*rk/100,per=en-sl,sh=Math.floor(risk/per),val=sh*en,cost=val*(cs>0?cs:0)/100,loss=sh*per+cost;
+ let h='<ul><li>عدد الأسهم: <b>'+f(sh,0)+'</b> بقيمة <b>'+f(val,0)+'</b> ('+f(val/cap*100,1)+'% من رأس المال)</li><li>الخسارة القصوى عند وقف الخسارة: <b class="dn">'+f(loss,0)+'</b> ('+f(loss/cap*100,2)+'%)</li>';
+ if(tg>en){const rr=(tg-en)/per;h+='<li>الربح عند الهدف: <b class="up">'+f(sh*(tg-en)-cost,0)+'</b> • نسبة العائد للمخاطرة: <b>'+f(rr,1)+' : 1</b>'+(rr<2?' <span style="color:var(--wn)">(أقل من 2:1)</span>':'')+'</li>'}
+ if(val>cap)h+='<li style="color:var(--wn)">⚠️ قيمة المركز أكبر من رأس مالك؛ قلّل المخاطرة أو أبعد وقف الخسارة.</li>';
+ if(sh<1)h+='<li style="color:var(--wn)">المخاطرة المحددة لا تكفي لسهم واحد.</li>';
+ o.innerHTML=h+'</ul>';
+}
+
+/* ---------- 6) التحليل المالي للأسهم ---------- */
+function finRows(){
+ return rows().filter(r=>r.p>0).map(r=>{
+  const rec=fvRec(r.s)||{},eps=rec.eps,bv=rec.bvps,pe=eps>0?r.p/eps:null,pb=bv>0?r.p/bv:null,roe=eps!=null&&bv>0?eps/bv*100:null,e=eps>0?eps/r.p*100:null,dv=ttmDiv(r.s),dy=dv/r.p*100,gr=eps>0&&bv>0?Math.sqrt(22.5*eps*bv):null;
+  const flags=[];if(eps!=null&&eps<=0)flags.push('ربحية سالبة');if(pe!=null&&(pe<3||pe>50))flags.push('مكرر غير معتاد');if(roe!=null&&roe>60)flags.push('عائد حقوق مرتفع جدًا');
+  if(rec.asOf&&(Date.now()-Date.parse(rec.asOf))>400*DAY)flags.push('بيانات قديمة');
+  return{s:r.s,x:r.x,p:r.p,eps,bv,pe,pb,roe,e,dy,gr,asOf:rec.asOf||'',has:eps>0||bv>0,flags};
+ });
+}
+function bFin(){
+ const R=finRows();
+ let h='<div class="row">'+goBtn('portfolio','افتح قائمة المتابعة (القيمة العادلة)')+'</div>';
+ if(!R.length)h+='<p class="mu">لا توجد أسعار محفوظة لأسهم محفظتك بعد؛ افتح «محفظتي الفعلية» ليُحدَّث السعر.</p>';
+ else{
+  const miss=R.filter(r=>!r.has).map(r=>r.s);
+  h+='<p class="mu">الأرباح (EPS) والقيمة الدفترية (BVPS) تؤخذ من بيانات القيمة العادلة المخزنة في «قائمة المتابعة» (Yahoo أو يدويًا). العلامة ⚠️ تعني أن الرقم غير معتاد فتحقق منه قبل الاعتماد عليه.</p>';
+  h+='<div class="btw"><table><thead><tr><th>السهم</th><th>السعر</th><th>EPS</th><th>مكرر الربحية</th><th>BVPS</th><th>السعر÷الدفترية</th><th>عائد حقوق (تقريبي)</th><th>عائد الأرباح</th><th>عائد التوزيع 12ش</th><th>رقم جراهام</th><th>تاريخ البيانات</th><th>ملاحظة</th></tr></thead><tbody>'+
+  R.map(r=>'<tr><td><b class="ltr">'+E(r.s)+'</b></td><td>'+f(r.p)+'</td><td>'+f(r.eps)+'</td><td>'+f(r.pe,1)+'</td><td>'+f(r.bv)+'</td><td>'+f(r.pb,2)+'</td><td>'+(r.roe!=null?f(r.roe,1)+'%':'—')+'</td><td>'+(r.e!=null?f(r.e,1)+'%':'—')+'</td><td>'+(r.dy>0?f(r.dy,1)+'%':'—')+'</td><td>'+f(r.gr,1)+'</td><td>'+(r.asOf?'<span class="ltr">'+E(r.asOf)+'</span>':'—')+'</td><td>'+(r.flags.length?'⚠️ '+E(r.flags.join('، ')):(r.has?'—':'بلا بيانات'))+'</td></tr>').join('')+'</tbody></table></div>';
+  if(miss.length)h+='<p class="mu">بلا بيانات أرباح أو قيمة دفترية: '+E(miss.join('، '))+'. افتح قائمة المتابعة واضغط تحديث القيمة العادلة أو أدخلها يدويًا.</p>';
+  if(Number.isFinite(M.tbill)){const pe=portfolioEY();if(pe&&pe.ey!=null)h+='<p>عائد أرباح محفظتك '+f(pe.ey,1)+'% مقابل '+f(M.tbill,1)+'% في أذون الخزانة (من باب السياسة النقدية).</p>'}
+ }
+ return h+[
+ acc('النسب الأساسية وكيف تُقرأ',tbl(['النسبة','الصيغة','المعنى'],[['مكرر الربحية P/E','السعر ÷ ربحية السهم','كم جنيهًا تدفع مقابل جنيه ربح؛ المنخفض ليس دائمًا رخيصًا (قد تتراجع الأرباح)'],['السعر ÷ القيمة الدفترية P/B','السعر ÷ حقوق الملكية للسهم','تحت 1 يعني السوق يقيّم الشركة بأقل من أصولها الصافية'],['العائد على حقوق الملكية ROE','صافي الربح ÷ حقوق الملكية','كفاءة استخدام أموال المساهمين؛ المرتفع جدًا يستحق فحص الدين'],['عائد الأرباح','ربحية السهم ÷ السعر','مقلوب المكرر، يُقارن بعائد الأذون'],['عائد التوزيع','التوزيع السنوي ÷ السعر','دخل نقدي سنوي؛ المرتفع جدًا قد يكون إشارة خطر'],['نسبة التوزيع','التوزيع ÷ الربحية','نسبة الأرباح الموزعة؛ فوق 100% غير مستدامة'],['الدين إلى حقوق الملكية','إجمالي الدين ÷ حقوق الملكية','كلما زادت زادت حساسية الشركة للفائدة'],['هامش الربح','الربح ÷ الإيرادات','قدرة الشركة على تحويل المبيعات إلى ربح']]),true),
+ acc('كيف تقرأ القوائم المالية؟',ul(['<b>قائمة الدخل:</b> الإيرادات، تكلفة المبيعات، الأرباح التشغيلية، الفوائد، صافي الربح.','<b>الميزانية:</b> الأصول مقابل الالتزامات وحقوق الملكية، وانتبه لحجم الديون قصيرة الأجل.','<b>التدفقات النقدية:</b> هل الأرباح تتحول إلى نقد فعلي؟ الربح بلا تدفق تشغيلي مشبوه.','قارن الأرباع بالفترة نفسها من العام السابق لاستبعاد الموسمية.','انتبه للأرباح الاستثنائية (أرباح فروق عملة أو بيع أصول)، فهي لا تتكرر.'])),
+ acc('علامات تحذير',ul(['أرباح تنمو بلا تدفق نقدي مماثل.','ديون تتزايد أسرع من الأرباح.','تغيير متكرر لمراجع الحسابات أو تأخر نشر القوائم.','توزيعات تفوق الأرباح لسنوات.','اعتماد على عميل أو مصدر إيراد واحد.','أرباح ناتجة عن فروق عملة أكثر منها من النشاط.'])),
+ acc('عن رقم جراهام والقيمة العادلة','<p>رقم جراهام = √(22.5 × EPS × BVPS) تقدير مبسّط صُمّم لأسواق منخفضة التضخم. في الاقتصادات ذات التضخم والفائدة المرتفعين قد يعطي قيمًا بعيدة عن السعر فلا تعتمد عليه وحده؛ استخدمه مؤشرًا لفحص التناقضات بين السعر والأساسيات.</p>')
+ ].join('');
+}
+
+/* ---------- 7) إحصائيات المحفظة ---------- */
+const sd=a=>{const n=a.length;if(n<2)return 0;const m=a.reduce((p,x)=>p+x,0)/n;return Math.sqrt(a.reduce((p,x)=>p+(x-m)*(x-m),0)/(n-1))};
+function snaps(){const a=jl('u_hold_snap_v1',[]);return(Array.isArray(a)?a:[]).filter(s=>s&&typeof s.d==='string'&&s.total>0&&s.fin!==false).sort((x,y)=>x.d<y.d?-1:1)}
+function rets(S){const r=[];S.forEach((s,i)=>{if(!i)return;let p=Number.isFinite(s.pct)?s.pct:null;if(p==null){const pt=S[i-1].total;p=pt>0?(s.total/pt-1)*100:null}if(p!=null)r.push({d:s.d,p})});return r}
+function pstat(r){
+ const n=r.length;if(!n)return null;const p=r.map(x=>x.p);
+ let cum=1,pk=1,mdd=0,ls=0,mls=0;
+ p.forEach(x=>{cum*=1+x/100;pk=Math.max(pk,cum);mdd=Math.min(mdd,(cum/pk-1)*100);if(x<0){ls++;mls=Math.max(mls,ls)}else ls=0});
+ const mean=p.reduce((a,x)=>a+x,0)/n,s=sd(p),best=r.reduce((a,x)=>x.p>a.p?x:a),worst=r.reduce((a,x)=>x.p<a.p?x:a);
+ return{n,cum:(cum-1)*100,mean,sd:s,vol:s*Math.sqrt(250),best,worst,up:100*p.filter(x=>x>0).length/n,mdd,mls};
+}
+function pearson(a,b){const n=a.length;if(n<2)return null;const ma=a.reduce((p,x)=>p+x,0)/n,mb=b.reduce((p,x)=>p+x,0)/n;let sa=0,sb=0,sx=0;for(let i=0;i<n;i++){sa+=(a[i]-ma)**2;sb+=(b[i]-mb)**2;sx+=(a[i]-ma)*(b[i]-mb)}return sa>0&&sb>0?sx/Math.sqrt(sa*sb):null}
+function corrPairs(S){
+ const syms=[...new Set(S.flatMap(s=>Object.keys(s.prices||{})))],ser={};
+ syms.forEach(k=>{const a=[];S.forEach((s,i)=>{if(!i)return;const p0=(S[i-1].prices||{})[k],p1=(s.prices||{})[k];a.push(p0>0&&p1>0?p1/p0-1:null)});ser[k]=a});
+ const out=[];for(let i=0;i<syms.length;i++)for(let j=i+1;j<syms.length;j++){const A=[],B=[];ser[syms[i]].forEach((x,t)=>{const y=ser[syms[j]][t];if(x!=null&&y!=null){A.push(x);B.push(y)}});if(A.length>=20){const c=pearson(A,B);if(c!=null)out.push({a:syms[i],b:syms[j],c,n:A.length})}}
+ return out.sort((x,y)=>y.c-x.c);
+}
+function bStats(){
+ const R=rows().filter(r=>r.v>0),tot=sumV(R);let h='';
+ if(!R.length)h+='<p class="mu">لا توجد أسعار محفوظة لأسهم محفظتك؛ افتح «محفظتي الفعلية» ليُحدَّث السعر.</p>';
+ else{
+  const W=R.map(r=>({...r,w:r.v/tot*100})).sort((a,b)=>b.w-a.w),hhi=W.reduce((p,r)=>p+(r.w/100)**2,0),top1=W[0].w,top3=W.slice(0,3).reduce((p,r)=>p+r.w,0);
+  const withC=W.filter(r=>r.c>0),win=withC.filter(r=>r.p>r.c).length,lim=+jl('u_hold_lim_v1',30)||30;
+  h+='<h3 style="margin:10px 0 6px">هيكل المحفظة</h3><div class="g"><div class="c"><div class="mu">إجمالي القيمة</div><b>'+f(tot,0)+'</b></div><div class="c"><div class="mu">عدد الأسهم الفعّال (1÷HHI)</div><b>'+f(1/hhi,1)+'</b><div class="mu">من '+W.length+' سهم</div></div><div class="c"><div class="mu">أكبر سهم / أكبر ثلاثة</div><b class="'+(top1>lim?'dn':'')+'">'+f(top1,0)+'% / '+f(top3,0)+'%</b></div><div class="c"><div class="mu">أسهم فوق متوسط تكلفتها</div><b>'+win+' من '+withC.length+'</b></div></div>';
+  h+='<div class="btw"><table><thead><tr><th>السهم</th><th>القطاع</th><th>القيمة</th><th>الوزن</th><th></th><th>الربح/الخسارة غير المحققة</th></tr></thead><tbody>'+W.map(r=>'<tr><td><b class="ltr">'+E(r.s)+'</b></td><td>'+E(r.x)+'</td><td>'+f(r.v,0)+'</td><td class="'+(r.w>lim?'dn':'')+'">'+f(r.w,1)+'%</td><td style="min-width:90px"><div class="wbar"><i style="width:'+Math.min(100,r.w)+'%"></i></div></td><td class="'+cl(r.c>0?r.p-r.c:0)+'">'+(r.c>0?pc((r.p/r.c-1)*100):'—')+'</td></tr>').join('')+'</tbody></table></div>';
+  const S=sectors();h+='<h3 style="margin:14px 0 6px">التوزيع القطاعي</h3>'+tbl(['القطاع','الوزن'],S.list.map(s=>[E(s.k),f(s.w,1)+'%']));
+  h+='<p class="mu">حد التركّز المعتمد '+f(lim,0)+'% للسهم الواحد. مؤشر هيرفندال (HHI) = مجموع مربعات الأوزان؛ كلما قلّ زاد التنويع.</p>';
+ }
+ const S=snaps(),r=rets(S),st=pstat(r);
+ h+='<h3 style="margin:14px 0 6px">أداء المحفظة (من لقطات الجلسات)</h3>';
+ if(!st)h+='<p class="mu">لا توجد لقطات كافية. تُحفظ لقطة بعد كل جلسة تفتح فيها «محفظتي الفعلية».</p>';
+ else{
+  h+='<div class="g"><div class="c"><div class="mu">العائد المركّب ('+js(st.n)+')</div><b class="'+cl(st.cum)+'">'+pc(st.cum,2)+'</b></div><div class="c"><div class="mu">متوسط الجلسة</div><b class="'+cl(st.mean)+'">'+pc(st.mean,2)+'</b></div><div class="c"><div class="mu">التذبذب اليومي</div><b>'+f(st.sd,2)+'%</b>'+(st.n>=10?'<div class="mu">سنوي تقريبي '+f(st.vol,0)+'%</div>':'')+'</div><div class="c"><div class="mu">أقصى تراجع</div><b class="dn">'+pc(st.mdd,2)+'</b></div><div class="c"><div class="mu">جلسات رابحة</div><b>'+f(st.up,0)+'%</b></div><div class="c"><div class="mu">أطول سلسلة خسارة</div><b>'+js(st.mls)+'</b></div><div class="c"><div class="mu">أفضل جلسة</div><b class="up">'+pc(st.best.p,2)+'</b><div class="mu ltr">'+E(st.best.d)+'</div></div><div class="c"><div class="mu">أسوأ جلسة</div><b class="dn">'+pc(st.worst.p,2)+'</b><div class="mu ltr">'+E(st.worst.d)+'</div></div></div>';
+  h+='<p class="mu">العوائد معدّلة بحركات الشراء والبيع كما حُفظت في اللقطات'+(st.n<20?'. ⚠️ العيّنة قصيرة (أقل من 20 جلسة) فلا تعتمد عليها إحصائيًا. ارفع الحد الأقصى للجلسات من قسم الجلسات في محفظتي الفعلية.':'.')+'</p>';
+  const cp=corrPairs(S);
+  h+='<h3 style="margin:14px 0 6px">الارتباط بين الأسهم</h3>';
+  if(!cp.length)h+='<p class="mu">يحتاج حساب الارتباط إلى 20 جلسة على الأقل لكل زوج.</p>';
+  else h+=tbl(['الزوج','الارتباط','عدد الجلسات'],[...cp.slice(0,3),...cp.slice(-3)].filter((x,i,a)=>a.indexOf(x)===i).map(x=>['<span class="ltr">'+E(x.a)+' / '+E(x.b)+'</span>',f(x.c,2),x.n]))+'<p class="mu">ارتباط قريب من +1 يعني تحركًا متشابهًا (تنويع ضعيف)، وقريب من صفر أو سالب يعني تنويعًا أفضل.</p>';
+ }
+ return h+acc('مفاهيم إحصائية','<p><b>التذبذب (الانحراف المعياري):</b> مقدار تبدّل العوائد حول متوسطها. <b>أقصى تراجع:</b> أكبر هبوط من قمة إلى قاع لاحق. <b>الارتباط:</b> مدى تحرك سهمين معًا. <b>العائد المركّب:</b> حاصل ضرب (1 + عائد كل جلسة) − 1. كلما قلّ عدد الملاحظات قلّت الثقة في أي رقم.</p>');
+}
+
+/* ---------- 8) تاريخ الأسهم ---------- */
+let HIST={},hFails=[],hBusy=false,hStop=false,hSel='',hNote='';
+function hm(b){
+ const c=b.map(x=>x.c),n=c.length;if(n<30)return null;
+ const last=c[n-1],ret=k=>n>k?(last/c[n-1-k]-1)*100:null,y=b.slice(-252),hi=Math.max(...y.map(x=>x.h)),lo=Math.min(...y.map(x=>x.l));
+ let pk=-Infinity,mdd=0;c.forEach(v=>{pk=Math.max(pk,v);mdd=Math.min(mdd,(v/pk-1)*100)});
+ const r=[];for(let i=1;i<n;i++)r.push((c[i]/c[i-1]-1)*100);
+ const byY={};b.forEach((x,i)=>{const yr=new Date(x.t).getUTCFullYear();(byY[yr]=byY[yr]||[]).push(i)});
+ const annual=Object.keys(byY).sort().map(yr=>{const idx=byY[yr],a=idx[0],z=idx[idx.length-1],base=a>0?c[a-1]:c[a];return{yr:+yr,r:(c[z]/base-1)*100,part:a===0}});
+ return{n,last,r1:ret(21),r3:ret(63),r6:ret(126),r12:ret(252),hi,lo,fromHi:(last/hi-1)*100,mdd,vol:sd(r)*Math.sqrt(250),best:Math.max(...r),worst:Math.min(...r),t0:b[0].t,t1:b[n-1].t,annual,spark:c.slice(-252)};
+}
+function spark(a){
+ if(!a||a.length<2)return'';const k=Math.max(1,Math.floor(a.length/50)),p=a.filter((_,i)=>i%k===0||i===a.length-1),mn=Math.min(...p),mx=Math.max(...p),w=100,h=26;
+ const pts=p.map((v,i)=>(i/(p.length-1)*w).toFixed(1)+','+(h-(mx>mn?(v-mn)/(mx-mn)*h:h/2)).toFixed(1)).join(' ');
+ return'<svg viewBox="0 0 '+w+' '+h+'" width="100" height="26" aria-hidden="true"><polyline fill="none" stroke="'+(a[a.length-1]>=a[0]?'var(--up)':'var(--dn)')+'" stroke-width="1.6" points="'+pts+'"/></svg>';
+}
+const dstr=t=>new Date(t).toISOString().slice(0,10);
+function bHist(){
+ const L=hold();let h='<div class="row">'+(hBusy?'<button type="button" class="sm sec" id="lhStop">إيقاف</button>':'<button type="button" class="sm" id="lhLoad">'+(Object.keys(HIST).length?'إعادة تحميل التاريخ':'تحميل تاريخ أسهمي')+'</button>')+'</div>';
+ if(hNote)h+='<p class="mu" role="status">'+E(hNote)+'</p>';
+ const ks=Object.keys(HIST);
+ if(!L.length)h+='<p class="mu">لا توجد أسهم في محفظتك الفعلية.</p>';
+ else if(!ks.length&&!hBusy)h+='<p class="mu">اضغط «تحميل تاريخ أسهمي» لجلب الشموع اليومية المتاحة وحساب العوائد والتراجعات. يتطلب اتصالًا بالإنترنت.</p>';
+ if(ks.length){
+  h+='<div class="btw"><table><thead><tr><th>السهم</th><th>آخر سعر</th><th>شهر</th><th>3 أشهر</th><th>6 أشهر</th><th>سنة</th><th>من قمة 52 أسبوعًا</th><th>أقصى تراجع</th><th>تذبذب سنوي</th><th>اتجاه سنة</th></tr></thead><tbody>'+
+  ks.map(k=>{const m=HIST[k];return'<tr><td><b class="ltr">'+E(k)+'</b></td><td>'+f(m.last)+'</td>'+[m.r1,m.r3,m.r6,m.r12].map(x=>'<td class="'+cl(x)+'">'+pc(x)+'</td>').join('')+'<td class="'+cl(m.fromHi)+'">'+pc(m.fromHi)+'</td><td class="dn">'+pc(m.mdd)+'</td><td>'+f(m.vol,0)+'%</td><td>'+spark(m.spark)+'</td></tr>'}).join('')+'</tbody></table></div>';
+  if(!HIST[hSel])hSel=ks[0];
+  const m=HIST[hSel];
+  h+='<h3 style="margin:14px 0 6px">تفصيل سهم</h3><div class="row"><select id="lhSel" data-hd="1" aria-label="السهم">'+ks.map(k=>'<option value="'+E(k)+'"'+(k===hSel?' selected':'')+'>'+E(k)+'</option>').join('')+'</select></div>';
+  h+='<p class="mu">الفترة المتاحة: <span class="ltr">'+dstr(m.t0)+'</span> إلى <span class="ltr">'+dstr(m.t1)+'</span> ('+js(m.n)+') • أعلى 52 أسبوعًا '+f(m.hi)+' وأدنى '+f(m.lo)+' • أفضل يوم '+pc(m.best)+' وأسوأ يوم '+pc(m.worst)+'</p>';
+  h+=tbl(['السنة','العائد'],m.annual.map(a=>['<span class="ltr">'+a.yr+'</span>'+(a.part?' (جزئية)':''),'<b class="'+cl(a.r)+'">'+pc(a.r)+'</b>']));
+  const dv=divL(hSel);
+  h+='<h3 style="margin:14px 0 6px">توزيعات '+E(hSel)+' المسجّلة</h3>'+(dv.length?tbl(['تاريخ الأحقية','التوزيع للسهم'],dv.slice().reverse().map(x=>['<span class="ltr">'+E(x.d)+'</span>',f(+x.a,3)])):'<p class="mu">لا توجد توزيعات مسجّلة لهذا السهم في التطبيق.</p>');
+  if(hFails.length)h+='<p class="mu">تعذّر جلب: '+E(hFails.join('، '))+'</p>';
+ }
+ return h+[
+ acc('لماذا ندرس تاريخ السهم؟',ul(['يعطي فكرة عن التذبذب المعتاد وأقصى هبوط سابق يمكن أن تتحمله.','يكشف هل العوائد جاءت من سنة واحدة استثنائية أم من أداء متكرر.','المسافة من قمة 52 أسبوعًا تساعد على فهم موقع السعر الحالي، لا على التنبؤ.','التاريخ يصف الماضي ولا يضمن المستقبل.']),true),
+ acc('تاريخ سوق الأسهم المصري (ملخص عام)',ul(['تُعد البورصة المصرية من أقدم البورصات في المنطقة؛ نشأت بورصة الإسكندرية عام 1883 وبورصة القاهرة عام 1903.','يناير 2011: توقف التداول عدة أسابيع ثم استؤنف في مارس 2011.','نوفمبر 2016: تعويم الجنيه وما تبعه من تحولات في تقييم الأسهم والتضخم.','2020: صدمة جائحة كورونا وتراجع حاد ثم تعافٍ.','2022 إلى 2024: موجات تشديد نقدي وتخفيض لقيمة الجنيه ثم تحرير سعر الصرف في مارس 2024 مع رفع كبير للفائدة.','الدرس المتكرر: أحداث الصرف والفائدة تغيّر مسار السوق بقوة، فراقب الباب النقدي والمالي في هذا القسم.']),false),
+ acc('كيف تقرأ التاريخ؟',ul(['قارن عائد السهم بعائد الأذون والتضخم في الفترة نفسها لا بالصفر.','تذبذب سنوي مرتفع يعني تغيّرات حادة؛ اجعل حجم المركز أصغر.','أقصى تراجع تاريخي هو اختبار نفسي: هل ستصمد أمامه؟','بيانات التاريخ المجاني قد تتأخر أو تتفاوت بين المصادر؛ قارن عند القرارات الكبيرة.']))
+ ].join('');
+}
+async function loadHist(){
+ if(hBusy)return;const L=hold();if(!L.length){hNote='لا توجد أسهم لتحميل تاريخها.';draw();return}
+ hBusy=true;hStop=false;HIST={};hFails=[];hNote='';draw();
+ const custom=(g('px')&&g('px').value.trim())||'';
+ for(let i=0;i<L.length;i++){if(hStop)break;hNote='جارٍ تحميل '+L[i].s+' ('+(i+1)+'/'+L.length+')';draw();
+  try{const R=await loadAll(detectAsset(L[i].s),'1d',custom,null),m=hm((R.bars||[]).filter(x=>x&&x.c>0&&x.h>0&&x.l>0&&x.t));if(m)HIST[L[i].s]=m;else hFails.push(L[i].s+' (بيانات قليلة)')}catch(e){hFails.push(L[i].s)}}
+ hBusy=false;hNote=hStop?'أُوقف التحميل؛ النتائج تخص الأسهم المحمّلة فقط.':'';draw();
+}
+
+/* ---------- الهيكل العام ---------- */
+const SECS=[['basics','أساسيات الاستثمار'],['monetary','السياسة النقدية'],['fiscal','السياسة المالية'],['cycles','الدورات الاقتصادية'],['tech','التحليل الفني'],['fin','التحليل المالي للأسهم'],['stats','إحصائيات المحفظة'],['hist','تاريخ الأسهم']];
+const BODY={basics:bBasics,monetary:bMonetary,fiscal:bFiscal,cycles:bCycles,tech:bTech,fin:bFin,stats:bStats,hist:bHist};
+const OUT={monetary:monOut,fiscal:fisOut,cycles:cycOut};
+let sec='basics';
+const st=document.createElement('style');st.textContent='.tab[data-learn]::before{content:"📚"}#tab-learn .btw{overflow-x:auto}#tab-learn table{width:100%;border-collapse:collapse;font-size:.85rem}#tab-learn th,#tab-learn td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:center}#tab-learn td:first-child,#tab-learn th:first-child{text-align:right}#tab-learn .up{color:var(--up)}#tab-learn .dn{color:var(--dn)}#tab-learn .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}#tab-learn .row select{width:auto;min-width:130px}#tab-learn .verd{background:var(--in);border-radius:12px;padding:12px 14px;margin:10px 0}#tab-learn .lnav{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}#tab-learn details{margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:8px 12px}#tab-learn summary{cursor:pointer;font-weight:700}#tab-learn .lbody{margin-top:8px}#tab-learn .lbody p{margin:6px 0}#tab-learn ul,#tab-learn ol{margin:6px 18px 0;padding:0}#tab-learn li{margin:4px 0}#tab-learn .wbar{height:8px;border-radius:6px;background:var(--line);overflow:hidden}#tab-learn .wbar i{display:block;height:100%;background:var(--ac)}#tab-learn .g .c{padding:10px 12px}';document.head.appendChild(st);
+const tb=document.createElement('div');tb.className='tab';tb.dataset.learn='1';tb.textContent='مركز المعرفة';tb.setAttribute('role','tab');tb.id='tabbtn-learn';tb.setAttribute('aria-controls','tab-learn');tb.setAttribute('aria-selected','false');tb.tabIndex=-1;
+tabs.insertBefore(tb,tabs.querySelector('[data-tab="settings"]'));
+const pn=document.createElement('div');pn.id='tab-learn';pn.setAttribute('role','tabpanel');pn.setAttribute('aria-labelledby','tabbtn-learn');pn.style.display='none';sett.parentNode.appendChild(pn);
+function draw(){
+ let h='<div class="c"><h2>مركز المعرفة والاقتصاد</h2><p class="mu">شرح مبسّط للمفاهيم الاقتصادية والمالية التي تحرّك الأسهم، مع حسابات حيّة من بيانات محفظتك المخزنة على جهازك. المحتوى تعليمي ولا يمثل نصيحة استثمارية.</p>';
+ h+='<div class="lnav" role="group" aria-label="أقسام مركز المعرفة">'+SECS.map(([k,t])=>'<button type="button" class="sm'+(k===sec?'':' sec')+'" data-sec="'+k+'" aria-pressed="'+(k===sec)+'">'+t+'</button>').join('')+'</div>';
+ let body='';try{body=BODY[sec]()}catch(e){body='<p class="mu">تعذّر عرض هذا القسم.</p>';try{console.error('[nawa-learn]',e)}catch(_){}}
+ h+='<div id="lBody">'+body+'</div><p class="mu" style="margin-top:12px">محتوى تعليمي عام لأغراض الثقافة المالية فقط، وليس نصيحة استثمارية أو ضريبية أو قانونية. الأرقام الكلية يدخلها المستخدم ويتحمل مسؤولية صحتها وحداثتها.</p></div>';
+ pn.innerHTML=h;
+}
+const refreshOut=()=>{const o=g('mOut');if(o&&OUT[sec])o.innerHTML=OUT[sec]()};
+pn.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.sec){sec=b.dataset.sec;draw();return}
+ if(b.dataset.go){const t=g('tabbtn-'+b.dataset.go)||document.querySelector('.tab[data-'+b.dataset.go+']');if(t)t.click();return}
+ if(b.id==='lhLoad')loadHist();
+ else if(b.id==='lhStop'){hStop=true;b.disabled=true}
+});
+pn.addEventListener('change',e=>{const t=e.target;
+ if(t.dataset.m){const k=t.dataset.m;
+  if(k==='asOf')M.asOf=/^\d{4}-\d{2}-\d{2}$/.test(t.value)?t.value:'';
+  else{const raw=t.value.trim(),v=raw===''?null:+raw,rg=MF[k];
+   if(v==null)delete M[k];
+   else if(!isFinite(v)||v<rg[1]||v>rg[2]){toast('القيمة خارج النطاق المعقول',true);t.value=Number.isFinite(M[k])?M[k]:'';return}
+   else M[k]=v;
+   if(!M.asOf&&v!=null){M.asOf=today();const ai=g('m_asOf');if(ai)ai.value=M.asOf}}
+  saveM();refreshOut();
+ }else if(t.dataset.dir){if(t.value)M.dir[t.dataset.dir]=t.value;else delete M.dir[t.dataset.dir];saveM();refreshOut()}
+ else if(t.dataset.hd){hSel=t.value;draw()}
+});
+pn.addEventListener('input',e=>{if(e.target.dataset.ps)calcPS()});
+const panels=['analyze','portfolio','history','settings','holdings','divs','flows','bt'];
+function show(){document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');t.tabIndex=-1});
+ tb.classList.add('active');tb.setAttribute('aria-selected','true');tb.tabIndex=0;
+ panels.forEach(i=>{const el=document.getElementById('tab-'+i);if(el)el.style.display='none'});
+ pn.style.display='block';draw();tabs.scrollIntoView({block:'start'})}
+tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
+ if(t===tb)show();else{pn.style.display='none';if(tb.classList.contains('active')){tb.classList.remove('active');tb.setAttribute('aria-selected','false');tb.tabIndex=-1}}});
+window.__learn={BODY,SECS,hm,pstat,rets,phase,real,calcPS,setM:o=>{M=o;if(!M.dir)M.dir={}},setSec:s=>{sec=s}};
+})();
+</script>
 <script id="nawa-tab-order">
 /* ترتيب التبويبات: الاستخدام اليومي أولاً ثم الأدوات ثم الإعدادات */
 (()=>{'use strict';
-const ORDER=['holdings','analyze','portfolio','flows','divs','history','bt','settings'];
-const NAMES={analyze:'تحليل سهم',history:'سجل التحليلات',bt:'اختبار المؤشرات'};
+const ORDER=['holdings','analyze','portfolio','flows','divs','history','bt','learn','settings'];
+const NAMES={analyze:'تحليل سهم',history:'سجل التحليلات',bt:'اختبار المؤشرات',learn:'مركز المعرفة'};
 let landed=false;
 function arrange(){
   const tabs=document.querySelector('.tabs');if(!tabs)return;
